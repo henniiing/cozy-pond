@@ -74,12 +74,12 @@ const JUNK = [
 ];
 
 const RODS = [
-  { name: "Pinnestang",            reel: 1.0,  tens: 1.0,  rare: 0.0,  window: 0.9,  cost: 0,    color: "#7a5a36", grip: "#3b2b1f", tip: "#caa97a" },
-  { name: "Glassfiberstang",       reel: 1.15, tens: 0.92, rare: 0.15, window: 0.98, cost: 180,  color: "#3f7d8c", grip: "#23404a", tip: "#bfe6ef" },
-  { name: "Karbonstang",           reel: 1.32, tens: 0.82, rare: 0.32, window: 1.06, cost: 700,  color: "#2c2c34", grip: "#7a1f1f", tip: "#d24a3a" },
-  { name: "Proffstang",            reel: 1.55, tens: 0.7,  rare: 0.5,  window: 1.18, cost: 2200, color: "#caa23a", grip: "#5a3aa0", tip: "#fff2a0" },
-  { name: "Splittbambusstang",     reel: 1.72, tens: 0.6,  rare: 0.64, window: 1.3,  cost: 4500, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
-  { name: "Nordlysstang",          reel: 1.95, tens: 0.5,  rare: 0.8,  window: 1.45, cost: 9000, color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
+  { name: "Pinnestang",            reel: 1.0,  tens: 0.9,  rare: 0.0,  window: 1.0,  cost: 0,    color: "#7a5a36", grip: "#3b2b1f", tip: "#caa97a" },
+  { name: "Glassfiberstang",       reel: 1.1,  tens: 0.85, rare: 0.15, window: 1.06, cost: 180,  color: "#3f7d8c", grip: "#23404a", tip: "#bfe6ef" },
+  { name: "Karbonstang",           reel: 1.2,  tens: 0.8,  rare: 0.32, window: 1.12, cost: 700,  color: "#2c2c34", grip: "#7a1f1f", tip: "#d24a3a" },
+  { name: "Proffstang",            reel: 1.3,  tens: 0.74, rare: 0.5,  window: 1.18, cost: 2200, color: "#caa23a", grip: "#5a3aa0", tip: "#fff2a0" },
+  { name: "Splittbambusstang",     reel: 1.4,  tens: 0.7,  rare: 0.64, window: 1.24, cost: 4500, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
+  { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.8,  window: 1.3,  cost: 9000, color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
 ];
 const rod = () => RODS[save.rodLevel] || RODS[0];
 
@@ -253,12 +253,17 @@ let menuNode = null;
 // fiskeoppsynet (license inspector) — a rare visiting NPC
 let inspector = { active: false, t: 0, x: -18, phase: "in", line: "", fined: false };
 let inspectorTimer = 80 + Math.random() * 120;
+// per-location random happenings (themed like the inspector but unique to each water)
+let gameEvent = { active: false, t: 0, dur: 0, title: "", line: "", color: "#cfe" };
+let eventTimer = 45 + Math.random() * 65;
 
 // ambient
 const fireflies = Array.from({ length: 14 }, () => ({ x: Math.random() * W, y: 40 + Math.random() * 110, ph: Math.random() * 6.28, sp: 0.3 + Math.random() * 0.5, drift: Math.random() * 6.28 }));
 const stars = Array.from({ length: 42 }, () => ({ x: Math.random() * W, y: Math.random() * 92, b: Math.random(), tw: Math.random() * 6.28 }));
 // the occasional shooting star streaking across the arctic sky (Nordlysvatnet)
 let shootStar = { on: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, timer: 5 + Math.random() * 9 };
+// the cottage cat (Findus) — tags along on fishing trips and pads about doing its own thing
+let cat = { state: "away", x: -20, y: 212, timer: 14 + Math.random() * 26, t: 0, action: "sit", target: 116, chaseX: 0 };
 // market passers-by (cosmetic NPCs that stroll the street back and forth)
 const NPC_COLORS = [["#7a4a6a", "#caa23a"], ["#3a5a7a", "#d8d2c0"], ["#6a5a3a", "#b23a2a"], ["#4a6a4a", "#e0b48a"]];
 const marketNPCs = Array.from({ length: 4 }, (_, i) => ({
@@ -1015,12 +1020,22 @@ function closeReveal() { catchEl.classList.add("hidden"); setFish("ready"); setH
 
 /* ---- consumables / boosts ---- */
 function applyBuff(label, luck, reel, dur, color) {
-  buff = { label, luck, reel, t: dur, dur, color };
+  if (buff.t > 0) {
+    // stacking — knock back several beers and the flaks/sveiv piles up (with a sensible cap)
+    buff.stacks = (buff.stacks || 1) + 1;
+    buff.luck = clamp(buff.luck + luck * 0.65, 0, 1.4);
+    buff.reel = clamp(buff.reel + reel * 0.65, 0, 0.95);
+    buff.t = Math.min(buff.t + dur * 0.85, 150);
+    buff.dur = Math.max(buff.dur, buff.t);
+    buff.label = buff.stacks >= 2 ? `${label} ×${buff.stacks}` : label;
+    buff.color = color;
+  } else {
+    buff = { label, luck, reel, t: dur, dur, color, stacks: 1 };
+  }
   buffFlash = 1;
 }
 function drinkBeer() {
-  if (drinking > 0) return;
-  drinking = 2.6; drinkKind = "beer"; sipAnim = 0; save.beers++; persist();
+  drinking = 2.2; drinkKind = "beer"; sipAnim = 0; save.beers++; persist();
   sfxCanOpen();
   setTimeout(sfxGulp, 700); setTimeout(sfxGulp, 1100); setTimeout(sfxGulp, 1500);
   setTimeout(() => { playSample("burp", { vol: 0.85 }); if (Math.random() < 0.45) setTimeout(() => playSample("fart", { vol: 0.6 }), 500); }, 2150);
@@ -1028,7 +1043,6 @@ function drinkBeer() {
   drunk = Math.min(1, drunk + 0.5);
 }
 function drinkAkevitt() {
-  if (drinking > 0) return;
   drinking = 2.6; drinkKind = "akevitt"; sipAnim = 0;
   sfxCanOpen();
   setTimeout(sfxGulp, 600); setTimeout(sfxGulp, 1000); setTimeout(sfxGulp, 1400);
@@ -1037,7 +1051,6 @@ function drinkAkevitt() {
   drunk = Math.min(1.2, drunk + 0.95);
 }
 function drinkSnabel() {
-  if (drinking > 0) return;
   drinking = 2.8; drinkKind = "snabel"; sipAnim = 0;
   sfxCanOpen();
   setTimeout(sfxGulp, 600); setTimeout(sfxGulp, 1050); setTimeout(sfxGulp, 1500); setTimeout(sfxGulp, 1900);
@@ -1141,9 +1154,68 @@ function resolveInspector() {
   }
 }
 
+/* ---- random per-location happenings (unique flavour + small effects per water) ---- */
+const LOCATION_EVENTS = {
+  skogstjern: [
+    { t: "Skogvokteren", l: "«Det napper bedre ved sivet!» roper en turg\u00e5er.", k: "luck", luck: 0.35, dur: 18, c: "#8affc0" },
+    { t: "Frekt ekorn", l: "Et ekorn napper en kjeks fra sekken og spretter til skogs.", k: "flavor", c: "#caa07a" },
+    { t: "Flaskepost", l: "Du fisker opp en flaske med {n} kr i!", k: "money", amt: [25, 60], c: "#ffd877" },
+    { t: "Villbring\u00e6r", l: "Du finner bring\u00e6r p\u00e5 bredden \u2014 s\u00f8tt og godt!", k: "luck", luck: 0.2, dur: 14, c: "#f06a8a" },
+  ],
+  fjellvatn: [
+    { t: "Reinsdyr", l: "Et reinsdyr kommer ned for \u00e5 drikke. Magisk!", k: "luck", luck: 0.3, dur: 16, c: "#cfe6ff" },
+    { t: "Fjellvind", l: "En iskald kastevind \u2014 fisken s\u00f8ker mot dypet.", k: "scare", c: "#9ec2e0" },
+    { t: "Fjellklatrer", l: "En klatrer vinker og mister {n} kr i vannet til deg.", k: "money", amt: [40, 90], c: "#ffd877" },
+    { t: "Sn\u00f8fonn", l: "Et dr\u00f8nn i fjellet skremmer fisken vekk!", k: "scare", c: "#e0eaff" },
+  ],
+  elva: [
+    { t: "T\u00f8mmerfl\u00f8ting", l: "En diger t\u00f8mmerstokk sklir forbi og r\u00f8rer opp vannet.", k: "scare", c: "#8a6a3a" },
+    { t: "Kajakkpadler", l: "En padler suser forbi \u2014 fisken sprer seg!", k: "scare", c: "#5ad0ff" },
+    { t: "Gullvasking", l: "Du ser gullglimt i grunna og plukker {n} kr!", k: "money", amt: [50, 120], c: "#ffd877" },
+    { t: "Fossegrimen", l: "Fossegrimen spiller fela \u2014 flaksen f\u00f8lger tonene.", k: "luck", luck: 0.45, dur: 20, c: "#b0ffe6" },
+  ],
+  myra: [
+    { t: "Lyktemann", l: "Et bluss svever over myra og lokker fram napp.", k: "luck", luck: 0.4, dur: 16, c: "#aaffd0" },
+    { t: "Sur troll", l: "Trollet brummer \u2014 du kaster det en fisk for husfreden ({n} kr).", k: "loss", amt: [10, 30], c: "#6a8a4a" },
+    { t: "Myrgass", l: "En stor boble plopper \u2014 fisken rygger unna!", k: "scare", c: "#9abf6a" },
+    { t: "Gammelt s\u00f8lv", l: "Du roter opp {n} kr i gamle mynter fra mudderet.", k: "money", amt: [30, 80], c: "#cfd6dd" },
+  ],
+  elgtjern: [
+    { t: "Frekk elg", l: "Elgen vasser uti og slubrer i seg agnet ditt!", k: "scare", c: "#7a5a3a" },
+    { t: "Piknikfamilie", l: "En familie deler vafler med deg \u2014 herlig hum\u00f8r!", k: "luck", luck: 0.3, dur: 18, c: "#ffd877" },
+    { t: "Bever", l: "En bever smeller halen i vannet \u2014 pladask!", k: "scare", c: "#6a4a2a" },
+    { t: "Fint s\u00f8kke", l: "Du finner et eksklusivt sluk verdt {n} kr.", k: "money", amt: [40, 100], c: "#caa23a" },
+  ],
+  nordlys: [
+    { t: "Stjerne\u00f8nske", l: "Et stjerneskudd! Du \u00f8nsker deg storfisk \u2014 flaksen flammer!", k: "luck", luck: 0.6, dur: 22, c: "#b0ffe6" },
+    { t: "Nordlyset blusser", l: "Himmelen flammer gr\u00f8nt \u2014 fisken biter ivrig!", k: "luck", luck: 0.45, dur: 20, c: "#8affc0" },
+    { t: "Fiskenisse", l: "En liten nisse legger igjen {n} kr p\u00e5 isen til deg.", k: "money", amt: [60, 140], c: "#ffd877" },
+    { t: "Polarkulde", l: "Bitende kulde \u2014 fisken blir doven og sky.", k: "scare", c: "#cfe6ff" },
+  ],
+};
+function triggerGameEvent() {
+  const list = LOCATION_EVENTS[save.location];
+  if (!list || !list.length) return;
+  const ev = list[Math.floor(Math.random() * list.length)];
+  let line = ev.l;
+  if (ev.amt) {
+    const amount = Math.round(ev.amt[0] + Math.random() * (ev.amt[1] - ev.amt[0]));
+    if (ev.k === "money") { save.money += amount; persist(); refreshHUD(); sfxCoin(); line = line.replace("{n}", fmt(amount)); }
+    else if (ev.k === "loss") { const loss = Math.min(amount, save.money); save.money -= loss; persist(); refreshHUD(); sfxMiss(); line = line.replace("{n}", fmt(loss)); }
+  } else if (ev.k === "luck") {
+    applyBuff(ev.t, ev.luck, 0, ev.dur, ev.c); blip(660, 0.1, "sine", 0.05);
+  } else if (ev.k === "scare") {
+    if (fishState === "waiting" || fishState === "bite") { setFish("waiting"); biteTimer = 5 + Math.random() * 7; addRipple(bobber.x, bobber.y, 20); setHint("Fisken ble skremt \u2014 vent litt..."); }
+    sfxMiss();
+  } else {
+    blip(440, 0.06, "triangle", 0.04);
+  }
+  gameEvent = { active: true, t: 0, dur: 5.5, title: ev.t, line, color: ev.c };
+}
+
 /* ---- kiosk (alcohol / snus / cigars) ---- */
 const KIOSK_GOODS = {
-  beer: { name: "Trygdepatron", per: 6, cost: 36, blurb: "Sekspakning på billigtilbud — lite napp, kort flaks (~22 s).", color: "#caa23a" },
+  beer: { name: "Trygdepatron", per: 6, cost: 36, blurb: "Sekspakning på billigtilbud — lite napp, kort flaks (~22 s). Drikk flere for stablet rus!", color: "#caa23a" },
   snus: { name: "Snus", per: 20, cost: 50, blurb: "Boks med 20 prilla under leppa — litt flaks, kort tid (~18 s).", color: "#3a7a3a" },
   cigar: { name: "Sigarillo", per: 12, cost: 80, blurb: "Pakke med 12 — røykpause med roligere hånd, god flaks (~30 s).", color: "#7a5a2a" },
   akevitt: { name: "Blænnvin", per: 1, cost: 110, blurb: "Hjemmekjært brennevin! Stor flaks, lang tid (~45 s) — men du vingler.", color: "#caa84a" },
@@ -1310,6 +1382,7 @@ function update(dt) {
   if (screen === "game" || screen === "menu") {
     cricketTimer -= dt;
     if (cricketTimer <= 0) { cricketTimer = 0.6 + Math.random() * 1.4; if (Math.random() < 0.7) cricketChirp(); }
+    updateCat(dt);
     wolfTimer -= dt;
     if (wolfTimer <= 0) { wolfTimer = 45 + Math.random() * 70; playSample("howl", { vol: 0.4 }); }
     // goofy ambient critters, themed per location
@@ -1379,6 +1452,12 @@ function update(dt) {
         inspectorTimer = 130 + Math.random() * 160;
         if (save.money > LICENSE_FINE) triggerInspector();
       }
+    }
+    // per-location random happenings (can fire while you fish; not during the inspector or menus)
+    if (gameEvent.active) { gameEvent.t += dt; if (gameEvent.t > gameEvent.dur) gameEvent.active = false; }
+    if (!gameEvent.active && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel) {
+      eventTimer -= dt;
+      if (eventTimer <= 0) { eventTimer = 50 + Math.random() * 70; triggerGameEvent(); }
     }
   }
   // chatty shopkeepers make idle noises
@@ -1464,10 +1543,13 @@ function update(dt) {
       if (pulling > 0) pulling -= dt;
       else if (pullTimer <= 0) { pulling = 0.4 + Math.random() * 0.6; pullTimer = 0.8 + Math.random() * 1.2; }
       const fishPull = currentFish.junk ? 0.5 : (currentFish.kr >= 90 ? 1.3 : currentFish.shape === "long" ? 1.5 : 1.0);
+      // a fish fights harder the bigger it can get — so trophies stay a real battle on any rod,
+      // while tiddlers stay easy even on a basic stick (smooths the early/late difficulty curve)
+      const fishFight = currentFish.junk ? 0.5 : clamp(0.55 + (currentFish.max || 2) * 0.13, 0.55, 2.4);
       const rb = buff.t > 0 ? buff.reel : 0;
-      if (holding) { progress += dt * 26 * r.reel * (1 + rb); tension += dt * 22 * r.tens * (1 - rb * 0.45); if (Math.random() < dt * 12) sfxReel(); }
-      else { progress -= dt * 6; tension -= dt * 34; }
-      if (pulling > 0) tension += dt * 40 * fishPull * r.tens;
+      if (holding) { progress += dt * 22 * r.reel * (1 + rb); tension += dt * 20 * r.tens * fishFight * (1 - rb * 0.4); if (Math.random() < dt * 12) sfxReel(); }
+      else { progress -= dt * 5; tension -= dt * 32; }
+      if (pulling > 0) tension += dt * 30 * fishFight * fishPull * 0.7 * r.tens;
       progress = clamp(progress, 0, 100); tension = clamp(tension, 0, 100);
       bobber.y = castTarget.y + 6 + Math.sin(t * 18) * (pulling > 0 ? 4 : 1.5);
       bobber.x = castTarget.x + Math.sin(t * 9) * (pulling > 0 ? 3 : 1);
@@ -1962,7 +2044,7 @@ function drawRevealFish() {
 /* ---- other screens' backdrops ---- */
 function drawMenuBg() {
   drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore();
-  drawGuy(); drawProps(); drawReedsFront(); drawFireflies(); drawVignette();
+  drawGuy(); drawProps(); drawCat(); drawReedsFront(); drawFireflies(); drawVignette();
 }
 function drawMarketBg() {
   const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -2604,6 +2686,18 @@ function drawInspector() {
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   }
 }
+function drawGameEvent() {
+  if (!gameEvent.active) return;
+  const k = gameEvent.t;
+  const a = Math.min(clamp(k / 0.4, 0, 1), clamp((gameEvent.dur - k) / 0.6, 0, 1));
+  const w = 246, x = (W - w) / 2, y = 7;
+  ctx.globalAlpha = a;
+  px(x, y, w, 24, "rgba(14,12,22,0.9)"); px(x, y, w, 2, gameEvent.color); px(x, y, 3, 24, gameEvent.color);
+  ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillStyle = gameEvent.color; ctx.font = "8px monospace"; ctx.fillText(gameEvent.title, x + 9, y + 8);
+  ctx.fillStyle = "#dfe6ff"; ctx.font = "7px monospace"; ctx.fillText(gameEvent.line, x + 9, y + 17);
+  ctx.globalAlpha = 1; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
 function drawGroundFish() {
   // when the catch piles up, a heap of fish lies on the grassy bank beside you (on land, not in the water)
   const n = save.basket.length;
@@ -2819,94 +2913,155 @@ function drawFarmhouse() {
   // door
   px(68, 166, 18, 40, "#5a3a24"); px(68, 166, 18, 2, "#6e4a30"); px(82, 186, 2, 2, "#caa84a");
 }
-// a lively little farmyard: a fence, a hay bale, flowers and a few barnyard animals
-// bobbing along to the tune while the farm boy heads off
-function drawFarmYard(tt) {
+// a calm little cottage garden: a low fence, flowers and a watering can —
+// cosy rather than a busy barnyard (the cat is the star now)
+function drawGarden(tt) {
   // back fence along the yard
   ctx.fillStyle = "#6a4a2c";
   for (let fx = 110; fx <= 300; fx += 18) { px(fx, 196, 2, 14, "#5a3e24"); }
   px(110, 199, 192, 2, "#6a4a2c"); px(110, 205, 192, 2, "#5a3e24");
   // scattered flowers in the grass
   const flowerCols = ["#f0c0d0", "#ffe6a0", "#c0a8f0", "#ffffff"];
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 14; i++) {
     const fx = 112 + (i * 53) % 250, fy = 216 + (i * 29) % 22;
     px(fx, fy, 1, 3, "#2c4a1e"); px(fx - 1, fy - 1, 3, 1, flowerCols[i % 4]); px(fx, fy - 2, 1, 1, flowerCols[i % 4]); px(fx, fy - 1, 1, 1, "#ffe6a0");
   }
-  // round hay bale with a pitchfork
-  const hbx = 322, hby = 220;
-  ctx.fillStyle = "#cda64a"; ctx.beginPath(); ctx.arc(hbx, hby, 11, 0, 6.28); ctx.fill();
-  ctx.strokeStyle = "#a8842f"; ctx.lineWidth = 1; for (let a = -1; a <= 1; a++) { ctx.beginPath(); ctx.arc(hbx, hby, 11, a * 0.6 - 0.2, a * 0.6 + 0.2); ctx.stroke(); }
-  px(hbx - 11, hby, 22, 1, "#b8923a");
-  ctx.strokeStyle = "#8a6a3a"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hbx + 8, hby - 14); ctx.lineTo(hbx + 12, hby + 4); ctx.stroke();
-  px(hbx + 6, hby - 16, 1, 3, "#cfcfcf"); px(hbx + 8, hby - 16, 1, 3, "#cfcfcf"); px(hbx + 10, hby - 16, 1, 3, "#cfcfcf");
-  // animals (each dances to its own offset of the beat)
-  drawCow(150, 228, 0);
-  drawSheep(210, 230, 1.3);
-  drawPig(258, 232, 2.1);
-  drawHen(184, 233, 0.5);
-  drawHen(296, 230, 3.0);
-  drawDuck(126, 232, 1.8);
+  // a tin watering can resting in the grass
+  const wcx = 322, wcy = 224;
+  px(wcx - 7, wcy - 7, 12, 9, "#7fa6b0"); px(wcx - 7, wcy - 7, 12, 2, "#9cc2cc");
+  px(wcx + 5, wcy - 5, 6, 2, "#7fa6b0"); px(wcx + 10, wcy - 6, 2, 4, "#9cc2cc"); // spout
+  ctx.strokeStyle = "#9cc2cc"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(wcx - 1, wcy - 9, 4, 3.4, 6.1); ctx.stroke(); // handle
+  // a small flower pot by the fence
+  px(124, 198, 7, 7, "#a85a3a"); px(124, 198, 7, 2, "#c47049");
+  px(126, 192, 1, 5, "#2c4a1e"); px(125, 191, 3, 1, "#f0c0d0"); px(129, 192, 1, 4, "#2c4a1e"); px(128, 191, 3, 1, "#ffe6a0");
+}
+// Findus-style tabby cat that trots after the farm boy and hops into the truck
+function drawIntroCat(tt) {
+  // follow the boy with a little lag, then leap up into the truck bed
+  let cx, cy = 204, walking = true, jump = 0;
+  if (tt < IN.walkStart) { cx = 78; walking = false; }
+  else if (tt < IN.walkEnd) { cx = lerp(78, 300, clamp((tt - IN.walkStart - 0.5) / (IN.walkEnd - IN.walkStart), 0, 1)); }
+  else if (tt < IN.climbS) { cx = 300; walking = false; }
+  else if (tt < IN.climbE + 0.3) { const k = clamp((tt - IN.climbS) / (IN.climbE + 0.3 - IN.climbS), 0, 1); cx = lerp(300, 348, k); jump = Math.sin(k * Math.PI) * 14; }
+  else return; // tucked into the truck, off we go
+  drawCatSprite(cx, cy - jump, walking, "#d9863a", "#b8662a", Math.sin(t * 12) * (walking ? 1 : 0.25));
 }
 function bobY(ph, amp = 2) { return -Math.abs(Math.sin(t * 5 + ph)) * amp; }
-function drawCow(x, y, ph) {
-  const yy = y + bobY(ph, 2), tilt = Math.sin(t * 5 + ph) * 0.6;
-  // legs
-  px(x - 7, yy - 1, 3, 7, "#2a2420"); px(x + 5, yy - 1, 3, 7, "#2a2420"); px(x - 1, yy - 1, 3, 7, "#3a3430");
-  // body white with black patches
-  px(x - 9, yy - 14, 20, 13, "#eef0ee"); px(x - 9, yy - 14, 20, 2, "#ffffff");
-  px(x - 6, yy - 12, 6, 5, "#2a2622"); px(x + 3, yy - 6, 6, 4, "#2a2622");
-  // udder
-  px(x - 2, yy - 1, 4, 2, "#f2b0b0");
-  // tail
-  ctx.strokeStyle = "#2a2420"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 9, yy - 12); ctx.lineTo(x - 12 + tilt, yy - 2); ctx.stroke(); px(x - 13 + tilt, yy - 2, 2, 2, "#1a1612");
-  // head + horns + snout
-  const hx = x + 9, hy = yy - 12;
-  px(hx, hy, 8, 8, "#eef0ee"); px(hx + 6, hy + 3, 4, 4, "#f2b6b0"); // muzzle
-  px(hx + 7, hy + 4, 1, 1, "#3a2622"); px(hx + 9, hy + 4, 1, 1, "#3a2622");
-  px(hx + 1, hy + 2, 1, 1, "#1a1612"); // eye
-  px(hx - 1, hy - 2, 2, 2, "#e8e0c8"); px(hx + 7, hy - 2, 2, 2, "#e8e0c8"); // horns
-  px(hx - 2, hy + 1, 1, 3, "#d8d0c0"); // ear
+// shared little tabby cat sprite (used in the intro and as the in-game companion)
+// dir: facing offset for tail sway; body/stripe are colours; gait = leg/tail animation
+function drawCatSprite(x, y, walking, body, stripe, gait, sitting = false) {
+  ctx.save();
+  // contact shadow
+  ctx.globalAlpha = 0.22; ctx.fillStyle = "#101810"; ctx.beginPath(); ctx.ellipse(x, y + 1, 7, 2, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1;
+  const step = walking ? gait : 0;
+  if (sitting) {
+    // haunches sitting upright
+    px(x - 5, y - 8, 11, 8, body); px(x - 5, y - 8, 11, 2, "#e8a85a");
+    px(x - 5, y - 4, 2, 4, stripe); px(x - 1, y - 6, 2, 5, stripe); px(x + 3, y - 5, 2, 4, stripe);
+    px(x - 4, y, 3, 2, body); px(x + 2, y, 3, 2, body); // front paws
+  } else {
+    // legs
+    px(x - 5, y - 2, 2, 3 + step, stripe); px(x + 3, y - 2, 2, 3 - step, stripe);
+    px(x - 2, y - 2, 2, 3 - step, stripe); px(x + 1, y - 2, 2, 3 + step, stripe);
+    // body
+    px(x - 6, y - 8, 13, 7, body); px(x - 6, y - 8, 13, 2, "#e8a85a");
+    // tabby stripes
+    px(x - 3, y - 8, 1, 6, stripe); px(x, y - 8, 1, 6, stripe); px(x + 3, y - 8, 1, 6, stripe);
+  }
+  // head (faces right)
+  const hx = x + 6, hy = y - 9;
+  px(hx, hy, 7, 7, body); px(hx, hy, 7, 2, "#e8a85a");
+  px(hx, hy - 2, 2, 2, body); px(hx + 5, hy - 2, 2, 2, body); // ears
+  px(hx + 1, hy + 2, 1, 1, "#2a3a20"); px(hx + 4, hy + 2, 1, 1, "#2a3a20"); // eyes
+  px(hx + 3, hy + 4, 1, 1, "#caa"); // nose
+  // whiskers
+  ctx.strokeStyle = "rgba(240,240,220,0.5)"; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(hx + 5, hy + 4); ctx.lineTo(hx + 10, hy + 3); ctx.moveTo(hx + 5, hy + 5); ctx.lineTo(hx + 10, hy + 6); ctx.stroke();
+  // stripey tail (sways)
+  const tailSway = Math.sin(t * 5 + (walking ? 0 : 1)) * (sitting ? 2 : 3);
+  ctx.strokeStyle = body; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.quadraticCurveTo(x - 12, y - 8 + tailSway, x - 11, y - 13 + tailSway); ctx.stroke();
+  ctx.strokeStyle = stripe; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x - 9, y - 8 + tailSway * 0.6); ctx.lineTo(x - 10, y - 10 + tailSway * 0.8); ctx.stroke();
+  ctx.restore();
 }
-function drawSheep(x, y, ph) {
-  const yy = y + bobY(ph, 3), tilt = Math.sin(t * 5 + ph);
-  px(x - 4, yy - 1, 2, 5, "#3a2e2a"); px(x + 3, yy - 1, 2, 5, "#3a2e2a");
-  ctx.fillStyle = "#eae6dc";
-  for (const [ox, oy, r] of [[0, 0, 6], [-5, 1, 4], [5, 1, 4], [-3, -4, 4], [3, -4, 4]]) { ctx.beginPath(); ctx.arc(x + ox, yy - 5 + oy, r, 0, 6.28); ctx.fill(); }
-  // head
-  px(x + 5, yy - 8, 5, 6, "#3a2e2a"); px(x + 5, yy - 10, 2, 2, "#2a201c"); px(x + 9, yy - 10, 2, 2, "#2a201c"); // ears
-  px(x + 8, yy - 6, 1, 1, "#eae6dc"); // eye
+// ---- in-game cat companion (the same orange tabby from the intro) ----
+function catMeow() {
+  // soft procedural meow: a little rise then fall
+  blip(560, 0.12, "sine", 0.05); setTimeout(() => blip(430, 0.18, "sine", 0.045), 120);
 }
-function drawPig(x, y, ph) {
-  const yy = y + bobY(ph, 2);
-  px(x - 5, yy - 1, 2, 5, "#d77f88"); px(x + 4, yy - 1, 2, 5, "#d77f88");
-  px(x - 7, yy - 9, 15, 9, "#f0a0aa"); px(x - 7, yy - 9, 15, 2, "#f7b8c0");
-  // curly tail
-  ctx.strokeStyle = "#d77f88"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x - 8, yy - 6, 2, 0, 5); ctx.stroke();
-  // head + snout + ear
-  const hx = x + 7, hy = yy - 8;
-  px(hx, hy, 6, 7, "#f0a0aa"); px(hx + 5, hy + 2, 3, 3, "#e0808a"); // snout
-  px(hx + 6, hy + 3, 1, 1, "#a04048"); px(hx + 7, hy + 3, 1, 1, "#a04048");
-  px(hx + 1, hy + 1, 1, 1, "#5a2a30"); // eye
-  px(hx, hy - 2, 2, 2, "#e0808a"); // ear
+function pickCatAction() {
+  const actions = ["watch", "wash", "bat", "nap", "chase", "watch", "sit"];
+  cat.action = actions[Math.floor(Math.random() * actions.length)];
+  cat.timer = 4 + Math.random() * 7;
+  cat.t = 0;
+  if (cat.action === "chase") cat.chaseX = cat.x;
 }
-function drawHen(x, y, ph) {
-  const hop = Math.sin(t * 6 + ph) > 0.6 ? -3 : 0;
-  const yy = y + hop, dip = Math.sin(t * 4 + ph) > 0.5 ? 2 : 0;
-  px(x - 1, yy - 1, 1, 2, "#d8a030"); px(x + 2, yy - 1, 1, 2, "#d8a030"); // legs
-  px(x - 3, yy - 6 + dip, 7, 5, "#e8e0d0"); px(x + 3, yy - 8 + dip, 3, 3, "#e8e0d0"); // body + head
-  px(x + 5, yy - 7 + dip, 2, 1, "#d8a030"); // beak
-  px(x + 4, yy - 10 + dip, 2, 2, "#c83a2a"); // comb
-  px(x + 4, yy - 7 + dip, 1, 1, "#2a2020"); // eye
-  px(x - 4, yy - 5 + dip, 2, 3, "#cfc7b6"); // wing/tail
+function updateCat(dt) {
+  cat.t += dt;
+  switch (cat.state) {
+    case "away":
+      cat.timer -= dt;
+      if (cat.timer <= 0) { cat.state = "arrive"; cat.x = W + 16; cat.target = 100 + Math.random() * 44; cat.t = 0; if (Math.random() < 0.6) catMeow(); }
+      break;
+    case "arrive":
+      cat.x = lerp(cat.x, cat.target, dt * 1.8);
+      if (cat.x < cat.target + 2) { cat.state = "settle"; pickCatAction(); if (Math.random() < 0.4) catMeow(); }
+      break;
+    case "settle":
+      cat.timer -= dt;
+      if (cat.action === "chase") {
+        // pad back and forth chasing a firefly
+        cat.x = cat.chaseX + Math.sin(cat.t * 2.2) * 18;
+      } else if (cat.action === "bat" && Math.random() < dt * 1.5) {
+        blip(300 + Math.random() * 80, 0.04, "triangle", 0.03);
+      }
+      if (cat.timer <= 0) {
+        if (Math.random() < 0.38) { cat.state = "leave"; cat.t = 0; if (Math.random() < 0.4) catMeow(); }
+        else pickCatAction();
+      }
+      break;
+    case "leave":
+      cat.x += dt * 22;
+      if (cat.x > W + 16) { cat.state = "away"; cat.timer = 22 + Math.random() * 40; }
+      break;
+  }
 }
-function drawDuck(x, y, ph) {
-  const yy = y + bobY(ph, 2);
-  px(x - 1, yy, 1, 2, "#e0902a"); px(x + 2, yy, 1, 2, "#e0902a"); // legs
-  px(x - 4, yy - 5, 8, 5, "#f0ead8"); // body
-  px(x - 5, yy - 4, 2, 2, "#d8d0c0"); // tail
-  px(x + 3, yy - 8, 4, 4, "#f0ead8"); // head
-  px(x + 6, yy - 6, 2, 1, "#e0902a"); // bill
-  px(x + 5, yy - 7, 1, 1, "#2a2020"); // eye
+function drawCat() {
+  if (cat.state === "away") return;
+  const walking = cat.state === "arrive" || cat.state === "leave";
+  const napping = !walking && cat.action === "nap";
+  const sitting = !walking && !napping && cat.action !== "chase";
+  const gait = walking ? Math.sin(t * 13) * 1.4 : (cat.action === "chase" ? Math.sin(t * 10) * 1.2 : 0);
+  let y = cat.y;
+  if (cat.action === "bat" && sitting) y += Math.abs(Math.sin(t * 7)) * 1.2; // little pounce bob
+  // arriving cat faces left (flip); settled/leaving faces right toward the water
+  const faceLeft = cat.state === "arrive";
+  if (faceLeft) {
+    ctx.save(); ctx.translate(cat.x, 0); ctx.scale(-1, 1);
+    drawCatSprite(0, y, walking, "#d9863a", "#b8662a", gait, false);
+    ctx.restore();
+  } else {
+    drawCatSprite(cat.x, y, walking, "#d9863a", "#b8662a", gait, sitting && !napping);
+  }
+  if (napping) {
+    // curled-up nap: redraw lower + floating zzz
+    px(cat.x - 6, y - 2, 13, 4, "#d9863a"); px(cat.x - 6, y - 2, 13, 1, "#e8a85a");
+    px(cat.x - 4, y - 1, 1, 2, "#b8662a"); px(cat.x, y - 1, 1, 2, "#b8662a"); px(cat.x + 4, y - 1, 1, 2, "#b8662a");
+    ctx.fillStyle = "rgba(220,220,240,0.7)"; ctx.font = "6px monospace"; ctx.textAlign = "left";
+    const zz = (Math.sin(t * 1.5) * 0.5 + 0.5);
+    ctx.globalAlpha = 0.5 + zz * 0.4; ctx.fillText("z", cat.x + 8, y - 8 - zz * 3);
+    ctx.fillText("z", cat.x + 11, y - 12 - zz * 2); ctx.globalAlpha = 1;
+  }
+  if (cat.action === "wash" && sitting) {
+    // licking a raised paw
+    px(cat.x + 2, y - 5, 2, 2, "#e8a85a");
+  }
+  if (cat.action === "chase" && !walking) {
+    // a firefly the cat is batting at, just ahead of it
+    const fx = cat.x + 10 + Math.sin(t * 3) * 3, fy = y - 12 + Math.cos(t * 4) * 3;
+    ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 9); px(fx, fy, 1, 1, "#fff2a0"); ctx.globalAlpha = 1;
+  }
 }
 function drawFarmer(tt) {
   let gx, walking, alpha = 1;
@@ -3008,13 +3163,14 @@ function drawIntroBg() {
   ctx.strokeStyle = "#2c3c1f"; ctx.lineWidth = 1;
   for (let i = 0; i < 26; i++) { const bx = (i * 37) % W, by = 210 + (i * 13) % 50; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + Math.sin(t + i) * 1.5, by - 4); ctx.stroke(); }
   drawFarmhouse();
-  // a lively farmyard with dancing animals
-  drawFarmYard(tt);
+  // a calm cottage garden with the boy's cat trotting along
+  drawGarden(tt);
   // truck + farmer + thrown rod
   const truckX = introTruckX(tt), hasRod = tt >= IN.throwE, driving = tt >= IN.driveS;
   drawIntroTruck(truckX, 200, driving, hasRod);
   if (tt >= IN.throwS && tt < IN.throwE) drawThrownRod(tt);
   if (tt < IN.climbE) drawFarmer(tt);
+  drawIntroCat(tt);
   // closing title once the truck has rolled off
   const titleA = clamp((tt - 16) / 1.6, 0, 1);
   if (titleA > 0) {
@@ -3041,8 +3197,8 @@ function render() {
   switch (screen) {
     case "game":
       drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore();
-      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
-      drawRevealFish(); drawFog(); drawBuffHud(); drawHoverHighlight(); drawVignette();
+      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
+      drawRevealFish(); drawFog(); drawBuffHud(); drawGameEvent(); drawHoverHighlight(); drawVignette();
       break;
     case "menu": drawMenuBg(); break;
     case "market": drawMarketBg(); break;
