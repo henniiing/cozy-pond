@@ -293,7 +293,7 @@ let cat = { state: "away", x: -20, y: 220, timer: 14 + Math.random() * 26, t: 0,
 // market passers-by (cosmetic NPCs that stroll the street back and forth)
 const NPC_COLORS = [["#7a4a6a", "#caa23a"], ["#3a5a7a", "#d8d2c0"], ["#6a5a3a", "#b23a2a"], ["#4a6a4a", "#e0b48a"]];
 const marketNPCs = Array.from({ length: 4 }, (_, i) => ({
-  x: Math.random() * W, y: 184 + (i % 3) * 7,
+  x: Math.random() * W, y: 188 + (i % 3) * 5,
   dir: Math.random() < 0.5 ? 1 : -1, sp: 10 + Math.random() * 12,
   coat: NPC_COLORS[i % NPC_COLORS.length][0], hat: NPC_COLORS[i % NPC_COLORS.length][1],
   ph: Math.random() * 6.28, pause: 0,
@@ -303,10 +303,11 @@ function addRipple(x, y, max = 14) { ripples.push({ x, y, r: 1, max, life: 1 });
 // occasional comical street happenings at the market
 let marketGag = { active: false, t: 0, dur: 0, kind: "", dir: 1, seed: 0 };
 let marketGagTimer = 4 + Math.random() * 6;
-const MARKET_GAGS = ["dog", "cat", "gull", "barrel", "balloon"];
+const MARKET_GAGS = ["dog", "cat", "gull", "barrel", "balloon", "pee"];
 function startMarketGag() {
   const kind = MARKET_GAGS[Math.floor(Math.random() * MARKET_GAGS.length)];
-  marketGag = { active: true, t: 0, dur: kind === "balloon" ? 4 : 3, kind, dir: Math.random() < 0.5 ? 1 : -1, seed: Math.random() * 6.28 };
+  const dur = kind === "balloon" ? 4 : kind === "pee" ? 7.5 : 3;
+  marketGag = { active: true, t: 0, dur, kind, dir: Math.random() < 0.5 ? 1 : -1, seed: Math.random() * 6.28 };
 }
 
 let wolfTimer = 30 + Math.random() * 50;
@@ -356,7 +357,7 @@ function noise(dur, freq, vol = 0.15, type = "lowpass") {
 }
 
 /* ---- recorded samples (mp3 files in /lyder) ---- */
-const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", scream: "Red girl screaming loud", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music", catPurr: "cat-purring", catAngry: "cat-angry-meow", sinister: "sinister-laugh", motor: "backgorund-motor.sound", bottleBreak: "glass-bottle-breaking", blackout: "blacokout", buying: "buying-item" };
+const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", scream: "Red girl screaming loud", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music", catPurr: "cat-purring", catAngry: "cat-angry-meow", sinister: "sinister-laugh", motor: "backgorund-motor.sound", bottleBreak: "glass-bottle-breaking", blackout: "blacokout", buying: "buying-item", radio5: "radiosong5", radio6: "radiosong6", sellFishBg: "sell-fish-shop-backgorund-music" };
 const sampleEls = {};
 for (const k in SAMPLES) { const a = new Audio(`lyder/${encodeURIComponent(SAMPLES[k])}.mp3`); a.preload = "auto"; sampleEls[k] = a; }
 const activeLoops = new Set();
@@ -506,7 +507,7 @@ function mooseCall() {
 }
 let radio = { on: true };
 let radioNode = null;
-const RADIO_SONGS = ["radio", "radio2", "radio3", "radio4"];
+const RADIO_SONGS = ["radio", "radio2", "radio3", "radio4", "radio5", "radio6"];
 let radioIdx = 0;
 function radioTick(dt) { /* HTMLAudio handles playback; playlist advances on 'ended' */ }
 function playRadioSong() {
@@ -693,20 +694,10 @@ function canvasPress(p) {
     return;
   }
   if (screen === "map") {
-    // tap once to preview a water (fish + how good the fishing is), tap the same spot again to travel
-    if (Math.hypot(p.x - MAP_MARKET.x, p.y - (MAP_MARKET.y - 12)) < 20) {
-      if (mapHoverSpot && mapHoverSpot.market) { tryTravel("market"); }
-      else { mapHoverSpot = { market: true, x: MAP_MARKET.x, y: MAP_MARKET.y }; sfxClink(); }
-      return;
-    }
+    if (Math.hypot(p.x - MAP_MARKET.x, p.y - (MAP_MARKET.y - 12)) < 20) { tryTravel("market"); return; }
     for (const sp of MAP_SPOTS) {
-      if (Math.hypot(p.x - sp.x, p.y - (sp.y - 12)) < 18) {
-        if (mapHoverSpot && mapHoverSpot.key === sp.key) { tryTravel(sp.key); }
-        else { mapHoverSpot = sp; sfxClink(); }
-        return;
-      }
+      if (Math.hypot(p.x - sp.x, p.y - (sp.y - 12)) < 18) { tryTravel(sp.key); return; }
     }
-    mapHoverSpot = null;   // tap empty map dismisses the info card
     return;
   }
   if (screen !== "game") return;
@@ -770,9 +761,9 @@ function canvasPress(p) {
     showCatEvent("Du jaget katten!", "Pus mjauer surt og stikker av — fisken er reddet.");
     return;
   }
-  // pet the friendly cat while it's lounging on the bank → happy purring
-  if ((cat.state === "settle") && cat.mission == null &&
-      inRect(p.x, p.y, { x: cat.x - 12, y: cat.y - 18, w: 28, h: 24 })) {
+  // pet the friendly cat whenever it's around (lounging OR padding about) → it settles down and purrs
+  if (cat.state !== "away" && cat.mission == null && cat.state !== "flee" &&
+      inRect(p.x, p.y, { x: cat.x - 14, y: cat.y - 20, w: 32, h: 28 })) {
     petCat(); return;
   }
   if (fishState === "reveal") { closeReveal(); return; }
@@ -810,7 +801,6 @@ let hover = { x: -1, y: -1, on: false };
 let touchMode = false;       // set on first touch — drives always-on labels for phones
 let hoverProp = null;        // "truck" | "sekk" | "radio" — highlighted in the fishing scene
 let marketHover = null;      // {rect,label} currently hovered in the market
-let mapHoverSpot = null;     // map spot currently hovered (for the info tooltip)
 function interactiveAt(p) {
   if (screen === "intro") return "play";
   if (screen === "menu") return null; // menu uses real DOM buttons
@@ -842,19 +832,14 @@ function interactiveAt(p) {
   return null;
 }
 function updateCursor() {
-  if (!hover.on) { canvas.style.cursor = "default"; hoverProp = null; marketHover = null; mapHoverSpot = null; stopMotor(); return; }
+  if (!hover.on) { canvas.style.cursor = "default"; hoverProp = null; marketHover = null; stopMotor(); return; }
   const k = interactiveAt(hover);
   hoverProp = (screen === "game" && fishState === "ready" && (k === "truck" || k === "sekk" || k === "radio")) ? k : null;
   marketHover = screen === "market" ? marketTarget(hover) : null;
-  // map: hovering a water reveals its fish + how good the fishing is
-  mapHoverSpot = null;
-  if (screen === "map") {
-    if (Math.hypot(hover.x - MAP_MARKET.x, hover.y - (MAP_MARKET.y - 12)) < 20) mapHoverSpot = { market: true, x: MAP_MARKET.x, y: MAP_MARKET.y };
-    else for (const sp of MAP_SPOTS) if (Math.hypot(hover.x - sp.x, hover.y - (sp.y - 12)) < 18) { mapHoverSpot = sp; break; }
-  }
-  // the parked truck idles + smokes while you hover it
-  if (hoverProp === "truck" && !motorNode) motorNode = playSample("motor", { loop: true, vol: 0.4 });
-  else if (hoverProp !== "truck") stopMotor();
+  // the parked truck idles + smokes while you hover it (fishing scene AND the market's pickup)
+  const truckHovered = (hoverProp === "truck") || (screen === "market" && marketHover && marketHover.rect === MARKET_TRUCK);
+  if (truckHovered && !motorNode) motorNode = playSample("motor", { loop: true, vol: 0.4 });
+  else if (!truckHovered) stopMotor();
   canvas.style.cursor = !k ? "default" : (k === "water" ? "crosshair" : "pointer");
 }
 canvas.addEventListener("mousemove", (e) => { const p = toCanvas(e); hover.x = p.x; hover.y = p.y; hover.on = true; updateCursor(); });
@@ -1053,13 +1038,12 @@ function setScreen(name) {
   // cut any lingering voice/greeting lines from the previous screen before the new one speaks
   if (name !== from) stopAllVoices();
   coolerMenu = false; truckMenu = false; rodPanel = false; bagPanel = false; recordsPanel = false; godsakerPanel = false; funnPanel = false;
-  if (name === "map") mapHoverSpot = null;   // start the map with no stale preview selected
   if (name !== "game") { resetFishing(); stopRadio(); inspector.active = false; }
   // rod seller: hooooo on entry (sour until purchase), fart on the way out
   if (name === "shopRod" && from !== "shopRod") { speak("rodSpeech", "Hmf. Skal du kjøpe noe, eller bare glo?"); playSample("hoo", { vol: 0.45 }); rodGrumpyBuy = false; rodHop = 0; }
   if (from === "shopRod" && name !== "shopRod") playSample("fart", { vol: 0.7 });
   // fish lady: a spoken welcome when you walk in to sell
-  if (name === "shopFish" && from !== "shopFish") { speak("ladySpeech", "Hei, kjekken… har du noe fint til meg i dag?"); playSample("ladyWelcome", { vol: 0.8 }); }
+  if (name === "shopFish" && from !== "shopFish") { speak("ladySpeech", "Hei, kjekken… har du noe fint til meg i dag?"); playSample("ladyWelcome", { vol: 0.8 }); playSample("sellFishBg", { vol: 0.28 }); }
   // casino croupier greeting
   if (name === "shopCasino" && from !== "shopCasino") playSample("ohbro", { vol: 0.7 });
   // fishing warden: a sinister cackle as you leave after actually buying a permit
@@ -2439,9 +2423,19 @@ function drawMarketBg() {
     ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 6.28); ctx.fill();
   }
   ctx.globalAlpha = 1;
-  // people strolling the street (drawn behind the stalls so they read as in the crowd)
-  for (const n of marketNPCs) drawMarketNPC(n);
-  drawMarketGag();
+  // ground clutter so the street feels lived-in: a lamppost, a couple of crates and a gutter puddle
+  // cobble gutter line
+  px(0, 214, W, 1, "#15101b");
+  // lamppost (left), pooling warm light on the cobbles
+  px(24, 150, 3, 64, "#2a2230"); px(22, 148, 7, 4, "#3a2f3f");
+  ctx.globalAlpha = 0.7 + 0.1 * Math.sin(t * 4); ctx.fillStyle = "#ffe9a8";
+  ctx.beginPath(); ctx.ellipse(25, 148, 5, 6, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.globalAlpha = 0.12; ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.ellipse(25, 214, 18, 5, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1;
+  // stacked crates (right)
+  px(W - 34, 196, 14, 14, "#6a4a2c"); px(W - 34, 196, 14, 2, "#7c5a34"); px(W - 27, 196, 1, 14, "#3a2614");
+  px(W - 30, 184, 12, 12, "#74512f"); px(W - 30, 184, 12, 2, "#86643b"); px(W - 24, 184, 1, 12, "#3a2614");
+  // gutter puddle reflecting the lights
+  ctx.globalAlpha = 0.3; ctx.fillStyle = "#3a4a66"; ctx.beginPath(); ctx.ellipse(120, 220, 16, 4, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1;
   // stalls + shopkeepers (counter drawn last so they stand behind it) — five booths in a row
   const SX = [52, 146, 240, 334, 428];
   drawStall(SX[0], 110, "#7a3b3b", 90); drawLady(SX[0], 150); drawStallCounter(SX[0], 110, 90);
@@ -2455,16 +2449,29 @@ function drawMarketBg() {
   drawSign(SX[2], 92, "FISKEUTSTYR");
   drawSign(SX[3], 92, "KASINO");
   drawSign(SX[4], 92, "FISKEKORT");
+  // people strolling the street — drawn in FRONT of the stalls so they never vanish behind a booth
+  for (const n of marketNPCs) drawMarketNPC(n);
+  drawMarketGag();
   drawMarketTruck();
   drawMarketHover();
   drawFireflies(); drawVignette();
 }
 // our own truck parked at the market — click it to drive back to the water
 function drawMarketTruck() {
-  const r = MARKET_TRUCK, x = r.x, y = r.y, w = r.w;
+  const r = MARKET_TRUCK;
+  const on = (screen === "market" && marketHover && marketHover.rect === MARKET_TRUCK);   // hovered → engine idles, shakes, lights on, puffs exhaust
+  const shake = on ? Math.sin(t * 38) * 0.6 : 0;
+  const x = r.x + shake, y = r.y + (on ? Math.sin(t * 31) * 0.4 : 0), w = r.w;
   // tyre-track patch on the ground
   ctx.fillStyle = "#1c1622";
-  ctx.beginPath(); ctx.ellipse(x + w / 2, y + r.h - 2, w / 2, 3, 0, 0, 6.28); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(r.x + w / 2, r.y + r.h - 2, w / 2, 3, 0, 0, 6.28); ctx.fill();
+  // exhaust puffs from the tailpipe at the back while idling
+  if (on) {
+    const puff = (t * 1.4) % 1;
+    ctx.globalAlpha = (1 - puff) * 0.4; ctx.fillStyle = "#b9b4ad";
+    ctx.beginPath(); ctx.arc(x + w - 3, y + 24 - puff * 10, 1.5 + puff * 3, 0, 6.28); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   // body (side view, cab to the left)
   px(x + 4, y + 14, w - 6, 13, "#b23a2a");     // bed
   px(x + 4, y + 4, 24, 13, "#c64636");         // cab
@@ -2473,8 +2480,13 @@ function drawMarketTruck() {
   // wheels
   px(x + 11, y + 26, 8, 6, "#1a1a1a"); px(x + 14, y + 28, 2, 2, "#555");
   px(x + w - 16, y + 26, 8, 6, "#1a1a1a"); px(x + w - 13, y + 28, 2, 2, "#555");
-  // headlight + rod sticking out of the bed
-  px(x + 3, y + 11, 2, 3, "#ffe9a0");
+  // headlight (glows brighter + casts a little beam when idling) + rod sticking out of the bed
+  px(x + 3, y + 11, 2, 3, on ? "#fff6c8" : "#ffe9a0");
+  if (on) {
+    ctx.globalAlpha = 0.28 + 0.1 * Math.sin(t * 30); ctx.fillStyle = "#fff0b0";
+    ctx.beginPath(); ctx.moveTo(x + 2, y + 10); ctx.lineTo(x - 13, y + 6); ctx.lineTo(x - 13, y + 16); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   ctx.strokeStyle = "#caa97a"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x + w - 6, y + 14); ctx.lineTo(x + w + 4, y - 1); ctx.stroke();
 }
@@ -2513,8 +2525,55 @@ function drawMarketGag() {
     ctx.fillStyle = ["#e0506a", "#5a86d0", "#5fbf6a"][Math.floor(g.seed) % 3];
     ctx.beginPath(); ctx.ellipse(x, y, 6, 7, 0, 0, 6.28); ctx.fill();
     ctx.strokeStyle = "#caa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 7); ctx.lineTo(x + Math.sin(t * 2) * 2, y + 18); ctx.stroke();
+  } else if (g.kind === "pee") {
+    // a drunk slips off to a corner for a wee — then the law shows up and chases him off
+    const spot = dir > 0 ? W - 40 : 40;          // the wall he picks
+    const face = dir > 0 ? 1 : -1;
+    const t1 = 1.8, t2 = 4.4;                     // walk-in, do-the-deed, then the chase
+    if (g.t < t1) {                              // stroll over to the wall
+      const k = g.t / t1, sx = lerp(dir > 0 ? W + 16 : -16, spot, k);
+      drawStreetGuy(sx, 196, face, false, true);
+    } else if (g.t < t2) {                       // standing relieving himself against the wall
+      drawStreetGuy(spot, 196, face, true, false);
+      ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 1; ctx.globalAlpha = 0.85;
+      ctx.beginPath(); ctx.moveTo(spot + face * 5, 202); ctx.lineTo(spot + face * 9, 210); ctx.stroke(); ctx.globalAlpha = 1;
+      const grow = clamp((g.t - t1) / (t2 - t1), 0, 1);
+      ctx.fillStyle = "rgba(220,200,80,0.45)"; ctx.beginPath(); ctx.ellipse(spot + face * 9, 211, 4 * grow + 1, 1.4 * grow + 0.5, 0, 0, 6.28); ctx.fill();
+      if (Math.sin(t * 4) > 0.3) { ctx.fillStyle = "#ffe6a0"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText("aaah…", spot, 176); ctx.textAlign = "left"; }
+    } else {                                     // BUSTED — police runs in, drunk legs it off-screen
+      const k = clamp((g.t - t2) / (g.dur - t2), 0, 1);
+      const run = Math.abs(Math.sin(t * 22)) * 3;
+      const gx = lerp(spot, dir > 0 ? W + 24 : -24, k);
+      const px0 = lerp(dir > 0 ? -24 : W + 24, gx - face * 20, k);
+      drawStreetGuy(gx, 196 - run, face, false, true);          // fleeing drunk
+      drawPolice(px0, 196 - run, face);                          // hot pursuit
+      if (Math.sin(t * 16) > 0) { ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText("HEI!", px0 - face * 6, 174); ctx.textAlign = "left"; }
+    }
   }
   ctx.restore();
+}
+// a generic little street fellow for the pee gag (face = +1 right / -1 left)
+function drawStreetGuy(x, y, face, hunched, walk) {
+  x = Math.round(x); y = Math.round(y);
+  const step = walk ? Math.sin(t * 12) * 2 : 0;
+  ctx.globalAlpha = 0.25; px(x - 3, y + 13, 8, 1, "#000"); ctx.globalAlpha = 1;
+  px(x - 2, y + 8, 2, 5 + step, "#2a2a3a"); px(x + 1, y + 8, 2, 5 - step, "#2a2a3a");
+  px(x - 3, y + (hunched ? 1 : 0), 7, 9, "#6a4a6a"); px(x - 3, y + (hunched ? 1 : 0), 7, 2, "#7c5a7c");
+  px(x + (face > 0 ? 3 : -4), y + 2, 2, 6, "#5a3a5a");
+  px(x - 2, y - 5 + (hunched ? 1 : 0), 5, 5, "#e0b48a");
+  px(x - 3, y - 7 + (hunched ? 1 : 0), 7, 3, "#3a2c2c");
+}
+// a beat cop chasing the offender
+function drawPolice(x, y, face) {
+  x = Math.round(x); y = Math.round(y);
+  const step = Math.sin(t * 22) * 2.5;
+  ctx.globalAlpha = 0.25; px(x - 3, y + 13, 8, 1, "#000"); ctx.globalAlpha = 1;
+  px(x - 2, y + 8, 2, 5 + step, "#1a2236"); px(x + 1, y + 8, 2, 5 - step, "#1a2236");
+  px(x - 3, y, 7, 9, "#26416e"); px(x - 3, y, 7, 2, "#365a93");   // navy uniform
+  px(x - 1, y + 2, 2, 6, "#cab43a");                              // brass buttons
+  px(x + (face > 0 ? 3 : -4), y + 1, 2, 7, "#1f3458");           // outstretched arm
+  px(x - 2, y - 5, 5, 5, "#e0b48a");
+  px(x - 3, y - 8, 7, 3, "#16213a"); px(x - 3, y - 9, 7, 2, "#16213a"); px(x - 1, y - 10, 3, 1, "#cab43a"); // peaked cap + badge
 }
 function drawMarketNPC(n) {
   const x = Math.round(n.x), y = Math.round(n.y);
@@ -2924,7 +2983,7 @@ const COOLER_MENU = [
   { key: "_rods", name: "Bytt stang", action: true },
   { key: "_bag", name: "Se fangst", action: true },
   { key: "_records", name: "Rekorder", action: true },
-  { key: "_funn", name: "Samlingen", action: true },
+  { key: "_funn", name: "Skrotsamling", action: true },
 ];
 const CONSUMABLES = [
   { key: "beer", name: "Trygdepatron" },
@@ -3061,7 +3120,7 @@ function drawFunnPanel() {
   px(x, top, w, h, "rgba(14,12,22,0.96)");
   px(x, top, w, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("SAMLINGEN", x + w / 2, top + 10);
+  ctx.fillText("SKROTSAMLING", x + w / 2, top + 10);
   drawBackArrow(x, w, top);
   ctx.font = "7px monospace"; ctx.fillStyle = found === JUNK.length ? "#9affc0" : "#9aa6d0";
   ctx.fillText(found === JUNK.length ? "Komplett! Du har funnet alt rart." : "Funn: " + found + "/" + JUNK.length + " typer", x + w / 2, top + 19);
@@ -3654,9 +3713,23 @@ function drawMapBg() {
   // border
   ctx.strokeStyle = "#7a6038"; ctx.lineWidth = 3; ctx.strokeRect(8, 8, W - 16, H - 16);
   ctx.strokeStyle = "#9a8050"; ctx.lineWidth = 1; ctx.strokeRect(12, 12, W - 24, H - 24);
-  // little water blobs under spots
-  ctx.fillStyle = "rgba(90,130,150,0.5)";
-  for (const sp of MAP_SPOTS) { ctx.beginPath(); ctx.ellipse(sp.x, sp.y + 2, 22, 12, 0, 0, 6.28); ctx.fill(); }
+  // little ponds under spots — with the fish that live there swimming inside, so you can see what's biting
+  for (const sp of MAP_SPOTS) {
+    ctx.fillStyle = "rgba(90,130,150,0.5)";
+    ctx.beginPath(); ctx.ellipse(sp.x, sp.y + 2, 24, 13, 0, 0, 6.28); ctx.fill();
+    const loc = LOCATIONS.find((l) => l.key === sp.key); if (!loc) continue;
+    const unlocked = (save.unlocked || []).includes(sp.key);
+    const here = loc.fish.map((k) => FISH_BY_KEY[k]).filter(Boolean).slice(0, 3);
+    const slots = [[-10, -4], [10, -2], [-1, 2]];
+    here.forEach((f, i) => {
+      const [ox, oy] = slots[i];
+      const fx = sp.x + ox + Math.sin(t * 1.1 + i * 2.1) * 2.5;
+      const fy = sp.y + 2 + oy + Math.cos(t * 1.4 + i) * 1.1;
+      ctx.globalAlpha = unlocked ? 1 : 0.5;     // locked waters show shadowy fish — a little teaser
+      drawMapFish(fx, fy, f, i % 2 === 1);
+    });
+    ctx.globalAlpha = 1;
+  }
   // dotted roads connecting spots in order
   ctx.strokeStyle = "#7a5a38"; ctx.setLineDash([3, 4]); ctx.lineWidth = 2;
   ctx.beginPath();
@@ -3704,51 +3777,19 @@ function drawMapBg() {
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     if (atMarket) drawMapHere(mx + 16, my - 14);
   }
-  // how-to hint (especially for touch, where there's no hover)
-  if (!mapHoverSpot) {
-    ctx.fillStyle = "rgba(58,44,24,0.82)"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-    ctx.fillText("Trykk p\u00e5 et vann for \u00e5 se fisken \u00b7 trykk igjen for \u00e5 reise", W / 2, H - 16);
-    ctx.textAlign = "left";
-  }
-  drawMapTooltip();
 }
-// hover info: what swims here + how good the fishing is (price level = quality)
-function drawMapTooltip() {
-  if (!mapHoverSpot) return;
-  let title, lines, stars, accent, sx, sy;
-  if (mapHoverSpot.market) {
-    title = "Markedet"; lines = ["Selg fisk · kjøp utstyr", "stenger · fiskekort · kasino"]; stars = 0;
-    accent = "#ffe6a0"; sx = mapHoverSpot.x; sy = mapHoverSpot.y;
-  } else {
-    const loc = LOCATIONS.find((l) => l.key === mapHoverSpot.key); if (!loc) return;
-    const fish = loc.fish.map((k) => FISH_BY_KEY[k]).filter(Boolean);
-    const avg = fish.reduce((s, f) => s + f.kr, 0) / Math.max(1, fish.length);
-    stars = clamp(Math.round(avg / 22), 1, 5);
-    const locked = !(save.unlocked || []).includes(loc.key);
-    const names = fish.slice(0, 4).map((f) => f.name).join(", ") + (fish.length > 4 ? " m.fl." : "");
-    lines = [names];
-    if (loc.rare) lines.push("Storfisk: " + loc.rare.name + " (" + fmt(loc.rare.kr) + " kr/kg)");
-    lines.push(locked ? "🔒 Lås opp: " + fmt(loc.cost) + " kr" : (LOC.key === loc.key ? "Du er her" : "Tilgang ✓"));
-    accent = locked ? "#ffd08a" : "#9affc0"; sx = mapHoverSpot.x; sy = mapHoverSpot.y;
-  }
-  // box sizing
-  ctx.font = "7px monospace";
-  let bw = ctx.measureText(title).width + 16;
-  for (const l of lines) bw = Math.max(bw, ctx.measureText(l).width + 12);
-  if (stars) bw = Math.max(bw, 70);
-  bw = Math.min(bw, 190);
-  const bh = 14 + lines.length * 9 + (stars ? 9 : 0) + 4;
-  let bx = Math.round(clamp(sx - bw / 2, 12, W - 12 - bw));
-  let by = Math.round(sy - 22 - bh); if (by < 14) by = Math.round(sy + 14);
-  px(bx, by, bw, bh, "rgba(14,12,22,0.94)"); px(bx, by, bw, 2, accent);
-  ctx.textAlign = "left"; ctx.textBaseline = "top";
-  ctx.fillStyle = accent; ctx.font = "bold 8px monospace"; ctx.fillText(title, bx + 6, by + 5);
-  ctx.font = "7px monospace"; ctx.fillStyle = "#dfe6ff";
-  let ly = by + 15;
-  if (stars) { ctx.fillStyle = "#ffd877"; ctx.fillText("Fiske: " + "★".repeat(stars) + "☆".repeat(5 - stars), bx + 6, ly); ly += 9; }
-  ctx.fillStyle = "#cdd6ea";
-  for (const l of lines) { ctx.fillText(l, bx + 6, ly); ly += 9; }
-  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+// a tiny fish swimming in a map pond, drawn in the species' own colours
+function drawMapFish(x, y, f, faceLeft) {
+  const d = faceLeft ? -1 : 1;
+  ctx.fillStyle = f.body;
+  ctx.beginPath(); ctx.ellipse(x, y, 3.4, 1.9, 0, 0, 6.28); ctx.fill();
+  ctx.fillStyle = f.belly;
+  ctx.beginPath(); ctx.ellipse(x, y + 0.7, 2.4, 0.9, 0, 0, 6.28); ctx.fill();
+  ctx.fillStyle = f.fin;
+  ctx.beginPath(); ctx.moveTo(x - d * 3, y); ctx.lineTo(x - d * 5.4, y - 1.8); ctx.lineTo(x - d * 5.4, y + 1.8); ctx.closePath(); ctx.fill();
+  ctx.fillRect(Math.round(x - d * 0.5), Math.round(y - 2.6), 1.4, 1);   // dorsal nub
+  ctx.fillStyle = "#fff"; ctx.fillRect(Math.round(x + d * 1.6), Math.round(y - 0.9), 1, 1);
+  ctx.fillStyle = "#10131f"; ctx.fillRect(Math.round(x + d * 1.8), Math.round(y - 0.7), 1, 1);
 }
 // a tiny parked pickup that marks where you currently are on the map
 function drawMapHere(x, y) {
@@ -4006,8 +4047,10 @@ function startCatSteal() {
   cat.mission = "steal"; cat.state = "arrive"; cat.x = -16; cat.target = 44 + Math.random() * 8; cat.t = 0;
   cat.fishKey = null; catMeow();
 }
-// give the cat a fuss — it purrs contentedly; the loop stops ~3s after you stop petting
+// give the cat a fuss — it stops wherever it is, settles down and purrs; the loop stops ~3s after you stop petting
 function petCat() {
+  cat.state = "settle";                 // stop padding about / leaving — sit right here for the fuss
+  cat.x = clamp(cat.x, 18, 110);        // keep it on the grassy bank, not off-screen
   cat.action = "pet"; cat.petHappy = 3; cat.timer = Math.max(cat.timer, 3.2); cat.t = 0;
   if (!purrNode) purrNode = playSample("catPurr", { loop: true, vol: 0.5 });
   blip(760, 0.05, "sine", 0.02);
