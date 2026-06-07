@@ -4091,8 +4091,8 @@ function drawEventActor() {
       break;
     }
     case "kayak": {
-      // a paddler zipping across, paddle dipping side to side
-      const x = cross, y = WATER_Y + 6 + Math.sin(t * 3) * 1, pad = Math.sin(t * 8);
+      // a paddler zipping across the open water, paddle dipping side to side
+      const x = cross, y = WATER_Y + 22 + Math.sin(t * 3) * 1, pad = Math.sin(t * 8);
       ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
       px(x - 12, y, 24, 5, "#d24a3a"); px(x - 12, y, 24, 2, "#e86a54");        // hull
       px(x - 2, y - 7, 5, 7, "#ffd84a"); px(x - 1, y - 11, 3, 4, "#e8c098");   // torso + head
@@ -4194,8 +4194,8 @@ function drawEventActor() {
       break;
     }
     case "beaver": {
-      // a beaver swimming across, then a big tail-slap splash
-      const x = cross, y = WATER_Y + 6, slap = p > 0.45 && p < 0.6;
+      // a beaver swimming across the open water, then a big tail-slap splash
+      const x = cross, y = WATER_Y + 24, slap = p > 0.45 && p < 0.6;
       ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
       px(x - 7, y - 2, 13, 5, "#6a4a2a"); px(x - 7, y - 2, 13, 2, "#7d5736");  // body
       px(x + 5, y - 5, 5, 5, "#5a3e22"); px(x + 8, y - 3, 1, 1, "#1a1208");    // head
