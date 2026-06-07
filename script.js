@@ -1413,7 +1413,8 @@ function update(dt) {
       catStealTimer -= dt;
       if (catStealTimer <= 0) {
         catStealTimer = 85 + Math.random() * 120;
-        if (save.basket.length > 0 && !inspector.active && !gameEvent.active && fishState !== "reveal") startCatSteal();
+        const menuOpen = coolerMenu || truckMenu || rodPanel || bagPanel || recordsPanel || godsakerPanel;
+        if (save.basket.length > 0 && !menuOpen && !inspector.active && !gameEvent.active && fishState !== "reveal") startCatSteal();
       }
     }
     wolfTimer -= dt;
@@ -1488,7 +1489,7 @@ function update(dt) {
     }
     // per-location random happenings (can fire while you fish; not during the inspector or menus)
     if (gameEvent.active) { gameEvent.t += dt; if (gameEvent.t > gameEvent.dur) gameEvent.active = false; }
-    if (!gameEvent.active && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel) {
+    if (!gameEvent.active && cat.mission == null && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel) {
       eventTimer -= dt;
       if (eventTimer <= 0) { eventTimer = 50 + Math.random() * 70; triggerGameEvent(); }
     }
