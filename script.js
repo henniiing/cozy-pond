@@ -346,9 +346,11 @@ const HATS = [
 ];
 const HAT_BY_KEY = Object.fromEntries(HATS.map((h) => [h.key, h]));
 // the wandering Romanian hat seller — strolls up from the foreground, offers hats, leaves if ignored
-let hatSeller = { state: "away", x: 108, y: 280, t: 0, timer: 60 + Math.random() * 70, idleDur: 14 };
+let hatSeller = { state: "away", x: 108, y: 280, t: 0, timer: 150 + Math.random() * 180, idleDur: 14 };
 let marketNode = null, casinoAmbNode = null, casinoSpinNode = null, casinoLoseNode = null, licenseAmbNode = null;
 let menuNode = null;
+// screens that are «part of the menu» and should keep the menu music playing
+const isMenuFamily = (name) => name === "menu" || name === "help" || name === "slots" || name === "scores";
 // fiskeoppsynet (license inspector) — a rare visiting NPC
 let inspector = { active: false, t: 0, x: -18, phase: "in", line: "", fined: false };
 let inspectorTimer = 80 + Math.random() * 120;
@@ -356,6 +358,9 @@ let inspectorTimer = 80 + Math.random() * 120;
 let gameEvent = { active: false, t: 0, dur: 0, title: "", line: "", color: "#cfe" };
 let eventTimer = 45 + Math.random() * 65;
 let catStealTimer = 80 + Math.random() * 110;
+// a shared little breather between «notable» happenings (events, inspector, cat-steal, hat seller)
+// so they never pile on top of each other — there's always a calm gap of just fishing in between
+let momentGap = 0;
 // a fish «vaker» (rises) out in the open water now and then — cast onto it for a luck/size bonus
 let riseSpot = { active: false, x: 0, y: 0, t: 0, dur: 0, timer: 7 + Math.random() * 12, ringT: 0 };
 let castOnRise = false;
@@ -1106,7 +1111,7 @@ function resetTransientState() {
   gameEvent.active = false;
   inspector.active = false; inspectorTimer = 80 + Math.random() * 120;
   cat.state = "away"; cat.x = -20; cat.mission = null; cat.fishKey = null; cat.action = "sit"; cat.timer = 14 + Math.random() * 26;
-  hatSeller.state = "away"; hatSeller.x = 108; hatSeller.y = 280; hatSeller.t = 0; hatSeller.timer = 60 + Math.random() * 70;
+  hatSeller.state = "away"; hatSeller.x = 108; hatSeller.y = 280; hatSeller.t = 0; hatSeller.timer = 150 + Math.random() * 180;
   hatPanel = false; hatShop = false;
   cans.length = 0; smoke.length = 0; ripples.length = 0;
 }
@@ -1241,7 +1246,7 @@ function toggleMute() {
   else activeLoops.forEach((n) => { n.volume = (n._baseVol == null ? 1 : n._baseVol) * effVol(); const pr = n.play(); if (pr && pr.catch) pr.catch(() => {}); });
   if (muted) stopAllVoices();
   // if we just unmuted on the menu and music never started, kick it off now
-  if (!muted && screen === "menu" && !menuNode) menuNode = playSample("menuMusic", { loop: true, vol: 0.5 });
+  if (!muted && isMenuFamily(screen) && !menuNode) menuNode = playSample("menuMusic", { loop: true, vol: 0.5 });
   syncVolUI();
 }
 // master volume 0..1, controlled by the hover slider on the speaker button
@@ -1260,7 +1265,7 @@ function setMasterVolume(v) {
   });
   activeVoices.forEach((n) => { n.volume = (n._baseVol == null ? 1 : n._baseVol) * ev; });
   // if we unmuted on the menu and music never started, kick it off
-  if (wasMuted && !muted && screen === "menu" && !menuNode) menuNode = playSample("menuMusic", { loop: true, vol: 0.5 });
+  if (wasMuted && !muted && isMenuFamily(screen) && !menuNode) menuNode = playSample("menuMusic", { loop: true, vol: 0.5 });
   syncVolUI();
 }
 // keep every speaker icon + slider in sync with the current state
@@ -1452,13 +1457,13 @@ function setScreen(name) {
   if (casinoSpinNode) { stopSample(casinoSpinNode); casinoSpinNode = null; }
   if (casinoLoseNode) { stopSample(casinoLoseNode); casinoLoseNode = null; }
   if (licenseAmbNode) { stopSample(licenseAmbNode); licenseAmbNode = null; }
-  if (menuNode && name !== "menu" && name !== "help") { stopSample(menuNode); menuNode = null; }   // «hvordan spille» is still part of the menu — keep the music going
+  if (menuNode && !isMenuFamily(name)) { stopSample(menuNode); menuNode = null; }   // «hvordan spille», lagringsplasser & toppliste er del av menyen — hold musikken gående
   if (casino.spinning && name !== "shopCasino") { casino.spinning = false; casino.win = false; }
   if (name === "shopKiosk") partyNode = playSample("party", { loop: true, vol: 0.4 });
   else if (name === "market") marketNode = playSample("market", { loop: true, vol: 0.45 });
   else if (name === "shopCasino") casinoAmbNode = playSample("casinoAmb", { loop: true, vol: 0.4 });
   else if (name === "shopLicense") licenseAmbNode = playSample("licenseAmb", { loop: true, vol: 0.4 });
-  else if (name === "menu" && !menuNode) menuNode = playSample("menuMusic", { loop: true, vol: 0.5 });
+  else if (isMenuFamily(name) && !menuNode) menuNode = playSample("menuMusic", { loop: true, vol: 0.5 });
   screen = name;
   OVERLAYS.forEach((o) => $(o).classList.toggle("active", o === name));
   hudEl.classList.toggle("hidden", name !== "game");
@@ -2045,7 +2050,7 @@ function update(dt) {
       if (catStealTimer <= 0) {
         catStealTimer = 85 + Math.random() * 120;
         const menuOpen = coolerMenu || truckMenu || rodPanel || bagPanel || recordsPanel || godsakerPanel || funnPanel || hatPanel || hatShop;
-        if (save.basket.length > 0 && !menuOpen && !inspector.active && !gameEvent.active && fishState !== "reveal") startCatSteal();
+        if (momentGap <= 0 && save.basket.length > 0 && !menuOpen && !inspector.active && !gameEvent.active && fishState !== "reveal") { startCatSteal(); momentGap = 12 + Math.random() * 8; }
       }
     }
     wolfTimer -= dt;
@@ -2100,6 +2105,7 @@ function update(dt) {
   }
   // fiskeoppsynet — a rare inspector who checks your fishing licence
   if (screen === "game") {
+    if (momentGap > 0) momentGap -= dt;   // tick down the calm gap between notable happenings
     if (inspector.active) {
       inspector.t += dt;
       if (inspector.phase === "in") {
@@ -2115,14 +2121,14 @@ function update(dt) {
       inspectorTimer -= dt;
       if (inspectorTimer <= 0) {
         inspectorTimer = 130 + Math.random() * 160;
-        if (save.money > LICENSE_FINE) triggerInspector();
+        if (momentGap <= 0 && save.money > LICENSE_FINE) { triggerInspector(); momentGap = 12 + Math.random() * 8; }
       }
     }
     // per-location random happenings (can fire while you fish; not during the inspector or menus)
     if (gameEvent.active) { gameEvent.t += dt; if (gameEvent.t > gameEvent.dur) gameEvent.active = false; }
-    if ((fishState === "ready" || fishState === "waiting") && !gameEvent.active && cat.mission == null && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel && !funnPanel && !hatPanel && !hatShop) {
+    if (momentGap <= 0 && (fishState === "ready" || fishState === "waiting") && !gameEvent.active && cat.mission == null && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel && !funnPanel && !hatPanel && !hatShop) {
       eventTimer -= dt;
-      if (eventTimer <= 0) { eventTimer = 50 + Math.random() * 70; triggerGameEvent(); }
+      if (eventTimer <= 0) { eventTimer = 50 + Math.random() * 70; triggerGameEvent(); momentGap = 12 + Math.random() * 8; }
     }
     // the rising fish: appears for a few seconds, leaving spreading rings; cast on it for a bonus
     if (riseSpot.active) {
@@ -4766,11 +4772,12 @@ function updateHatSeller(dt) {
     case "away": {
       hatSeller.timer -= dt;
       const busy = coolerMenu || truckMenu || rodPanel || bagPanel || recordsPanel || godsakerPanel || funnPanel || hatPanel || hatShop || inspector.active || gameEvent.active || cat.mission != null || knockout.active;
-      if (hatSeller.timer <= 0 && !busy && (fishState === "ready" || fishState === "waiting")) {
+      if (hatSeller.timer <= 0 && momentGap <= 0 && !busy && (fishState === "ready" || fishState === "waiting")) {
         hatSeller.state = "approach"; hatSeller.x = 108; hatSeller.y = START_Y; hatSeller.t = 0;
+        momentGap = 12 + Math.random() * 8;
         sellerCall();
       } else if (hatSeller.timer <= 0) {
-        hatSeller.timer = 6 + Math.random() * 8;   // try again shortly when the coast clears
+        hatSeller.timer = 8 + Math.random() * 10;   // try again a little later when the coast clears
       }
       break;
     }
@@ -4784,7 +4791,7 @@ function updateHatSeller(dt) {
       break;
     case "leave":
       hatSeller.y += dt * 46;
-      if (hatSeller.y > START_Y) { hatSeller.state = "away"; hatSeller.timer = 70 + Math.random() * 80; }
+      if (hatSeller.y > START_Y) { hatSeller.state = "away"; hatSeller.timer = 160 + Math.random() * 200; }
       break;
   }
 }
