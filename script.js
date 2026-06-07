@@ -2076,7 +2076,9 @@ function update(dt) {
       if (catStealTimer <= 0) {
         catStealTimer = 85 + Math.random() * 120;
         const menuOpen = coolerMenu || truckMenu || rodPanel || bagPanel || recordsPanel || godsakerPanel || funnPanel || hatPanel || hatShop;
-        if (momentGap <= 0 && save.basket.length > 0 && !menuOpen && !inspector.active && !gameEvent.active && fishState !== "reveal") { startCatSteal(); momentGap = 12 + Math.random() * 8; }
+        // the cat is a recurring companion, not a random event — it doesn't wait for (or impose)
+        // the calm gap between happenings. It still won't literally overlap an inspector/event though.
+        if (save.basket.length > 0 && !menuOpen && !inspector.active && !gameEvent.active && fishState !== "reveal") startCatSteal();
       }
     }
     wolfTimer -= dt;
