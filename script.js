@@ -72,6 +72,9 @@ function loadSave(slot) {
 }
 let save = loadSave(currentSlot);
 function persist() {
+  // defensive: never let money drift negative, fractional or NaN before it's stored/shown
+  if (!Number.isFinite(save.money) || save.money < 0) save.money = 0;
+  save.money = Math.round(save.money);
   try { localStorage.setItem(slotKey(currentSlot), JSON.stringify(save)); } catch (e) {}
 }
 // quick summary of a slot for the slot picker (null = empty/never-played)
@@ -1614,24 +1617,24 @@ function applyBuff(label, luck, reel, dur, color) {
 function drinkBeer() {
   drinking = 2.2; drinkKind = "beer"; sipAnim = 0; save.beers++; persist();
   sfxCanOpen();
-  setTimeout(sfxGulp, 700); setTimeout(sfxGulp, 1100); setTimeout(sfxGulp, 1500);
-  setTimeout(() => { playSample("burp", { vol: 0.85 }); if (Math.random() < 0.45) setTimeout(() => playSample("fart", { vol: 0.6 }), 500); }, 2150);
+  setTimeout(() => { if (screen === "game") sfxGulp(); }, 700); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1100); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1500);
+  setTimeout(() => { if (screen !== "game") return; playSample("burp", { vol: 0.8 }); if (Math.random() < 0.45) setTimeout(() => { if (screen === "game") playSample("fart", { vol: 0.6 }); }, 500); }, 2150);
   applyBuff("Ølmodig", 0.2, 0.12, 22, "#ffcf5a");
   drunk = Math.min(DRUNK_MAX, drunk + 0.30);
 }
 function drinkAkevitt() {
   drinking = 2.6; drinkKind = "akevitt"; sipAnim = 0;
   sfxCanOpen();
-  setTimeout(sfxGulp, 600); setTimeout(sfxGulp, 1000); setTimeout(sfxGulp, 1400);
-  setTimeout(() => { playSample("burp", { vol: 1 }); setTimeout(() => playSample("fart", { vol: 0.7 }), 600); }, 2100);
+  setTimeout(() => { if (screen === "game") sfxGulp(); }, 600); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1000); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1400);
+  setTimeout(() => { if (screen !== "game") return; playSample("burp", { vol: 0.85 }); setTimeout(() => { if (screen === "game") playSample("fart", { vol: 0.7 }); }, 600); }, 2100);
   applyBuff("Brennevin", 0.55, 0.3, 45, "#ffe08a");
   drunk = Math.min(DRUNK_MAX, drunk + 0.55);
 }
 function drinkSnabel() {
   drinking = 2.8; drinkKind = "snabel"; sipAnim = 0;
   sfxCanOpen();
-  setTimeout(sfxGulp, 600); setTimeout(sfxGulp, 1050); setTimeout(sfxGulp, 1500); setTimeout(sfxGulp, 1900);
-  setTimeout(() => { playSample("burp", { vol: 1 }); setTimeout(() => playSample("fart", { vol: 0.85 }), 650); }, 2300);
+  setTimeout(() => { if (screen === "game") sfxGulp(); }, 600); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1050); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1500); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1900);
+  setTimeout(() => { if (screen !== "game") return; playSample("burp", { vol: 0.85 }); setTimeout(() => { if (screen === "game") playSample("fart", { vol: 0.85 }); }, 650); }, 2300);
   applyBuff("Snabelstoff", 0.8, 0.42, 60, "#d8e0c0");
   drunk = Math.min(DRUNK_MAX, drunk + 0.78);
 }
@@ -4572,7 +4575,6 @@ function drawIntroCat(tt) {
   else return; // tucked into the truck, off we go
   drawCatSprite(cx, cy - jump, walking, "#d9863a", "#b8662a", Math.sin(t * 12) * (walking ? 1 : 0.25));
 }
-function bobY(ph, amp = 2) { return -Math.abs(Math.sin(t * 5 + ph)) * amp; }
 // shared little tabby cat sprite (used in the intro and as the in-game companion)
 // dir: facing offset for tail sway; body/stripe are colours; gait = leg/tail animation
 function drawCatSprite(x, y, walking, body, stripe, gait, sitting = false) {
@@ -4829,7 +4831,7 @@ function catHiss() {
 }
 function catYowl() {
   // an aggressive, indignant meow when shooed off the fish
-  playSample("catAngry", { vol: 0.95 });
+  playSample("catAngry", { vol: 0.72 });
   catHiss();
   setTimeout(() => blip(640, 0.13, "sawtooth", 0.06), 60);
   setTimeout(() => blip(360, 0.22, "square", 0.05), 220);
