@@ -1050,7 +1050,7 @@ function toggleFullscreen() {
    routed through a public https CORS proxy to avoid mixed-content blocking.
    ========================================================================= */
 const DREAMLO_PUBLIC = "6a25cca68f40bb17b07b2d4d";
-const DREAMLO_PRIVATE = "lV6DCx6CQEGJ1uIa1epi1AcY_5FKrgHUeWLrsvn";
+const DREAMLO_PRIVATE = "lV6DCx6CQEGJ1uIa1epi1AcY_5FKrgHUeWLrsvn-692A";
 const DREAMLO_BASE = "http://dreamlo.com/lb/";
 const SCORE_PROXIES = [
   (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
@@ -1521,6 +1521,7 @@ const LOCATION_EVENTS = {
     { t: "Frekk elg", l: "Elgen vasser uti og slubrer i seg agnet ditt!", k: "scare", c: "#7a5a3a", s: "moose" },
     { t: "Fiskekompis", l: "Kompisen din kommer med en sterk dram og napper en fisk med en gang!", k: "buddy", c: "#ffd877", s: "buddy" },
     { t: "Bever", l: "En bever smeller halen i vannet \u2014 pladask!", k: "scare", c: "#6a4a2a", s: "beaver" },
+    { t: "Forvirra jeger", l: "En jeger labber ut av skogen, ser seg r\u00e5dvilt rundt \u2014 og rusler inn igjen.", k: "flavor", c: "#7a6a4a", s: "hunter" },
     { t: "Fint s\u00f8kke", l: "Du finner et eksklusivt sluk verdt {n} kr.", k: "money", amt: [40, 100], c: "#caa23a", s: "lure" },
   ],
   nordlys: [
@@ -3630,6 +3631,16 @@ function drawEventActor() {
       if (dip > 7) { addRippleMaybe(hx + 4, y + 2); }
       break;
     }
+    case "hunter": {
+      // a hunter ambles out of the treeline, peers around all confused, then heads back in
+      const ground = 150;                                                          // far-bank ground line (right side)
+      let x, face = -1, walk = false, looking = false;
+      if (p < 0.26) { x = lerp(W + 18, 322, p / 0.26); walk = true; face = -1; }    // emerges from the right
+      else if (p < 0.72) { x = 322; looking = true; face = Math.sin(t * 1.1) > 0 ? -1 : 1; }   // stops and glances about
+      else { x = lerp(322, W + 18, (p - 0.72) / 0.28); walk = true; face = 1; }     // gives up and wanders back
+      drawHunter(x, ground, face, walk, looking, ea);
+      break;
+    }
     case "buddy": {
       // your fishing buddy: ambles in, hands you a strong dram, then wades in and yanks out a fish
       const ground = 220;
@@ -3746,6 +3757,41 @@ function drawBuddy(x, y, face, walk, bottle, fish, sub, ea) {
     const wl = y - 5 - sub * 5;
     ctx.globalAlpha = prevA * 0.55; ctx.fillStyle = "#2a5a5a"; ctx.fillRect(x - 9, wl, 18, (y + 2) - wl); ctx.globalAlpha = prevA;
     for (let i = 0; i < 5; i++) { const a2 = -1 + i * 0.4; px(x + Math.cos(a2) * 9, wl - Math.abs(Math.sin(a2)) * 7 * sub, 2, 2, "#bfe0e0"); }
+  }
+  ctx.restore();
+}
+function drawHunter(x, y, face, walk, looking, ea) {
+  // a confused hunter in a blaze-orange cap + olive coat, rifle slung on his back
+  ctx.save();
+  if (face < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+  const step = walk ? Math.sin(t * 10) * 2 : 0;
+  const prevA = ctx.globalAlpha;
+  ctx.globalAlpha = prevA * 0.25; ctx.fillStyle = "#16240e"; ctx.beginPath(); ctx.ellipse(x, y + 1, 7, 2, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = prevA;
+  // legs + boots
+  px(x - 4, y - 11, 3, 11 + step, "#3a3326"); px(x + 1, y - 11, 3, 11 - step, "#322b20");
+  px(x - 5, y - 1, 4, 3, "#241a10"); px(x + 1, y - 1, 4, 3, "#241a10");
+  // slung rifle (drawn behind the torso, barrel over the shoulder)
+  ctx.strokeStyle = "#2a2018"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, y - 5); ctx.lineTo(x + 6, y - 26); ctx.stroke();
+  px(x + 4, y - 27, 3, 2, "#4a3a28");                                          // stock
+  // olive hunting coat
+  px(x - 6, y - 25, 13, 15, "#4a5234"); px(x - 6, y - 25, 13, 2, "#5a6442");
+  px(x - 6, y - 18, 13, 1, "#3a4228");                                         // belt line
+  // head + blaze-orange cap
+  const hx = x, hy = y - 29;
+  px(hx - 4, hy - 2, 8, 8, "#e3b58c"); px(hx - 4, hy + 5, 8, 2, "#caa07a");
+  px(hx - 5, hy - 5, 10, 4, "#e8641e"); px(hx - 5, hy - 2, 10, 1, "#b8480f");  // cap
+  px(hx + 4, hy - 4, 3, 2, "#e8641e");                                         // cap brim
+  px(hx - 1, hy + 1, 1, 1, "#2a1f18"); px(hx + 3, hy + 1, 1, 1, "#2a1f18");    // eyes
+  if (looking) {
+    // raises a hand to his brow, scouting — with a puzzled "?" bobbing overhead
+    px(x + 4, y - 25, 4, 6, "#4a5234"); px(x + 6, y - 30, 4, 3, "#e3b58c");    // arm + hand at brow
+    const bob = Math.sin(t * 3) * 1.5;
+    ctx.globalAlpha = prevA * (0.6 + 0.4 * Math.sin(t * 4));
+    ctx.fillStyle = "#ffe6a0"; ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
+    ctx.fillText("?", x, y - 40 + bob); ctx.textAlign = "left";
+    ctx.globalAlpha = prevA;
+  } else {
+    px(x + 5, y - 23, 4, 7, "#4a5234"); px(x + 6, y - 17, 3, 3, "#e3b58c");    // arm swinging
   }
   ctx.restore();
 }
