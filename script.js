@@ -29,6 +29,7 @@ const catchTag = $("catchTag");
 const moneyEl = $("money");
 const basketCountEl = $("basketCount");
 const rodNameEl = $("rodName");
+const licenseStateEl = $("licenseState");
 
 /* =========================================================================
    Save / economy
@@ -193,6 +194,7 @@ const FISH_STALL = { x: 12, y: 90, w: 96, h: 100 };
 const KIOSK_STALL = { x: 132, y: 90, w: 96, h: 100 };
 const ROD_STALL = { x: 252, y: 90, w: 96, h: 100 };
 const CASINO_STALL = { x: 372, y: 90, w: 96, h: 100 };
+const LICENSE_BOOTH = { x: 250, y: 198, w: 78, h: 48 };   // the warden's permit booth out on the market square
 const MARKET_TRUCK = { x: 6, y: 214, w: 60, h: 30 };
 
 /* =========================================================================
@@ -205,7 +207,7 @@ let t = 0, stateTime = 0;
 
 let biteTimer = 0, biteWindow = 0, nibbleTimer = 0, nibbleShake = 0;
 let holding = false, progress = 0, tension = 0, pullTimer = 0, pulling = 0;
-let currentFish = null, currentCatch = null, missReason = "";
+let currentFish = null, currentCatch = null, currentWeight = 0, missReason = "";
 let castProgress = 0;
 
 let bobber = { x: BOBBER_HOME.x, y: BOBBER_HOME.y, sink: 0 };
@@ -220,10 +222,12 @@ const MAP_SPOTS = [
   { key: "fjellvatn", x: 388, y: 74 },
   { key: "nordlys", x: 435, y: 188 },
 ];
+const MAP_MARKET = { x: 110, y: 244 };   // the market town, reachable from the map too
+let mapReturn = "game";                   // where the map's «back» button returns to
 let travel = { key: null, t: 0, dur: 2.8, toName: "" };
 // one-time opening cinematic (poor farm boy leaves the farm to go fishing)
 let intro = { t: 0, running: false, enginePlayed: false, rodSfx: false };
-const IN = { walkStart: 1.4, walkEnd: 7.2, throwS: 7.2, throwE: 8.2, climbS: 8.6, climbE: 10.2, engine: 10.4, driveS: 11.2, end: 18.6 };
+const IN = { walkStart: 1.4, walkEnd: 7.2, throwS: 7.2, throwE: 8.2, climbS: 8.6, climbE: 10.2, engine: 10.4, driveS: 11.2, end: 18.6, wifeThrowS: 3.2, wifeThrowE: 3.7, wifeThrowR: 3.7, wifeThrowL: 5.0 };
 function startTravel(key) {
   travel.key = key; travel.t = 0;
   travel.toName = key === "market" ? "Markedet" : ((LOCATIONS.find((l) => l.key === key) || {}).name || "");
@@ -330,9 +334,9 @@ function noise(dur, freq, vol = 0.15, type = "lowpass") {
 }
 
 /* ---- recorded samples (mp3 files in /lyder) ---- */
-const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music" };
+const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", scream: "Red girl screaming loud", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music" };
 const sampleEls = {};
-for (const k in SAMPLES) { const a = new Audio(`lyder/${SAMPLES[k]}.mp3`); a.preload = "auto"; sampleEls[k] = a; }
+for (const k in SAMPLES) { const a = new Audio(`lyder/${encodeURIComponent(SAMPLES[k])}.mp3`); a.preload = "auto"; sampleEls[k] = a; }
 const activeLoops = new Set();
 const activeVoices = new Set(); // longer one-shot voice/sfx clones, so they can be cut on screen change
 function playSample(name, opts = {}) {
@@ -634,14 +638,16 @@ function canvasPress(p) {
   ensureAudio();
   if (screen === "intro") { if (!intro.running) startIntroPlayback(); else endIntro(); return; }
   if (screen === "market") {
-    if (inRect(p.x, p.y, MARKET_TRUCK)) { sfxHorn(); setScreen("map"); return; }
+    if (inRect(p.x, p.y, MARKET_TRUCK)) { mapReturn = "market"; sfxHorn(); setScreen("map"); return; }
     if (inRect(p.x, p.y, FISH_STALL)) { setScreen("shopFish"); }
     else if (inRect(p.x, p.y, KIOSK_STALL)) { sfxKiosk(); setScreen("shopKiosk"); }
     else if (inRect(p.x, p.y, ROD_STALL)) { setScreen("shopRod"); }
     else if (inRect(p.x, p.y, CASINO_STALL)) { setScreen("shopCasino"); }
+    else if (inRect(p.x, p.y, LICENSE_BOOTH)) { sfxClink(); setScreen("shopLicense"); }
     return;
   }
   if (screen === "map") {
+    if (Math.hypot(p.x - MAP_MARKET.x, p.y - (MAP_MARKET.y - 12)) < 20) { tryTravel("market"); return; }
     for (const sp of MAP_SPOTS) {
       if (Math.hypot(p.x - sp.x, p.y - (sp.y - 12)) < 18) {
         tryTravel(sp.key);
@@ -708,7 +714,7 @@ function canvasPress(p) {
   }
   if (fishState === "reveal") { closeReveal(); return; }
   if (fishState === "ready") {
-    if (inRect(p.x, p.y, padRect(TRUCK, 6))) { truckMenu = true; sfxHorn(); return; }
+    if (inRect(p.x, p.y, padRect(TRUCK, 6))) { mapReturn = "game"; sfxHorn(); setScreen("map"); return; }
     if (inRect(p.x, p.y, padRect(SEKK, 10))) { coolerMenu = true; sfxClink(); return; }
     if (inRect(p.x, p.y, padRect(RADIO, 6))) { clickRadio(); return; }
     // cast where you click on the water (keyboard uses default spot)
@@ -738,10 +744,11 @@ function interactiveAt(p) {
   if (screen === "intro") return "play";
   if (screen === "menu") return null; // menu uses real DOM buttons
   if (screen === "market") {
-    if (inRect(p.x, p.y, MARKET_TRUCK) || inRect(p.x, p.y, FISH_STALL) || inRect(p.x, p.y, KIOSK_STALL) || inRect(p.x, p.y, ROD_STALL) || inRect(p.x, p.y, CASINO_STALL)) return "btn";
+    if (inRect(p.x, p.y, MARKET_TRUCK) || inRect(p.x, p.y, FISH_STALL) || inRect(p.x, p.y, KIOSK_STALL) || inRect(p.x, p.y, ROD_STALL) || inRect(p.x, p.y, CASINO_STALL) || inRect(p.x, p.y, LICENSE_BOOTH)) return "btn";
     return null;
   }
   if (screen === "map") {
+    if (Math.hypot(p.x - MAP_MARKET.x, p.y - (MAP_MARKET.y - 12)) < 20) return "btn";
     for (const sp of MAP_SPOTS) if (Math.hypot(p.x - sp.x, p.y - (sp.y - 12)) < 18) return "btn";
     return null;
   }
@@ -845,20 +852,21 @@ function doAction(a, data) {
     case "startGame": setScreen("game"); break;
     case "watchIntro": if (menuNode) { stopSample(menuNode); menuNode = null; } startIntro(); startIntroPlayback(); break;
     case "openMarket": setScreen("market"); break;
-    case "openMap": setScreen("map"); break;
+    case "openMap": mapReturn = screen === "market" ? "market" : "game"; setScreen("map"); break;
     case "openHelp": prevScreen = screen; setScreen("help"); break;
     case "openMenu": setScreen("menu"); break;
     case "backToGame": setScreen("game"); break;
+    case "backFromMap": setScreen(mapReturn === "market" ? "market" : "game"); break;
     case "driveBack": startTravel(save.location); break;
     case "shopFish": setScreen("shopFish"); break;
     case "shopRod": setScreen("shopRod"); break;
+    case "shopLicense": setScreen("shopLicense"); break;
     case "sellAll": sellAll(); break;
     case "sellSpecies": sellSpecies(data.key); break;
     case "buyRod": buyRod(parseInt(data.level, 10)); break;
     case "equipRod": equipRod(parseInt(data.level, 10)); break;
     case "buyConsumable": buyConsumable(data.kind); break;
     case "buyLicense": buyLicense(data.key); break;
-    case "rodTab": rodTab(data.tab); break;
     case "openKiosk": setScreen("shopKiosk"); break;
     case "casinoColor": casinoColor(data.color); break;
     case "casinoBet": casinoBet(data.amt); break;
@@ -913,7 +921,7 @@ function toggleFullscreen() {
 /* =========================================================================
    Screen management
    ========================================================================= */
-const OVERLAYS = ["menu", "market", "map", "help", "shopFish", "shopRod", "shopKiosk", "shopCasino"];
+const OVERLAYS = ["menu", "market", "map", "help", "shopFish", "shopRod", "shopLicense", "shopKiosk", "shopCasino"];
 function setScreen(name) {
   const from = screen;
   if (from === "travel") stopEngine();
@@ -928,7 +936,8 @@ function setScreen(name) {
   if (name === "shopFish" && from !== "shopFish") { speak("ladySpeech", "Hei, kjekken… har du noe fint til meg i dag?"); playSample("ladyWelcome", { vol: 0.8 }); }
   // casino croupier greeting
   if (name === "shopCasino" && from !== "shopCasino") playSample("ohbro", { vol: 0.7 });
-  // kiosk: muffled party music on loop while inside + a greeting
+  // fishing warden: a polite greeting + paper shuffle when you visit the permit booth
+  if (name === "shopLicense" && from !== "shopLicense") { speak("licenseSpeech", "God dag! Skal det være et gyldig fiskekort? Husk — fiskeoppsynet er ute og går."); blip(520, 0.05, "square", 0.04); setTimeout(() => blip(440, 0.05, "square", 0.035), 90); }  // kiosk: muffled party music on loop while inside + a greeting
   if (name === "shopKiosk" && from !== "shopKiosk") { speak("kioskSpeech", "Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske."); playSample("eyybro", { vol: 0.7 }); }
   // looping ambience per screen — always clear it first so nothing bleeds between screens
   if (partyNode) { stopSample(partyNode); partyNode = null; }
@@ -947,7 +956,8 @@ function setScreen(name) {
   if (name !== "game") { reelEl.classList.add("hidden"); catchEl.classList.add("hidden"); hintEl.classList.add("hidden"); }
   if (name === "game") { resetFishing(); setHint("Klikk for å kaste ut"); if (radio.on && !radioNode) { radioIdx = Math.floor(Math.random() * RADIO_SONGS.length); playRadioSong(); } }
   if (name === "shopFish") buildBasket();
-  if (name === "shopRod") { buildRods(); buildLicenses(); rodTab("rods"); }
+  if (name === "shopRod") { buildRods(); }
+  if (name === "shopLicense") buildLicenses();
   if (name === "shopKiosk") buildKiosk();
   if (name === "shopCasino") { speak("casinoSpeech", "Welcome, my friend! Velg rød eller svart, sett innsatsen og spinn. Treffer fargen vinner du dobbelt — men pass deg for grønn null! 🎩"); buildCasino(); }
   refreshHUD();
@@ -959,6 +969,11 @@ function refreshHUD() {
   moneyEl.textContent = fmt(save.money);
   basketCountEl.textContent = save.basket.length;
   rodNameEl.textContent = rod().name;
+  if (licenseStateEl) {
+    const lic = currentLicense();
+    licenseStateEl.textContent = lic > 0 ? "✓ " + lic : "✗ mangler";
+    licenseStateEl.style.color = lic > 0 ? "#9affc0" : "#ff8a7a";
+  }
   document.querySelectorAll(".moneyMirror").forEach((e) => (e.textContent = fmt(save.money)));
 }
 function refreshAll() { refreshHUD(); buildBasket(); buildRods(); buildLicenses(); buildKiosk(); }
@@ -995,8 +1010,9 @@ function triggerBite() {
 }
 function hookFish() {
   currentFish = pickFish();
+  currentWeight = currentFish.junk ? 0 : rollWeight(currentFish);   // decided now so the fight scales to THIS fish
   setFish("hooked");
-  progress = 8; tension = 12; pullTimer = 0.6 + Math.random() * 0.8; pulling = 0; holding = false;
+  progress = 10; tension = 10; pullTimer = 0.5 + Math.random() * 0.7; pulling = 0; holding = false;
   reelEl.classList.remove("hidden");
   setHint("Hold for å sveive — slipp når den drar!");
   sfxSplash();
@@ -1006,7 +1022,7 @@ function finalizeCatch() {
   if (f.junk) {
     currentCatch = { f, junk: true, tag: f.tag };
   } else {
-    const weight = rollWeight(f);
+    const weight = currentWeight || rollWeight(f);
     const value = Math.round(f.kr * weight);
     const rec = save.record[f.key] || { count: 0, best: 0 };
     const isPB = rec.count > 0 && weight > rec.best;   // genuinely beat a previous personal best
@@ -1102,7 +1118,7 @@ function throwCan() {
    Market actions
    ========================================================================= */
 function sellAll() {
-  if (!save.basket.length) { speak("ladySpeech", "Tom kurv? Kom tilbake når du har fanget noe, da."); return; }
+  if (!save.basket.length) { speak("ladySpeech", "Tom fangst? Kom tilbake når du har fanget noe, da."); return; }
   const total = save.basket.reduce((s, b) => s + b.value, 0);
   const n = save.basket.length;
   save.money += total; save.basket = []; persist();
@@ -1150,10 +1166,10 @@ function buyLicense(locKey) {
   const key = locKey || save.location;
   const loc = LOCATIONS.find((x) => x.key === key) || LOCATIONS[0];
   const cost = licenseCostFor(key);
-  if (save.money < cost) { speak("rodSpeech", "Fiskekort koster penger, det også. Kom igjen med kontanter."); sfxMiss(); return; }
+  if (save.money < cost) { speak("licenseSpeech", "Fiskekort koster penger, det også. Kom igjen med kontanter."); sfxMiss(); return; }
   save.money -= cost; save.licenses[key] = (save.licenses[key] || 0) + LICENSE_GRANT; persist();
   sfxCoin();
-  speak("rodSpeech", `Vær så god — kort for ${loc.name} som varer ${LICENSE_GRANT} fangster.`);
+  speak("licenseSpeech", `Vær så god — kort for ${loc.name} som varer ${LICENSE_GRANT} fangster.`);
   buildLicenses(); refreshHUD();
 }
 
@@ -1182,7 +1198,7 @@ const LOCATION_EVENTS = {
   skogstjern: [
     { t: "Skogvokteren", l: "«Det napper bedre ved sivet!» roper en turg\u00e5er.", k: "luck", luck: 0.35, dur: 18, c: "#8affc0", s: "hiker" },
     { t: "Frekt ekorn", l: "Et ekorn napper en kjeks fra sekken og spretter til skogs.", k: "flavor", c: "#caa07a", s: "squirrel" },
-    { t: "Flaskepost", l: "Du fisker opp en flaske med {n} kr i!", k: "money", amt: [25, 60], c: "#ffd877", s: "bottle" },
+    { t: "Flaskepost", l: "En flaske med {n} kr i driver i land ved føttene dine!", k: "money", amt: [25, 60], c: "#ffd877", s: "bottle" },
     { t: "Villbring\u00e6r", l: "Du finner bring\u00e6r p\u00e5 bredden \u2014 s\u00f8tt og godt!", k: "luck", luck: 0.2, dur: 14, c: "#f06a8a", s: "berries" },
   ],
   fjellvatn: [
@@ -1397,13 +1413,7 @@ function buildLicenses() {
   }
 }
 function rodTab(tab) {
-  const rods = $("rodList"), lics = $("licenseList");
-  if (!rods || !lics) return;
-  const showLic = tab === "licenses";
-  rods.classList.toggle("hidden", showLic);
-  lics.classList.toggle("hidden", !showLic);
-  document.querySelectorAll("#shopRod .shop-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
-  sfxClink();
+  // legacy no-op: fiskekort moved to its own shop (kept so any old call is harmless)
 }
 
 /* =========================================================================
@@ -1430,6 +1440,12 @@ function update(dt) {
       // the wife keeps shrieking from the doorway until he's climbing into the truck
       if (intro.t >= (intro.nextYell || 1e9) && intro.t < IN.climbS) {
         womanYell(); intro.nextYell = intro.t + 2.4 + Math.random() * 1.3;
+      }
+      // she hurls a pot after him once he's a few steps away
+      if (!intro.threw && intro.t >= IN.wifeThrowR) {
+        intro.threw = true; womanYell();
+        blip(300, 0.12, "triangle", 0.06); setTimeout(() => blip(180, 0.1, "square", 0.05), 120);   // whoosh
+        setTimeout(() => { blip(140, 0.08, "sawtooth", 0.06); blip(90, 0.12, "square", 0.05); }, ((IN.wifeThrowL - IN.wifeThrowR) * 1000) | 0);  // smash
       }
       if (!intro.rodSfx && intro.t >= IN.throwS) { intro.rodSfx = true; sfxThrow(); }
       if (!intro.enginePlayed && intro.t >= IN.engine) { intro.enginePlayed = true; startEngine(); }
@@ -1621,39 +1637,38 @@ function update(dt) {
       break;
     case "hooked": {
       const r = rod();
-      // the fish alternates calm spells and sudden "runs" — bigger fish run more often and harder
-      const fishPull = currentFish.junk ? 0.5 : (currentFish.kr >= 90 ? 1.3 : currentFish.shape === "long" ? 1.5 : 1.0);
-      const fishFight = currentFish.junk ? 0.5 : clamp(0.55 + (currentFish.max || 2) * 0.13, 0.55, 2.4);
+      // how hard THIS fish fights, scaled by its actual weight (kg):
+      // a small fish is a quick reel-in, a heavy trophy is a real battle
+      const fishFight = currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.16, 0.4, 2.8);
       pullTimer -= dt;
       if (pulling > 0) {
         pulling -= dt;
         if (pulling <= 0) setHint("Sveiv inn! 🎣");
       } else if (pullTimer <= 0) {
-        // a fresh run — the fish bolts; you must EASE OFF or the line snaps
-        pulling = 0.45 + Math.random() * 0.6 + fishFight * 0.16;
-        pullTimer = 0.7 + Math.random() * 1.1;
-        setHint("SLIPP! Den rykker! ⚠️");
-        blip(150, 0.12, "sawtooth", 0.05);
+        // a run — heavier fish bolt more often and for longer
+        pulling = 0.3 + Math.random() * 0.4 + fishFight * 0.25;
+        pullTimer = Math.max(0.5, 1.8 - fishFight * 0.45) + Math.random() * 0.9;
+        if (fishFight > 0.9) { setHint("SLIPP! Den rykker! ⚠️"); blip(150, 0.12, "sawtooth", 0.05); }
       }
       const rb = buff.t > 0 ? buff.reel : 0;        // booze eases the fight a little
       if (holding) {
         if (pulling > 0) {
-          // hauling against a running fish → tension spikes fast, almost no line gained
-          tension += dt * (24 + 40 * fishFight) * fishPull * r.tens * (1 - rb * 0.35);
-          progress += dt * 4 * r.reel;
+          // hauling against a run loads the line fast (worse the bigger the fish), little progress
+          tension += dt * (10 + 30 * fishFight) * r.tens * (1 - rb * 0.35);
+          progress += dt * 5 * r.reel;
         } else {
-          // reeling during a calm moment → good progress, only light strain
-          progress += dt * 23 * r.reel * (1 + rb);
-          tension += dt * 9 * fishFight * r.tens;
+          // calm reeling: quick progress, only light strain
+          progress += dt * 26 * r.reel * (1 + rb);
+          tension += dt * (3 + 5 * fishFight) * r.tens;
         }
         if (Math.random() < dt * 12) sfxReel();
       } else {
-        // letting line out: progress slips a touch, tension drains quickly
-        progress -= dt * 6;
-        tension -= dt * 30;
+        // letting line out: a touch of slip, tension drains fast
+        progress -= dt * 5;
+        tension -= dt * 32;
       }
-      // the fish's own run always loads the line, whether you reel or not
-      if (pulling > 0) tension += dt * 14 * fishFight * fishPull * r.tens;
+      // the fish's own run always loads the line a bit, even if you let go
+      if (pulling > 0) tension += dt * (4 + 10 * fishFight) * r.tens;
       progress = clamp(progress, 0, 100); tension = clamp(tension, 0, 100);
       bobber.y = castTarget.y + 6 + Math.sin(t * 18) * (pulling > 0 ? 4 : 1.5);
       bobber.x = castTarget.x + Math.sin(t * 9) * (pulling > 0 ? 3 : 1);
@@ -2197,6 +2212,7 @@ function drawMarketBg() {
   ctx.strokeRect(CASINO_STALL.x, CASINO_STALL.y + 6, CASINO_STALL.w, CASINO_STALL.h - 10);
   ctx.globalAlpha = 1;
   drawMarketTruck();
+  drawLicenseBooth();
   drawFireflies(); drawVignette();
 }
 // our own truck parked at the market — click it to drive back to the water
@@ -2517,6 +2533,81 @@ function drawGrumpyMan(x, y) {
     ctx.globalAlpha = 1;
   }
 }
+/* ---- the fishing warden (sells fiskekort in his own booth on the market) ---- */
+function drawLicenseWarden(x, y) {
+  const sway = Math.sin(t * 1.2) * 0.8; x += sway;
+  // olive uniform jacket
+  px(x - 15, y + 4, 30, 30, "#4a5a38"); px(x - 15, y + 4, 30, 3, "#5a6a44");
+  // shirt + green tie
+  px(x - 4, y + 4, 8, 18, "#dfe6d2");
+  px(x - 2, y + 5, 4, 14, "#2f5a3e");
+  // brass buttons
+  for (let i = 0; i < 3; i++) px(x - 1, y + 8 + i * 6, 2, 2, "#caa23a");
+  // breast badge
+  px(x - 12, y + 9, 4, 3, "#caa23a"); px(x - 11, y + 10, 2, 1, "#fff2a0");
+  // arms — one holds a clipboard
+  px(x - 19, y + 8, 5, 16, "#4a5a38"); px(x + 14, y + 8, 5, 14, "#4a5a38");
+  px(x - 20, y + 22, 4, 4, "#e3b58c");
+  // clipboard in the near hand
+  px(x + 11, y + 18, 11, 13, "#6a4a2a"); px(x + 12, y + 19, 9, 11, "#efe7d2");
+  px(x + 15, y + 17, 4, 2, "#caa23a");
+  for (let i = 0; i < 3; i++) px(x + 13, y + 22 + i * 3, 7, 1, "#9aa0a8");
+  px(x + 9, y + 20, 4, 4, "#e3b58c");
+  // head
+  px(x - 8, y - 9, 16, 14, "#e7c19a"); px(x - 8, y + 3, 16, 2, "#d2a87c");
+  // friendly eyes + moustache + small smile
+  px(x - 4, y - 3, 2, 2, "#2a2030"); px(x + 2, y - 3, 2, 2, "#2a2030");
+  px(x - 4, y + 1, 8, 1, "#6a5a3a"); px(x - 2, y + 3, 4, 1, "#9a6a5a");
+  // peaked cap (dark green) with black brim + brass badge
+  px(x - 9, y - 12, 18, 5, "#2f4a30"); px(x - 9, y - 7, 18, 2, "#243a26");
+  px(x - 12, y - 5, 8, 2, "#1a1a1a");
+  px(x - 2, y - 11, 4, 3, "#caa23a"); px(x - 1, y - 10, 2, 1, "#fff2a0");
+}
+// the little permit booth standing out on the market square
+function drawLicenseBooth() {
+  const r = LICENSE_BOOTH, cx = r.x + r.w / 2, y = r.y;
+  ctx.globalAlpha = 0.25; ctx.fillStyle = "#000"; ctx.beginPath(); ctx.ellipse(cx, y + r.h, r.w / 2, 4, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1;
+  // booth box + plank shading
+  px(cx - 30, y + 2, 60, 46, "#5a4632"); px(cx - 30, y + 2, 60, 3, "#6e573f");
+  for (let yy = y + 8; yy < y + 46; yy += 6) px(cx - 28, yy, 56, 1, "#4a3826");
+  // striped awning
+  for (let i = 0; i < 7; i++) px(cx - 31 + i * 9, y - 7, 9, 9, i % 2 ? "#3a7a4a" : "#e8e2d0");
+  px(cx - 33, y - 9, 66, 3, "#2c2230");
+  // the warden, then the counter in front of him
+  drawLicenseWarden(cx, y + 12);
+  px(cx - 32, y + 30, 64, 7, "#4a3a2a"); px(cx - 32, y + 30, 64, 2, "#5e4a32");
+  // sign plank
+  px(cx - 28, y + 38, 56, 9, "#6a4a2a"); px(cx - 28, y + 38, 56, 2, "#7e5a36");
+  ctx.fillStyle = "#ffe6a0"; ctx.font = "bold 7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("FISKEKORT", cx, y + 43);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  // pulsing «click me» outline
+  const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+  ctx.globalAlpha = 0.35 + 0.45 * pulse; ctx.strokeStyle = "#ffe6a0"; ctx.lineWidth = 1;
+  ctx.strokeRect(r.x, r.y - 8, r.w, r.h + 8);
+  ctx.globalAlpha = 1;
+}
+function drawShopLicenseBg() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#27322a"); g.addColorStop(1, "#161d18"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // wood-panel wall
+  for (let x = 0; x < W; x += 28) px(x, 0, 1, 150, "#1f291f");
+  // a framed "FISKEKORT KREVES" notice
+  px(40, 36, 96, 60, "#3a2c1e"); px(44, 40, 88, 52, "#e8e0cc");
+  ctx.fillStyle = "#3a4a30"; ctx.font = "bold 8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("FISKEKORT", 88, 52); ctx.fillText("KREVES", 88, 62);
+  ctx.strokeStyle = "#7a8a5a"; ctx.lineWidth = 1; ctx.strokeRect(56, 70, 64, 14);
+  ctx.fillStyle = "#6a7a4a"; ctx.font = "6px monospace"; ctx.fillText("av alle som fisker", 88, 77);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  // pinned permit cards on the wall
+  const cols = ["#ffe6a0", "#bfe6ef", "#f0c0d0", "#c8f0c0"];
+  for (let i = 0; i < 4; i++) { const cx = 168 + i * 28; px(cx, 44, 18, 12, cols[i]); px(cx, 44, 18, 2, "#fff"); px(cx + 8, 41, 2, 4, "#7a5a38"); }
+  // counter + the warden
+  px(60, 175, 360, 55, "#3a4a30"); px(60, 175, 360, 6, "#4a5e3f");
+  drawLicenseWarden(150, 150);
+  drawVignette();
+}
+
 /* ---- boost visuals ---- */
 function drawBuffAura() {
   if (buff.t <= 0) return;
@@ -3239,6 +3330,21 @@ function drawMapBg() {
     }
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   }
+  // the market town — always reachable from the map (sell fish, buy gear)
+  {
+    const mx = MAP_MARKET.x, my = MAP_MARKET.y;
+    const pr = 0.5 + 0.5 * Math.sin(t * 3);
+    ctx.globalAlpha = 0.4 + 0.4 * pr; ctx.strokeStyle = "#c43a2a"; ctx.lineWidth = 1; ctx.strokeRect(mx - 12, my - 22, 24, 18); ctx.globalAlpha = 1;
+    // little market house: striped awning + walls
+    px(mx - 10, my - 12, 20, 12, "#caa06a"); px(mx - 10, my - 12, 20, 2, "#a8814a");
+    for (let i = 0; i < 5; i++) px(mx - 10 + i * 4, my - 18, 4, 6, i % 2 ? "#c43a2a" : "#e8e2d0");
+    px(mx - 12, my - 19, 24, 2, "#7a5a38");
+    px(mx - 3, my - 8, 6, 8, "#6e4a2a");   // door
+    // label
+    ctx.fillStyle = "#3a2c18"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText("Markedet", mx, my + 4);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  }
 }
 
 /* ---- travel: red pickup driving to the next spot ---- */
@@ -3327,13 +3433,14 @@ function endIntro() {
   stopIntroMusic(); stopEngine();
   setScreen("menu");
 }
-// no folk tune any more — the old man is being chased off the farm by his furious wife,
-// so the intro runs on dramatic stings and the wife's yelling (lyder/woman-moan.mp3)
+// no folk tune any more — the old man is being chased off by his furious wife,
+// so the intro runs on dramatic stings and her screaming (lyder/Red girl screaming loud.mp3)
 let introMusicNode = null;
 function startIntroMusic() {
   stopIntroMusic();
   introSting();                 // ominous opening hit as the door flies open
-  intro.nextYell = 0.5;         // schedule the first shriek from the doorway
+  intro.nextYell = 0.6;         // schedule the first shriek from the doorway
+  intro.threw = false;
 }
 function stopIntroMusic() {
   if (introMusicNode) { stopSample(introMusicNode); introMusicNode = null; }
@@ -3344,9 +3451,9 @@ function introSting() {
   setTimeout(() => blip(58, 0.8, "sawtooth", 0.13), 130);
 }
 function womanYell() {
-  // the furious wife in the doorway: her recorded shriek plus a sharp sting
+  // the furious wife in the doorway: her recorded scream plus a sharp sting
   if (introMusicNode) { stopSample(introMusicNode); introMusicNode = null; }
-  introMusicNode = playSample("moan", { vol: 1.0 });
+  introMusicNode = playSample("scream", { vol: 1.0 });
   blip(880, 0.09, "square", 0.05); blip(660, 0.12, "square", 0.04, 0.05);
 }
 function introTruckX(tt) { if (tt < IN.driveS) return 372; const dx = tt - IN.driveS; return 372 + 10 * dx * dx; }
@@ -3361,8 +3468,10 @@ function drawFarmhouse() {
   px(74, 106, 8, 16, "#6e3a30"); px(74, 106, 8, 3, "#7e463a");
   for (let i = 0; i < 4; i++) { const a = 0.5 - i * 0.1; ctx.globalAlpha = Math.max(0, a); ctx.fillStyle = "#d8d2c8"; ctx.beginPath(); ctx.arc(78 + Math.sin(t * 0.8 + i) * 3, 100 - i * 7 - (t * 8) % 7, 3 + i, 0, 6.28); ctx.fill(); }
   ctx.globalAlpha = 1;
-  // window with white frame
-  px(20, 152, 20, 18, "#e8efe0"); px(22, 154, 16, 14, "#9ed2e0"); px(29, 154, 1, 14, "#e8efe0"); px(22, 160, 16, 1, "#e8efe0");
+  // window with white frame + warm cosy glow (matches the game's evening mood)
+  const wg = ctx.createRadialGradient(30, 161, 2, 30, 161, 20); wg.addColorStop(0, "rgba(255,210,130,0.55)"); wg.addColorStop(1, "rgba(255,210,130,0)");
+  ctx.fillStyle = wg; ctx.fillRect(10, 141, 40, 40);
+  px(20, 152, 20, 18, "#e8efe0"); px(22, 154, 16, 14, "#f0c878"); px(29, 154, 1, 14, "#e8efe0"); px(22, 160, 16, 1, "#e8efe0");
   // door
   px(68, 166, 18, 40, "#5a3a24"); px(68, 166, 18, 2, "#6e4a30"); px(82, 186, 2, 2, "#caa84a");
 }
@@ -3576,37 +3685,74 @@ function drawCat() {
   }
 }
 function drawAngryWife(tt) {
-  // the furious wife (kjærringa) planted in the doorway, shrieking and shaking a rolling pin
-  const wx = 77, wy = 206;
-  const shake = Math.sin(t * 16) * 1.1;        // trembling with rage
-  const armUp = Math.sin(t * 9) * 3;           // rolling pin waving up and down
+  // the furious wife (kjærringa) filling the doorway — tall, clearly a woman, shaking her fist
+  const wx = 78, wy = 207;
+  const shake = Math.sin(t * 14) * 1.0;            // trembling with rage
+  // she winds up and hurls a pot around mid-intro, then keeps shaking her fist
+  const throwing = tt >= IN.wifeThrowS && tt < IN.wifeThrowE;
+  const wind = throwing ? clamp((tt - IN.wifeThrowS) / (IN.wifeThrowE - IN.wifeThrowS), 0, 1) : 0;
+  const armUp = throwing ? lerp(-6, 8, wind) : Math.sin(t * 8) * 3;   // arm swings down through the throw
   // shadow
-  ctx.globalAlpha = 0.2; ctx.fillStyle = "#101810"; ctx.beginPath(); ctx.ellipse(wx, wy + 1, 6, 2, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1;
-  // long dress
-  px(wx - 6 + shake * 0.4, wy - 20, 12, 20, "#5a6e8a"); px(wx - 6 + shake * 0.4, wy - 20, 12, 2, "#6e84a0");
-  // white apron
-  px(wx - 4 + shake * 0.4, wy - 16, 8, 14, "#e6e0d2"); px(wx - 4 + shake * 0.4, wy - 16, 8, 1, "#f4eee0");
-  // arms: left flung up with the rolling pin, right on her hip
-  px(wx - 9, wy - 23 + armUp, 3, 8, "#e8b896");
-  px(wx + 6, wy - 18, 3, 7, "#e8b896");
-  // rolling pin in the raised fist
-  px(wx - 14, wy - 27 + armUp, 10, 3, "#caa06a"); px(wx - 16, wy - 27 + armUp, 2, 3, "#8a6a40"); px(wx - 4, wy - 27 + armUp, 2, 3, "#8a6a40");
-  // head — flushed red with fury
-  const hx = wx + shake, hy = wy - 28;
-  px(hx - 4, hy - 4, 9, 8, "#e8927a"); px(hx - 4, hy + 3, 9, 1, "#cf7660");
-  // hair pulled back in a bun
-  px(hx - 5, hy - 6, 11, 3, "#5a3a28"); px(hx + 5, hy - 7, 4, 5, "#5a3a28");
-  // angry eyes + wide open yelling mouth
-  px(hx - 1, hy, 1, 1, "#2a1810"); px(hx + 3, hy, 1, 1, "#2a1810");
-  px(hx, hy + 3, 5, 3, "#6e1c14"); px(hx + 1, hy + 4, 3, 1, "#b03a2a");
-  // furrowed angry brows
+  ctx.globalAlpha = 0.22; ctx.fillStyle = "#101810"; ctx.beginPath(); ctx.ellipse(wx, wy + 1, 8, 2, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1;
+  // long flared dress (clearly a long skirt)
+  ctx.fillStyle = "#7a3a6a";
+  ctx.beginPath(); ctx.moveTo(wx - 6 + shake * 0.4, wy - 26); ctx.lineTo(wx + 6 + shake * 0.4, wy - 26);
+  ctx.lineTo(wx + 11 + shake * 0.4, wy); ctx.lineTo(wx - 11 + shake * 0.4, wy); ctx.closePath(); ctx.fill();
+  px(wx - 6 + shake * 0.4, wy - 26, 12, 2, "#9a4f86");           // bodice highlight
+  // waist + apron
+  px(wx - 8 + shake * 0.4, wy - 12, 16, 2, "#5a2a4e");          // waistband
+  ctx.fillStyle = "#efe7d6";
+  ctx.beginPath(); ctx.moveTo(wx - 4 + shake * 0.4, wy - 16); ctx.lineTo(wx + 4 + shake * 0.4, wy - 16);
+  ctx.lineTo(wx + 7 + shake * 0.4, wy - 1); ctx.lineTo(wx - 7 + shake * 0.4, wy - 1); ctx.closePath(); ctx.fill();
+  // bust (reads as female)
+  px(wx - 6 + shake * 0.4, wy - 24, 5, 4, "#8a4576"); px(wx + 1 + shake * 0.4, wy - 24, 5, 4, "#8a4576");
+  // hip arm (the other hand planted on her hip)
+  px(wx + 7 + shake * 0.4, wy - 22, 3, 9, "#e8b896"); px(wx + 8 + shake * 0.4, wy - 14, 3, 3, "#e8b896");
+  // raised throwing/fist arm
+  const ax = wx - 8 + shake * 0.4, ay = wy - 30 + armUp;
+  ctx.strokeStyle = "#e8b896"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(wx - 4 + shake * 0.4, wy - 24); ctx.lineTo(ax, ay); ctx.stroke();
+  px(ax - 2, ay - 2, 4, 4, "#e8b896");                          // fist
+  if (throwing && wind < 0.5) { px(ax - 3, ay - 5, 6, 5, "#a85a3a"); px(ax - 3, ay - 5, 6, 1, "#c47049"); } // pot still in hand at wind-up
+  // head — flushed with fury
+  const hx = wx + shake, hy = wy - 36;
+  px(hx - 5, hy - 4, 11, 10, "#ec9a82"); px(hx - 5, hy + 5, 11, 1, "#cf7660");
+  // long hair framing the face + flowing down (clearly feminine)
+  ctx.fillStyle = "#5a3324";
+  px(hx - 7, hy - 6, 15, 4, "#5a3324");                          // top
+  px(hx - 7, hy - 2, 3, 13, "#5a3324"); px(hx + 5, hy - 2, 3, 13, "#5a3324");  // down both sides
+  px(hx - 6, hy - 7, 13, 2, "#6e4030");                          // hair highlight
+  // angry eyes + furrowed brows + open yelling mouth
+  px(hx - 2, hy, 2, 2, "#2a1810"); px(hx + 3, hy, 2, 2, "#2a1810");
   ctx.strokeStyle = "#3a2418"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(hx - 3, hy - 2); ctx.lineTo(hx, hy - 1); ctx.moveTo(hx + 5, hy - 2); ctx.lineTo(hx + 2, hy - 1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(hx - 3, hy - 2); ctx.lineTo(hx, hy - 1); ctx.moveTo(hx + 6, hy - 2); ctx.lineTo(hx + 3, hy - 1); ctx.stroke();
+  px(hx, hy + 3, 6, 3, "#6e1c14"); px(hx + 1, hy + 4, 4, 1, "#b03a2a");
+  // red lips/blush hint of make-up
+  px(hx - 4, hy + 2, 1, 1, "#d06a6a"); px(hx + 6, hy + 2, 1, 1, "#d06a6a");
   // pulsing anger-curse above her head while she yells
   if (intro.running && Math.sin(t * 6) > -0.3) {
     ctx.fillStyle = "#ff5a4a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("#%@!", hx, hy - 13 + Math.sin(t * 8) * 1.5);
+    ctx.fillText("#%@!", hx, hy - 12 + Math.sin(t * 8) * 1.5);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  }
+}
+// the pot she hurls after the fleeing old man, arcing across the yard
+function drawWifeThrow(tt) {
+  if (tt < IN.wifeThrowR || tt > IN.wifeThrowL + 0.4) return;
+  const k = clamp((tt - IN.wifeThrowR) / (IN.wifeThrowL - IN.wifeThrowR), 0, 1);
+  // farmer's position at this moment (so the pot chases him)
+  const target = clamp(lerp(96, 322, (tt - IN.walkStart) / (IN.walkEnd - IN.walkStart)), 96, 300) - 18;
+  const x = lerp(70, target, k);
+  const y = lerp(176, 202, k) - Math.sin(k * Math.PI) * 34;       // high arc
+  if (k < 1) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(tt * 12);
+    px(-4, -3, 8, 7, "#a85a3a"); px(-4, -3, 8, 2, "#c47049"); px(-3, -4, 6, 2, "#8a4326");
+    ctx.restore();
+  } else {
+    // shattered on the ground behind him + a little dust
+    ctx.globalAlpha = clamp(1 - (tt - IN.wifeThrowL) / 0.4, 0, 1);
+    for (let i = 0; i < 6; i++) { const sx = target + (i - 3) * 4, sy = 203 + (i % 2) * 2; px(sx, sy, 2, 2, "#a85a3a"); }
+    ctx.fillStyle = "rgba(180,160,140,0.5)"; ctx.beginPath(); ctx.arc(target, 200, 6, 0, 6.28); ctx.fill();
+    ctx.globalAlpha = 1;
   }
 }
 function drawFarmer(tt) {
@@ -3720,6 +3866,8 @@ function drawIntroBg() {
   drawFarmhouse();
   // the furious wife planted in the doorway
   drawAngryWife(tt);
+  // the pot she flings after the old man
+  drawWifeThrow(tt);
   // a few crows startled into the air by all the shouting
   ctx.fillStyle = "#1a1620";
   for (let i = 0; i < 5; i++) {
@@ -3771,6 +3919,7 @@ function render() {
     case "travel": drawTravelBg(); break;
     case "shopFish": drawShopFishBg(); break;
     case "shopRod": drawShopRodBg(); break;
+    case "shopLicense": drawShopLicenseBg(); break;
     case "shopKiosk": drawShopKioskBg(); break;
     case "shopCasino": drawShopCasinoBg(); break;
   }
