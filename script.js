@@ -5407,6 +5407,39 @@ function drawIntroBg() {
   drawVignette();
 }
 
+// On landscape phones the shop menu docks to one side, leaving a narrow strip of
+// the scene. A plain wide shot leaves the keeper tiny and lonely there, so we zoom
+// the scene toward the shopkeeper/counter — it reads like you stepped up to the desk.
+const SHOP_FOCUS = {
+  shopFish:    { fx: 330, fy: 150, tx: 360, ty: 150, z: 1.4 },
+  shopRod:     { fx: 150, fy: 156, tx: 116, ty: 150, z: 1.5 },
+  shopKiosk:   { fx: 150, fy: 150, tx: 116, ty: 150, z: 1.5 },
+  shopLicense: { fx: 150, fy: 152, tx: 118, ty: 150, z: 1.45 },
+  shopCasino:  { fx: 240, fy: 110, tx: 176, ty: 118, z: 1.32 },
+};
+let _shopZoomMQ = null;
+function shopZoomActive() {
+  if (!_shopZoomMQ && window.matchMedia) {
+    _shopZoomMQ = window.matchMedia(
+      "(orientation: landscape) and (max-height: 540px), (orientation: landscape) and (pointer: coarse)"
+    );
+  }
+  return _shopZoomMQ ? _shopZoomMQ.matches : false;
+}
+function drawShopScene(key, drawFn) {
+  const f = SHOP_FOCUS[key];
+  if (f && shopZoomActive()) {
+    ctx.save();
+    ctx.translate(f.tx, f.ty);
+    ctx.scale(f.z, f.z);
+    ctx.translate(-f.fx, -f.fy);
+    drawFn();
+    ctx.restore();
+  } else {
+    drawFn();
+  }
+}
+
 function render() {
   ctx.clearRect(0, 0, W, H);
   switch (screen) {
@@ -5420,11 +5453,11 @@ function render() {
     case "intro": drawIntroBg(); break;
     case "map": drawMapBg(); break;
     case "travel": drawTravelBg(); break;
-    case "shopFish": drawShopFishBg(); break;
-    case "shopRod": drawShopRodBg(); break;
-    case "shopLicense": drawShopLicenseBg(); break;
-    case "shopKiosk": drawShopKioskBg(); break;
-    case "shopCasino": drawShopCasinoBg(); break;
+    case "shopFish": drawShopScene("shopFish", drawShopFishBg); break;
+    case "shopRod": drawShopScene("shopRod", drawShopRodBg); break;
+    case "shopLicense": drawShopScene("shopLicense", drawShopLicenseBg); break;
+    case "shopKiosk": drawShopScene("shopKiosk", drawShopKioskBg); break;
+    case "shopCasino": drawShopScene("shopCasino", drawShopCasinoBg); break;
   }
 }
 
