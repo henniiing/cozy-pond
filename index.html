@@ -69,6 +69,7 @@
         <div class="menu-buttons">
           <button class="big-btn" id="startBtn" data-action="startGame">Start spill</button>
           <button class="big-btn ghost" data-action="openHelp">Hvordan spille</button>
+          <button class="big-btn ghost" data-action="openScores">Toppliste</button>
         </div>
         <button class="link-btn" data-action="watchIntro">Se introen igjen</button>
         <button class="link-btn" data-action="resetSave">Nullstill spill</button>
@@ -106,6 +107,34 @@
         <p><b>Fiskekort &amp; bot:</b> Fisker oppsynet deg uten gyldig kort for vannet du står i, ryker 25 % av pengene i bot. Kortene dine ser du oppe til venstre.</p>
         <p><b>Godsaker:</b> Alt fra kiosken gir midlertidig fiskeflaks og samles i RUS-baren nede til venstre — men blander du for mye, vingler du! Sekken ved siden av deg har også stang-bytte og fangstrekorder.</p>
         <p><b>Småtteri:</b> Radioen spiller country mens du fisker, og katten din kan slå følge — men trykk på den om den prøver å snike til seg den minste fisken!</p>
+      </div>
+    </div>
+
+    <!-- ===== Leaderboard ===== -->
+    <div id="scores" class="overlay">
+      <div class="topbar">
+        <button class="ui-btn" data-action="backFromScores">← Tilbake</button>
+      </div>
+      <div class="scores-body">
+        <h2>Toppliste</h2>
+        <div class="score-submit">
+          <input id="playerName" class="name-input" maxlength="18" placeholder="Skriv navnet ditt" autocomplete="off" spellcheck="false" />
+          <button class="big-btn" data-action="submitScore">Send inn poengsum</button>
+        </div>
+        <div id="myScore" class="my-score"></div>
+        <div id="scoreStatus" class="score-status"></div>
+        <div class="score-lists">
+          <div class="score-col">
+            <h3>🏆 Storfiskeren</h3>
+            <div class="score-sub">Arter + troféer + ferdighet</div>
+            <ol id="listMastery" class="score-list"><li class="score-empty">Laster …</li></ol>
+          </div>
+          <div class="score-col">
+            <h3>🐋 Største fangst</h3>
+            <div class="score-sub">Din tyngste enkeltfisk</div>
+            <ol id="listBiggest" class="score-list"><li class="score-empty">Laster …</li></ol>
+          </div>
+        </div>
       </div>
     </div>
 

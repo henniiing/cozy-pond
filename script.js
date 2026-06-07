@@ -36,7 +36,7 @@ const licenseStateEl = $("licenseState");
    ========================================================================= */
 const SAVE_KEY = "cozyPond_v1";
 function defaultSave() {
-  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false };
+  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "" };
 }
 function loadSave() {
   try {
@@ -270,7 +270,7 @@ let buffFlash = 0, drunk = 0, smoking = 0, snusing = 0;
 let knockout = { active: false, t: 0, phase: "fall" };
 const smoke = [];
 let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, funnPanel = false, kioskIdleTimer = 5, partyNode = null;
-let marketNode = null, casinoAmbNode = null, casinoSpinNode = null, casinoLoseNode = null;
+let marketNode = null, casinoAmbNode = null, casinoSpinNode = null, casinoLoseNode = null, licenseAmbNode = null;
 let menuNode = null;
 // fiskeoppsynet (license inspector) — a rare visiting NPC
 let inspector = { active: false, t: 0, x: -18, phase: "in", line: "", fined: false };
@@ -357,9 +357,11 @@ function noise(dur, freq, vol = 0.15, type = "lowpass") {
 }
 
 /* ---- recorded samples (mp3 files in /lyder) ---- */
-const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", scream: "Red girl screaming loud", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music", catPurr: "cat-purring", catAngry: "cat-angry-meow", sinister: "sinister-laugh", motor: "backgorund-motor.sound", bottleBreak: "glass-bottle-breaking", blackout: "blacokout", buying: "buying-item", radio5: "radiosong5", radio6: "radiosong6", sellFishBg: "sell-fish-shop-backgorund-music" };
+const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", scream: "Red girl screaming loud", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music", catPurr: "cat-purring", catAngry: "cat-angry-meow", sinister: "sinister-laugh", motor: "backgorund-motor.sound", bottleBreak: "glass-bottle-breaking", blackout: "blacokout", buying: "buying-item", radio5: "radiosong5", radio6: "radiosong6", sellFishBg: "sell-fish-shop-backgorund-music", licenseAmb: "fiskekort-ambience" };
 const sampleEls = {};
 for (const k in SAMPLES) { const a = new Audio(`lyder/${encodeURIComponent(SAMPLES[k])}.mp3`); a.preload = "auto"; sampleEls[k] = a; }
+// some clips have dead air at the front — skip straight to where the sound actually starts
+const SAMPLE_OFFSETS = { buying: 1.5 };
 const activeLoops = new Set();
 const activeVoices = new Set(); // longer one-shot voice/sfx clones, so they can be cut on screen change
 function playSample(name, opts = {}) {
@@ -372,9 +374,10 @@ function playSample(name, opts = {}) {
   node.volume = node._baseVol * effVol();
   if (opts.rate) node.playbackRate = opts.rate;
   node._stopped = false;
-  try { node.currentTime = 0; } catch (e) {}
+  const startAt = opts.offset != null ? opts.offset : (SAMPLE_OFFSETS[name] || 0);   // skip leading silence in some clips (e.g. the buy sfx)
+  try { node.currentTime = startAt; } catch (e) {}
   const pr = node.play();
-  if (pr && pr.then) { node._playPromise = pr; pr.then(() => { if (node._stopped) { try { node.pause(); } catch (e) {} } }).catch(() => {}); }
+  if (pr && pr.then) { node._playPromise = pr; pr.then(() => { if (node._stopped) { try { node.pause(); } catch (e) {} } else if (startAt) { try { if (node.currentTime < startAt - 0.05) node.currentTime = startAt; } catch (e) {} } }).catch(() => {}); }
   if (loop) activeLoops.add(node);
   else { activeVoices.add(node); node.addEventListener("ended", () => activeVoices.delete(node), { once: true }); }
   return node;
@@ -927,6 +930,7 @@ window.addEventListener("keydown", (e) => {
     if (screen === "shopFish" || screen === "shopRod" || screen === "shopKiosk" || screen === "shopCasino") setScreen("market");
     else if (screen === "market") startTravel(save.location);
     else if (screen === "map") setScreen("game");
+    else if (screen === "scores") setScreen(prevScreen === "menu" ? "menu" : "game");
     else if (screen === "help") setScreen(prevScreen === "menu" ? "menu" : "game");
   }
 });
@@ -956,6 +960,12 @@ frame.addEventListener("click", (e) => {
 document.querySelectorAll(".vol-slider").forEach((s) => {
   s.addEventListener("input", (e) => { ensureAudio(); setMasterVolume(parseInt(e.target.value, 10) / 100); });
 });
+// remember the leaderboard name as it's typed; Enter submits
+const playerNameEl = $("playerName");
+if (playerNameEl) {
+  playerNameEl.addEventListener("change", () => { save.playerName = cleanName(playerNameEl.value); persist(); });
+  playerNameEl.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submitScore(); } });
+}
 syncVolUI();
 
 function doAction(a, data) {
@@ -983,6 +993,9 @@ function doAction(a, data) {
     case "casinoBet": casinoBet(data.amt); break;
     case "casinoSpin": casinoSpin(); break;
     case "backFromHelp": setScreen(prevScreen === "menu" ? "menu" : "game"); break;
+    case "openScores": prevScreen = screen; openScores(); break;
+    case "backFromScores": setScreen(prevScreen === "menu" ? "menu" : "game"); break;
+    case "submitScore": submitScore(); break;
     case "toggleMute": toggleMute(); break;
     case "toggleFullscreen": toggleFullscreen(); break;
     case "resetSave": if (confirm("Nullstille ALL framgang? Penger, fisk, fiskekort og samlingen forsvinner.") && confirm("Helt sikker? Dette kan IKKE angres.")) { save = defaultSave(); setLocation(save.location); persist(); refreshAll(); } break;
@@ -1030,9 +1043,136 @@ function toggleFullscreen() {
 }
 
 /* =========================================================================
+   Global leaderboard (dreamlo) — two boards from one submission:
+     • score  field → "Storfiskeren": species + trophies + skill (mastery)
+     • seconds field → "Største fangst": your single heaviest fish, in grams
+   dreamlo is http-only, but the game is served over https, so every request is
+   routed through a public https CORS proxy to avoid mixed-content blocking.
+   ========================================================================= */
+const DREAMLO_PUBLIC = "6a25cca68f40bb17b07b2d4d";
+const DREAMLO_PRIVATE = "lV6DCx6CQEGJ1uIa1epi1AcY_5FKrgHUeWLrsvn";
+const DREAMLO_BASE = "http://dreamlo.com/lb/";
+const SCORE_PROXIES = [
+  (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  (u) => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+];
+let scoresBusy = false;
+
+// turn the local save into the two board values + a human summary line
+function computeScore() {
+  let species = 0, trophies = 0, totalKg = 0, totalCount = 0, biggestKg = 0, biggestName = "";
+  const tally = (f, isTrophy) => {
+    const r = save.record[f.key];
+    if (!r || !r.count) return;
+    if (isTrophy) trophies++; else species++;
+    totalCount += r.count; totalKg += r.best;
+    if (r.best > biggestKg) { biggestKg = r.best; biggestName = f.name; }
+  };
+  for (const f of FISH) tally(f, false);
+  for (const f of RARES) tally(f, true);
+  const score = species * 1000 + trophies * 2500 + Math.round(totalKg * 100) + totalCount * 5;
+  const biggestG = Math.round(biggestKg * 1000);
+  const text = `${species} arter, ${trophies} trofeer` + (biggestName ? `, ${biggestName} ${biggestKg.toFixed(2)} kg` : "");
+  return { score, species, trophies, totalCount, biggestKg, biggestName, biggestG, text };
+}
+
+// sanitise a player name for dreamlo (no asterisks/slashes, trimmed, capped)
+function cleanName(n) {
+  return (n || "").replace(/[*\/\\<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 18);
+}
+
+// fetch a dreamlo URL through the first proxy that answers
+async function proxyGet(dreamloUrl) {
+  let lastErr;
+  for (const wrap of SCORE_PROXIES) {
+    try {
+      const res = await fetch(wrap(dreamloUrl) + "&_=" + Date.now(), { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return await res.text();
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("fetch failed");
+}
+
+function parseDreamlo(txt) {
+  let j; try { j = JSON.parse(txt); } catch (e) { return []; }
+  const lb = j && j.dreamlo && j.dreamlo.leaderboard;
+  if (!lb || !lb.entry) return [];
+  return Array.isArray(lb.entry) ? lb.entry : [lb.entry];
+}
+
+function renderScoreList(elId, entries, valFn) {
+  const el = $(elId); if (!el) return;
+  const me = cleanName(save.playerName);
+  if (!entries.length) { el.innerHTML = '<li class="score-empty">Ingen poeng ennå — bli den første!</li>'; return; }
+  el.innerHTML = entries.slice(0, 15).map((e) => {
+    const name = (e.name || "").toString();
+    const mine = me && name.toLowerCase() === me.toLowerCase();
+    const sub = (e.text || "").toString();
+    return `<li class="score-row${mine ? " me" : ""}"><span class="s-name" title="${escapeHtml(sub)}">${escapeHtml(name)}</span><span class="s-val">${valFn(e)}</span></li>`;
+  }).join("");
+}
+
+function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+async function loadScores() {
+  const byScore = $("listMastery"), byBig = $("listBiggest");
+  if (byScore) byScore.innerHTML = '<li class="score-empty">Laster …</li>';
+  if (byBig) byBig.innerHTML = '<li class="score-empty">Laster …</li>';
+  try {
+    const [a, b] = await Promise.all([
+      proxyGet(DREAMLO_BASE + DREAMLO_PUBLIC + "/json/0/15"),
+      proxyGet(DREAMLO_BASE + DREAMLO_PUBLIC + "/json-seconds/0/15"),
+    ]);
+    renderScoreList("listMastery", parseDreamlo(a), (e) => fmt(parseInt(e.score, 10) || 0) + " p");
+    renderScoreList("listBiggest", parseDreamlo(b), (e) => ((parseInt(e.seconds, 10) || 0) / 1000).toFixed(2) + " kg");
+  } catch (e) {
+    const msg = '<li class="score-empty">Kunne ikke laste topplista.</li>';
+    if (byScore) byScore.innerHTML = msg;
+    if (byBig) byBig.innerHTML = msg;
+  }
+}
+
+function openScores() {
+  setScreen("scores");
+  const input = $("playerName");
+  if (input) input.value = save.playerName || "";
+  const sc = computeScore();
+  const my = $("myScore");
+  if (my) my.textContent = sc.score > 0
+    ? `Din poengsum: ${fmt(sc.score)} p · ${sc.species} arter · ${sc.trophies} troféer` + (sc.biggestName ? ` · største ${sc.biggestName} ${sc.biggestKg.toFixed(2)} kg` : "")
+    : "Fang noen fisk først, så får du en poengsum å sende inn!";
+  const st = $("scoreStatus"); if (st) st.textContent = "";
+  loadScores();
+}
+
+async function submitScore() {
+  if (scoresBusy) return;
+  const input = $("playerName");
+  const name = cleanName(input ? input.value : save.playerName);
+  const st = $("scoreStatus");
+  if (!name) { if (st) st.textContent = "Skriv inn et navn først."; if (input) input.focus(); return; }
+  const sc = computeScore();
+  if (sc.score <= 0) { if (st) st.textContent = "Du må fange minst én fisk før du kan sende inn."; return; }
+  save.playerName = name; persist();
+  scoresBusy = true;
+  if (st) st.textContent = "Sender inn …";
+  const url = DREAMLO_BASE + DREAMLO_PRIVATE + "/add/" + encodeURIComponent(name) + "/" + sc.score + "/" + sc.biggestG + "/" + encodeURIComponent(sc.text);
+  try {
+    await proxyGet(url);
+    if (st) st.textContent = "Poengsum sendt inn! 🎣";
+    await loadScores();
+  } catch (e) {
+    if (st) st.textContent = "Klarte ikke å sende inn — prøv igjen om litt.";
+  } finally {
+    scoresBusy = false;
+  }
+}
+
+/* =========================================================================
    Screen management
    ========================================================================= */
-const OVERLAYS = ["menu", "market", "map", "help", "shopFish", "shopRod", "shopLicense", "shopKiosk", "shopCasino"];
+const OVERLAYS = ["menu", "market", "map", "help", "scores", "shopFish", "shopRod", "shopLicense", "shopKiosk", "shopCasino"];
 function setScreen(name) {
   const from = screen;
   if (from === "travel") stopEngine();
@@ -1060,11 +1200,13 @@ function setScreen(name) {
   if (casinoAmbNode) { stopSample(casinoAmbNode); casinoAmbNode = null; }
   if (casinoSpinNode) { stopSample(casinoSpinNode); casinoSpinNode = null; }
   if (casinoLoseNode) { stopSample(casinoLoseNode); casinoLoseNode = null; }
+  if (licenseAmbNode) { stopSample(licenseAmbNode); licenseAmbNode = null; }
   if (menuNode && name !== "menu" && name !== "help") { stopSample(menuNode); menuNode = null; }   // «hvordan spille» is still part of the menu — keep the music going
   if (casino.spinning && name !== "shopCasino") { casino.spinning = false; casino.win = false; }
   if (name === "shopKiosk") partyNode = playSample("party", { loop: true, vol: 0.4 });
   else if (name === "market") marketNode = playSample("market", { loop: true, vol: 0.45 });
   else if (name === "shopCasino") casinoAmbNode = playSample("casinoAmb", { loop: true, vol: 0.4 });
+  else if (name === "shopLicense") licenseAmbNode = playSample("licenseAmb", { loop: true, vol: 0.4 });
   else if (name === "menu" && !menuNode) menuNode = playSample("menuMusic", { loop: true, vol: 0.5 });
   screen = name;
   OVERLAYS.forEach((o) => $(o).classList.toggle("active", o === name));
