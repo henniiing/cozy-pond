@@ -854,6 +854,70 @@ canvas {
     flex-direction: column;
   }
 }
+/* ===== Save slots ===== */
+.slots-body {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 18px 22px;
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+}
+.slots-body h2 {
+  text-align: center;
+  color: #ffe6a0;
+  margin: 4px 0 8px;
+}
+.slots-sub {
+  text-align: center;
+  color: #c7cbe0;
+  font-size: clamp(12px, 1.7vw, 15px);
+  margin: 0 0 16px;
+}
+.slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.slot-row.active {
+  outline: 2px solid #7dffb0;
+  background: rgba(125, 255, 176, 0.08);
+}
+.slot-row .grow {
+  flex: 1;
+  min-width: 0;
+  font-size: clamp(13px, 1.9vw, 16px);
+  line-height: 1.4;
+}
+.slot-row .grow small {
+  color: #b9c0e0;
+  font-size: clamp(11px, 1.5vw, 13px);
+}
+.slot-btns {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.del-btn {
+  background: rgba(180, 60, 60, 0.18);
+  border: 1px solid #b85a5a;
+  color: #ffd0d0;
+  font-weight: 800;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.del-btn:hover {
+  filter: brightness(1.15);
+}
 /* ===== Per-species sell button ===== */
 .mini-sell {
   background: linear-gradient(180deg, #2b8f57, #1c6e40);

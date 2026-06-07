@@ -68,6 +68,7 @@
         <h1 class="title">Cozy&nbsp;Pond</h1>
         <div class="menu-buttons">
           <button class="big-btn" id="startBtn" data-action="startGame">Start spill</button>
+          <button class="big-btn ghost" data-action="openSlots">Lagringsplasser</button>
           <button class="big-btn ghost" data-action="openHelp">Hvordan spille</button>
           <button class="big-btn ghost" data-action="openScores">Toppliste</button>
         </div>
@@ -135,6 +136,18 @@
             <ol id="listBiggest" class="score-list"><li class="score-empty">Laster …</li></ol>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ===== Save slots ===== -->
+    <div id="slots" class="overlay">
+      <div class="topbar">
+        <button class="ui-btn" data-action="backFromSlots">← Tilbake</button>
+      </div>
+      <div class="slots-body">
+        <h2>Lagringsplasser</h2>
+        <p class="slots-sub">Du kan ha opptil tre spill gående samtidig. Velg en plass for å spille, eller start på nytt.</p>
+        <div id="slotList" class="slot-list"></div>
       </div>
     </div>
 

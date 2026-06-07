@@ -34,13 +34,27 @@ const licenseStateEl = $("licenseState");
 /* =========================================================================
    Save / economy
    ========================================================================= */
-const SAVE_KEY = "cozyPond_v1";
+const SAVE_KEY = "cozyPond_v1";        // legacy single-slot key (migrated to slot 0)
+const SLOT_COUNT = 3;
+const SLOT_KEY = "cozyPond_slot";      // which slot is currently active (0..2)
+function slotKey(i) { return SAVE_KEY + "_s" + i; }
 function defaultSave() {
   return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "" };
 }
-function loadSave() {
+// one-time migration: fold the old single save into slot 0 the first time we boot the slot system
+function migrateSaves() {
+  const hasSlot = [0, 1, 2].some((i) => localStorage.getItem(slotKey(i)) != null);
+  if (!hasSlot) {
+    const old = localStorage.getItem(SAVE_KEY);
+    if (old != null) { try { localStorage.setItem(slotKey(0), old); } catch (e) {} }
+  }
+}
+migrateSaves();
+function activeSlot() { const n = parseInt(localStorage.getItem(SLOT_KEY), 10); return (n >= 0 && n < SLOT_COUNT) ? n : 0; }
+let currentSlot = activeSlot();
+function loadSave(slot) {
   try {
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    const s = JSON.parse(localStorage.getItem(slotKey(slot)));
     if (s && typeof s === "object") {
       const merged = Object.assign(defaultSave(), s);
       if (!merged.licenses || typeof merged.licenses !== "object") merged.licenses = {};
@@ -52,9 +66,22 @@ function loadSave() {
   } catch (e) {}
   return defaultSave();
 }
-let save = loadSave();
+let save = loadSave(currentSlot);
 function persist() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {}
+  try { localStorage.setItem(slotKey(currentSlot), JSON.stringify(save)); } catch (e) {}
+}
+// quick summary of a slot for the slot picker (null = empty/never-played)
+function slotSummary(slot) {
+  try {
+    const raw = localStorage.getItem(slotKey(slot));
+    if (raw == null) return null;
+    const s = JSON.parse(raw);
+    if (!s || typeof s !== "object") return null;
+    let species = 0;
+    if (s.record) for (const k in s.record) { if (s.record[k] && s.record[k].count) species++; }
+    const loc = (LOCATIONS.find((l) => l.key === s.location) || {}).name || "Skogstjernet";
+    return { money: s.money || 0, species, location: loc, name: s.playerName || "" };
+  } catch (e) { return null; }
 }
 const fmt = (n) => Math.round(n).toLocaleString("nb-NO");
 
@@ -931,6 +958,7 @@ window.addEventListener("keydown", (e) => {
     else if (screen === "market") startTravel(save.location);
     else if (screen === "map") setScreen("game");
     else if (screen === "scores") setScreen(prevScreen === "menu" ? "menu" : "game");
+    else if (screen === "slots") setScreen(prevScreen === "menu" ? "menu" : "game");
     else if (screen === "help") setScreen(prevScreen === "menu" ? "menu" : "game");
   }
 });
@@ -968,6 +996,61 @@ if (playerNameEl) {
 }
 syncVolUI();
 
+/* =========================================================================
+   Save slots (up to 3 separate games) — managed from the menu
+   ========================================================================= */
+function buildSlots() {
+  const list = $("slotList"); if (!list) return;
+  list.innerHTML = "";
+  for (let i = 0; i < SLOT_COUNT; i++) {
+    const sum = slotSummary(i);
+    const active = i === currentSlot;
+    const row = document.createElement("div");
+    row.className = "slot-row" + (active ? " active" : "");
+    const title = `Plass ${i + 1}` + (active ? " · aktiv" : "");
+    const info = sum
+      ? `${sum.name ? escapeHtml(sum.name) + " · " : ""}${fmt(sum.money)} kr · ${sum.species} arter<br><small>${escapeHtml(sum.location)}</small>`
+      : "<small>Tom plass — start et nytt eventyr</small>";
+    row.innerHTML =
+      `<span class="grow"><b>${title}</b><br>${info}</span>` +
+      `<span class="slot-btns">` +
+      `<button class="buy-btn" data-action="playSlot" data-slot="${i}">${sum ? "Spill" : "Nytt"}</button>` +
+      (sum ? `<button class="del-btn" data-action="deleteSlot" data-slot="${i}" title="Slett">🗑</button>` : "") +
+      `</span>`;
+    list.appendChild(row);
+  }
+}
+function playSlot(slot) {
+  slot = parseInt(slot, 10);
+  if (!(slot >= 0 && slot < SLOT_COUNT)) return;
+  if (slot !== currentSlot) {
+    persist();                                   // stash the slot we're leaving
+    currentSlot = slot;
+    try { localStorage.setItem(SLOT_KEY, String(slot)); } catch (e) {}
+    save = loadSave(slot);
+    buff = { label: "", luck: 0, reel: 0, t: 0, dur: 1, color: "#fff" };
+    drunk = 0;
+    setLocation(save.location);
+    refreshAll();
+  }
+  setScreen("game");
+}
+function deleteSlot(slot) {
+  slot = parseInt(slot, 10);
+  if (!(slot >= 0 && slot < SLOT_COUNT)) return;
+  if (!confirm(`Slette spillet i Plass ${slot + 1}? Dette kan ikke angres.`)) return;
+  try { localStorage.removeItem(slotKey(slot)); } catch (e) {}
+  if (slot === currentSlot) {                    // wipe the live game back to a fresh start
+    save = loadSave(slot);
+    persist();
+    setLocation(save.location);
+    buff = { label: "", luck: 0, reel: 0, t: 0, dur: 1, color: "#fff" };
+    drunk = 0;
+    refreshAll();
+  }
+  buildSlots();
+}
+
 function doAction(a, data) {
   switch (a) {
     case "startGame": setScreen("game"); break;
@@ -996,6 +1079,10 @@ function doAction(a, data) {
     case "openScores": prevScreen = screen; openScores(); break;
     case "backFromScores": setScreen(prevScreen === "menu" ? "menu" : "game"); break;
     case "submitScore": submitScore(); break;
+    case "openSlots": prevScreen = screen; setScreen("slots"); break;
+    case "backFromSlots": setScreen(prevScreen === "menu" ? "menu" : "game"); break;
+    case "playSlot": playSlot(data.slot); break;
+    case "deleteSlot": deleteSlot(data.slot); break;
     case "toggleMute": toggleMute(); break;
     case "toggleFullscreen": toggleFullscreen(); break;
     case "resetSave": if (confirm("Nullstille ALL framgang? Penger, fisk, fiskekort og samlingen forsvinner.") && confirm("Helt sikker? Dette kan IKKE angres.")) { save = defaultSave(); setLocation(save.location); persist(); refreshAll(); } break;
@@ -1053,8 +1140,11 @@ const DREAMLO_PUBLIC = "6a25cca68f40bb17b07b2d4d";
 const DREAMLO_PRIVATE = "lV6DCx6CQEGJ1uIa1epi1AcY_5FKrgHUeWLrsvn-692A";
 const DREAMLO_BASE = "http://dreamlo.com/lb/";
 const SCORE_PROXIES = [
-  (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-  (u) => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  // allorigins /get reliably sends CORS headers; it wraps the body in JSON .contents
+  { url: (u) => "https://api.allorigins.win/get?url=" + encodeURIComponent(u), unwrap: (t) => { try { return JSON.parse(t).contents; } catch (e) { return t; } } },
+  { url: (u) => "https://corsproxy.io/?url=" + encodeURIComponent(u), unwrap: (t) => t },
+  { url: (u) => "https://thingproxy.freeboard.io/fetch/" + u, unwrap: (t) => t },
+  { url: (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u), unwrap: (t) => t },
 ];
 let scoresBusy = false;
 
@@ -1083,12 +1173,14 @@ function cleanName(n) {
 
 // fetch a dreamlo URL through the first proxy that answers
 async function proxyGet(dreamloUrl) {
+  const bust = dreamloUrl + (dreamloUrl.includes("?") ? "&" : "?") + "_=" + Date.now();
   let lastErr;
-  for (const wrap of SCORE_PROXIES) {
+  for (const p of SCORE_PROXIES) {
     try {
-      const res = await fetch(wrap(dreamloUrl) + "&_=" + Date.now(), { cache: "no-store" });
+      const res = await fetch(p.url(bust), { cache: "no-store" });
       if (!res.ok) throw new Error("HTTP " + res.status);
-      return await res.text();
+      const raw = await res.text();
+      return p.unwrap(raw);
     } catch (e) { lastErr = e; }
   }
   throw lastErr || new Error("fetch failed");
@@ -1172,7 +1264,7 @@ async function submitScore() {
 /* =========================================================================
    Screen management
    ========================================================================= */
-const OVERLAYS = ["menu", "market", "map", "help", "scores", "shopFish", "shopRod", "shopLicense", "shopKiosk", "shopCasino"];
+const OVERLAYS = ["menu", "market", "map", "help", "scores", "slots", "shopFish", "shopRod", "shopLicense", "shopKiosk", "shopCasino"];
 function setScreen(name) {
   const from = screen;
   if (from === "travel") stopEngine();
@@ -1217,6 +1309,7 @@ function setScreen(name) {
   if (name === "shopRod") { buildRods(); }
   if (name === "shopLicense") buildLicenses();
   if (name === "shopKiosk") buildKiosk();
+  if (name === "slots") buildSlots();
   if (name === "shopCasino") { speak("casinoSpeech", "Welcome, my friend! Velg rød eller svart, sett innsatsen og spinn. Treffer fargen vinner du dobbelt — men pass deg for grønn null! 🎩"); buildCasino(); }
   refreshHUD();
   ensureAudio();
@@ -1383,7 +1476,7 @@ function drinkSnabel() {
 function takeSnus() {
   snusing = 1.4;
   blip(520, 0.05, "square", 0.08); setTimeout(() => blip(300, 0.08, "sine", 0.07), 120);
-  applyBuff("Snusrus", 0.15, 0.08, 18, "#5fbf5f");
+  applyBuff("Snusrus", 0.12, 0.06, 12, "#5fbf5f");
 }
 function smokeCigar() {
   smoking = 6.5;
@@ -1564,7 +1657,7 @@ function triggerGameEvent() {
 /* ---- kiosk (alcohol / snus / cigars) ---- */
 const KIOSK_GOODS = {
   beer: { name: "Trygdepatron", per: 6, cost: 36, blurb: "Sekspakning på billigtilbud — lite napp, kort flaks (~22 s). Drikk flere for stablet rus!", color: "#caa23a" },
-  snus: { name: "Snus", per: 20, cost: 50, blurb: "Boks med 20 prilla under leppa — litt flaks, kort tid (~18 s).", color: "#3a7a3a" },
+  snus: { name: "Snus", per: 20, cost: 50, blurb: "Boks med 20 prilla under leppa — billig, men bare et lite napp i kort tid (~12 s). Øl varer lenger.", color: "#3a7a3a" },
   cigar: { name: "Sigarillo", per: 12, cost: 80, blurb: "Pakke med 12 — røykpause med roligere hånd, god flaks (~30 s).", color: "#7a5a2a" },
   akevitt: { name: "Blænnvin", per: 1, cost: 110, blurb: "Hjemmekjært brennevin! Stor flaks, lang tid (~45 s) — men du vingler.", color: "#caa84a" },
   snabel: { name: "Snabelstoff", per: 1, cost: 250, blurb: "Hjemmebrentdunk på topphylla! Vill flaks, lengst tid (~60 s) — du sjangler skikkelig.", color: "#d8d2c0" },
@@ -3857,22 +3950,43 @@ function drawGroundFish() {
   }
 }
 function drawBuffHud() {
-  if (buff.t <= 0) return;
-  const w = 104, h = 16, x = 8, y = H - 24;
+  const showBuff = buff.t > 0;
+  const dfrac = clamp(drunk / 1.4, 0, 1);            // 1.0 = blackout territory
+  const showDrunk = drunk > 0.05;
+  if (!showBuff && !showDrunk) return;
+  const w = 104, x = 8;
+  const rows = (showBuff ? 1 : 0) + (showDrunk ? 1 : 0);
+  const h = 5 + rows * 13;
+  const y = H - 8 - h;
   const intensity = clamp(buff.luck / 1.4, 0, 1);
-  const fillCol = intensity < 0.4 ? "#5fbf5f" : intensity < 0.75 ? "#ffcf5a" : "#ff7a5a";
+  const buffCol = intensity < 0.4 ? "#5fbf5f" : intensity < 0.75 ? "#ffcf5a" : "#ff7a5a";
+  const near = dfrac > 0.82;                          // ~drunk 1.15 — the 1.4 blackout looms
+  const drunkCol = dfrac < 0.5 ? "#8ad0ff" : dfrac < 0.82 ? "#ffb04a" : "#ff5a4a";
   px(x, y, w, h, "rgba(14,12,22,0.82)");
-  px(x, y, w, 2, fillCol);
-  // header: a standard RUS label + current flaks bonus
-  ctx.font = "7px monospace"; ctx.textBaseline = "top"; ctx.textAlign = "left";
-  ctx.fillStyle = "#f0e6d0"; ctx.fillText(buff.count >= 2 ? "RUS ×" + buff.count : "RUS", x + 4, y + 2);
-  ctx.textAlign = "right"; ctx.fillStyle = fillCol; ctx.fillText("+" + Math.round(buff.luck * 100) + "% flaks", x + w - 4, y + 2);
-  // the rus meter (intensity) with a thin time-remaining line beneath it
+  px(x, y, w, 2, showBuff ? buffCol : drunkCol);
+  ctx.font = "7px monospace"; ctx.textBaseline = "top";
   const barX = x + 4, barW = w - 8;
-  px(barX, y + 10, barW, 3, "rgba(255,255,255,0.10)");
-  px(barX, y + 10, barW * intensity, 3, fillCol);
-  const frac = clamp(buff.t / buff.dur, 0, 1);
-  px(barX, y + h - 1, barW * frac, 1, "rgba(255,255,255,0.55)");
+  let ry = y + 3;
+  // RUS row: flaks bonus + intensity + time remaining
+  if (showBuff) {
+    ctx.textAlign = "left"; ctx.fillStyle = "#f0e6d0"; ctx.fillText(buff.count >= 2 ? "RUS \u00d7" + buff.count : "RUS", x + 4, ry);
+    ctx.textAlign = "right"; ctx.fillStyle = buffCol; ctx.fillText("+" + Math.round(buff.luck * 100) + "% flaks", x + w - 4, ry);
+    px(barX, ry + 7, barW, 2, "rgba(255,255,255,0.10)");
+    px(barX, ry + 7, barW * intensity, 2, buffCol);
+    const frac = clamp(buff.t / buff.dur, 0, 1);
+    px(barX, ry + 10, barW * frac, 1, "rgba(255,255,255,0.55)");
+    ry += 13;
+  }
+  // FYLL row: how close he is to keeling over — pulses red near the limit
+  if (showDrunk) {
+    const pulse = near ? 0.45 + 0.55 * Math.abs(Math.sin(t * 8)) : 1;
+    ctx.globalAlpha = pulse;
+    ctx.textAlign = "left"; ctx.fillStyle = "#cfe0ff"; ctx.fillText("FYLL", x + 4, ry);
+    ctx.textAlign = "right"; ctx.fillStyle = drunkCol; ctx.fillText(near ? "vingler!" : Math.round(dfrac * 100) + "%", x + w - 4, ry);
+    px(barX, ry + 7, barW, 2, "rgba(255,255,255,0.10)");
+    px(barX, ry + 7, barW * dfrac, 2, drunkCol);
+    ctx.globalAlpha = 1;
+  }
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 function drawKioskKeeper(x, y) {
