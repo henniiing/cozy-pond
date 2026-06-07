@@ -1032,7 +1032,7 @@ function resetTransientState() {
   gameEvent.active = false;
   inspector.active = false; inspectorTimer = 80 + Math.random() * 120;
   cat.state = "away"; cat.x = -20; cat.mission = null; cat.fishKey = null; cat.action = "sit"; cat.timer = 14 + Math.random() * 26;
-  cans.length = 0; smoke.length = 0;
+  cans.length = 0; smoke.length = 0; ripples.length = 0;
 }
 function playSlot(slot) {
   slot = parseInt(slot, 10);
@@ -1491,11 +1491,13 @@ function takeSnus() {
   snusing = 1.4;
   blip(520, 0.05, "square", 0.08); setTimeout(() => blip(300, 0.08, "sine", 0.07), 120);
   applyBuff("Snusrus", 0.12, 0.06, 12, "#5fbf5f");
+  drunk = Math.min(DRUNK_MAX, drunk + 0.12);          // a light nicotine buzz feeds the RUS-meter too
 }
 function smokeCigar() {
   smoking = 6.5;
   playSample("cigar", { vol: 0.8 });
   applyBuff("Røykpause", 0.3, 0.15, 30, "#caa46a");
+  drunk = Math.min(DRUNK_MAX, drunk + 0.16);          // a mellow tobacco haze adds a little RUS
 }
 function useConsumable(kind) {
   const names = { beer: "trygdepatron", snus: "snus", cigar: "sigarillo", akevitt: "blænnvin", snabel: "snabelstoff" };
@@ -3994,11 +3996,11 @@ function drawBuffHud() {
     px(barX, ry + 7, barW * frac, 2, buffCol);
     ry += 13;
   }
-  // FYLL row: how close he is to keeling over — pulses red near the limit
+  // RUS row: how close he is to keeling over — pulses red near the limit
   if (showDrunk) {
     const pulse = near ? 0.45 + 0.55 * Math.abs(Math.sin(t * 8)) : 1;
     ctx.globalAlpha = pulse;
-    ctx.textAlign = "left"; ctx.fillStyle = "#cfe0ff"; ctx.fillText("FYLL", x + 4, ry);
+    ctx.textAlign = "left"; ctx.fillStyle = "#cfe0ff"; ctx.fillText("RUS", x + 4, ry);
     ctx.textAlign = "right"; ctx.fillStyle = drunkCol; ctx.fillText(near ? "vingler!" : Math.round(dfrac * 100) + "%", x + w - 4, ry);
     px(barX, ry + 7, barW, 2, "rgba(255,255,255,0.10)");
     px(barX, ry + 7, barW * dfrac, 2, drunkCol);
