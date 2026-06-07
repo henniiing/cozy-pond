@@ -385,11 +385,17 @@ function addRipple(x, y, max = 14) { ripples.push({ x, y, r: 1, max, life: 1 });
 // occasional comical street happenings at the market
 let marketGag = { active: false, t: 0, dur: 0, kind: "", dir: 1, seed: 0 };
 let marketGagTimer = 4 + Math.random() * 6;
-const MARKET_GAGS = ["dog", "cat", "gull", "barrel", "balloon", "pee"];
+const MARKET_GAGS = ["dog", "cat", "gull", "barrel", "balloon", "pee", "hat", "trip", "busker", "snatch", "couple", "rat"];
 function startMarketGag() {
   const kind = MARKET_GAGS[Math.floor(Math.random() * MARKET_GAGS.length)];
-  const dur = kind === "balloon" ? 4 : kind === "pee" ? 7.5 : 3;
+  const dur = kind === "balloon" ? 4 : kind === "pee" ? 7.5 : kind === "busker" ? 8 : kind === "hat" ? 5 : kind === "couple" ? 5.5 : kind === "snatch" ? 4.5 : kind === "trip" ? 3.5 : 3;
   marketGag = { active: true, t: 0, dur, kind, dir: Math.random() < 0.5 ? 1 : -1, seed: Math.random() * 6.28 };
+  // little procedural sound stings for some of the gags
+  if (kind === "gull" || kind === "snatch") { setTimeout(() => { blip(1400, 0.06, "sawtooth", 0.05); setTimeout(() => blip(1700, 0.05, "sawtooth", 0.045), 80); }, 200); }
+  else if (kind === "hat") noise(0.4, 600, 0.06, "highpass");        // a whoosh of wind
+  else if (kind === "trip") setTimeout(() => { noise(0.12, 200, 0.08); blip(180, 0.1, "square", 0.05); }, 60);
+  else if (kind === "rat") setTimeout(() => { blip(1900, 0.04, "square", 0.03); blip(2100, 0.03, "square", 0.025, 0.05); }, 150);
+  else if (kind === "busker") { const tune = [523, 659, 784, 659, 587, 784]; tune.forEach((f, i) => blip(f, 0.18, "triangle", 0.05, 0.25 + i * 0.28)); }
 }
 
 let wolfTimer = 30 + Math.random() * 50;
@@ -3072,8 +3078,86 @@ function drawMarketGag() {
       drawPolice(px0, 196 - run, face);                          // hot pursuit
       if (Math.sin(t * 16) > 0) { ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText("HEI!", px0 - face * 6, 174); ctx.textAlign = "left"; }
     }
+  } else if (g.kind === "hat") {
+    // a gust whips a fellow's hat off and he chases it across the cobbles
+    const face = dir > 0 ? 1 : -1;
+    const guyX = cross;
+    const hatX = guyX + face * (22 + Math.sin(t * 3) * 4);
+    const hatY = 182 + Math.sin(t * 5 + g.seed) * 6;
+    drawStreetGuy(guyX, 196, face, false, true);
+    ctx.save(); ctx.translate(hatX, hatY); ctx.rotate(t * 6 * face);
+    px(-4, 0, 8, 2, "#3a2c1e"); px(-2, -3, 4, 3, "#4a3724");
+    ctx.restore();
+    if (Math.sin(t * 14) > 0.4) { ctx.fillStyle = "#fff"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText("hatten min!", guyX, 176); ctx.textAlign = "left"; }
+  } else if (g.kind === "trip") {
+    // someone stumbles on a loose cobblestone, flails, then carries on like nothing happened
+    const face = dir > 0 ? 1 : -1, x = cross;
+    if (p > 0.42 && p < 0.6) {
+      drawStreetGuy(x, 200, face, true, false);
+      px(x - 8, 209, 4, 2, "#5a3a5a"); px(x + 5, 209, 4, 2, "#5a3a5a");   // flailing arms
+      px(x + face * 9, 210, 4, 3, "#6a6256");                            // the loose stone
+      ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText("OISANN!", x, 178); ctx.textAlign = "left";
+    } else {
+      drawStreetGuy(x, 196, face, false, true);
+    }
+  } else if (g.kind === "busker") {
+    // a street musician parks in a corner and squeezes out a little tune
+    const bx = dir > 0 ? 70 : W - 70, by = 198;
+    px(bx - 14, by + 12, 8, 3, "#3a2c1e"); px(bx - 13, by + 11, 6, 1, "#4a3724");  // coin hat on the ground
+    ctx.globalAlpha = 0.25; px(bx - 4, by + 13, 10, 1, "#000"); ctx.globalAlpha = 1;
+    px(bx - 3, by + 4, 8, 8, "#4a5a3a"); px(bx - 2, by - 2, 5, 5, "#e0b48a"); px(bx - 3, by - 4, 7, 3, "#6a4a2a");
+    const sq = 4 + Math.sin(t * 5) * 2;                                   // accordion squeezing
+    px(bx + 4, by + 4, 3, 6, "#9a2a2a"); px(bx + 7, by + 4, sq, 6, "#c8c8c8"); px(bx + 7 + sq, by + 4, 3, 6, "#9a2a2a");
+    for (let i = 0; i < 3; i++) {                                         // floating notes
+      const np = (t * 0.5 + i * 0.4 + g.seed) % 1;
+      const ny = by - 4 - np * 30, nx = bx + 12 + Math.sin(np * 6 + i) * 6;
+      ctx.globalAlpha = 1 - np; ctx.fillStyle = "#ffe6a0"; ctx.font = "8px monospace"; ctx.fillText(i % 2 ? "♪" : "♫", nx, ny); ctx.globalAlpha = 1;
+    }
+  } else if (g.kind === "snatch") {
+    // a greedy gull dive-bombs a man's sausage-on-a-stick and makes off with it
+    const face = dir > 0 ? 1 : -1;
+    const walkX = p < 0.45 ? lerp(dir > 0 ? -16 : W + 16, W * 0.5, clamp(p / 0.45, 0, 1)) : W * 0.5;
+    if (p < 0.45) {
+      drawStreetGuy(walkX, 196, face, false, true);
+      px(walkX + (face > 0 ? 5 : -10), 190, 6, 1, "#caa"); px(walkX + face * 10, 188, 4, 3, "#b5532a");
+    } else if (p < 0.6) {
+      drawStreetGuy(walkX, 196, face, false, false);
+      px(walkX + (face > 0 ? 5 : -10), 190, 6, 1, "#caa"); px(walkX + face * 10, 188, 4, 3, "#b5532a");
+      drawGull(walkX + face * 10, lerp(40, 186, (p - 0.45) / 0.15), t);
+    } else {
+      drawStreetGuy(walkX, 196, face, false, false);
+      px(walkX + (face > 0 ? 4 : -5), 188, 2, 3, "#5a3a5a");            // raised fist
+      const gp = (p - 0.6) / 0.4, gx = walkX + face * (10 + gp * 130), gy = lerp(186, 28, gp);
+      drawGull(gx, gy, t); px(gx + face * 4, gy + 1, 4, 3, "#b5532a");  // loot in beak
+      if (Math.sin(t * 14) > 0.3) { ctx.fillStyle = "#fff"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText("tjuv!", walkX, 176); ctx.textAlign = "left"; }
+    }
+  } else if (g.kind === "couple") {
+    // two neighbours meet in the middle, have a good old natter, then part ways
+    const meetL = W * 0.43, meetR = W * 0.57, inT = 0.28, outStart = 0.74;
+    let lx, rx;
+    if (p < inT) { const k = p / inT; lx = lerp(-16, meetL, k); rx = lerp(W + 16, meetR, k); }
+    else if (p < outStart) { lx = meetL; rx = meetR; }
+    else { const k = (p - outStart) / (1 - outStart); lx = lerp(meetL, -16, k); rx = lerp(meetR, W + 16, k); }
+    const chatting = p >= inT && p < outStart;
+    drawStreetGuy(lx, 196, 1, false, !chatting);
+    drawStreetGuy(rx, 196, -1, false, !chatting);
+    if (chatting && Math.sin(t * 5) > 0) { ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText("…", (lx + rx) / 2, 178); ctx.textAlign = "left"; }
+  } else if (g.kind === "rat") {
+    // a cheeky rat scurries along the gutter
+    const x = cross, y = 213 - Math.abs(Math.sin(t * 26));
+    ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+    px(x - 4, y, 7, 3, "#5a5048"); px(x + 3, y - 1, 3, 3, "#5a5048"); px(x + 5, y, 1, 1, "#1a1208");
+    ctx.strokeStyle = "#5a5048"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 4, y + 1); ctx.lineTo(x - 9, y + 2); ctx.stroke();
+    ctx.restore();
   }
   ctx.restore();
+}
+// a little seagull (used by the gull + snatch gags)
+function drawGull(x, y, tt) {
+  const flap = Math.sin(tt * 12) * 4;
+  ctx.strokeStyle = "#e8eef2"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x - 7, y + flap); ctx.lineTo(x, y); ctx.lineTo(x + 7, y + flap); ctx.stroke();
+  px(x - 1, y - 1, 2, 3, "#e8eef2"); px(x + 1, y, 2, 1, "#ffb03a");
 }
 // a generic little street fellow for the pee gag (face = +1 right / -1 left)
 function drawStreetGuy(x, y, face, hunched, walk) {
