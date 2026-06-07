@@ -4016,13 +4016,16 @@ function drawEventActor() {
       break;
     }
     case "bottle": {
-      // a corked bottle bobbing on the water near the float, then a sparkle as you fish it up
-      const x = clamp(bobber.x + 20, 120, W - 30), y = WATER_Y + 8 + Math.sin(t * 2 + sd) * 1.5;
+      // a corked bottle drifting in from the open water to the near bank, right at the angler's feet
+      const fx = 120, fy = 150;                       // resting spot at the water's edge by his boots
+      const k = clamp(p / 0.7, 0, 1);                 // eases in over the first ~70 % of the event
+      const x = lerp(fx + 84, fx, k);                 // drifts shoreward (right→left) toward the player
+      const y = lerp(fy + 16, fy, k) + Math.sin(t * 2 + sd) * 1.2;
       addRippleMaybe(x, y);
       px(x - 2, y - 6, 4, 10, "#5a8a6a"); px(x - 1, y - 6, 1, 10, "#7aa888"); // glass
       px(x - 1, y - 9, 2, 3, "#caa07a");                                       // cork
       px(x - 2, y - 2, 4, 3, "#e8e0c0");                                       // paper note inside
-      if (p > 0.55) { sparkle(x, y - 2, t); }
+      if (p > 0.6) { sparkle(x, y - 2, t); }
       break;
     }
     case "berries": {
@@ -4076,8 +4079,8 @@ function drawEventActor() {
       break;
     }
     case "log": {
-      // a big log drifting across the surface, pushing a wake
-      const x = cross, y = WATER_Y + 7 + Math.sin(t * 2) * 1;
+      // a big log drifting across the open water, pushing a wake (kept well off the far grass edge)
+      const x = cross, y = WATER_Y + 32 + Math.sin(t * 2) * 1.5;
       ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
       px(x - 20, y - 3, 40, 7, "#6a4628"); px(x - 20, y - 3, 40, 2, "#7d5736");
       px(x - 20, y - 3, 4, 7, "#4a2e18"); px(x + 16, y - 3, 4, 7, "#8a6a45"); // dark / cut end
