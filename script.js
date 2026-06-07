@@ -529,6 +529,25 @@ function stopEngine() {
 }
 let frogTimer = 3 + Math.random() * 5, owlTimer = 10 + Math.random() * 14;
 let ladyIdleTimer = 3, rodIdleTimer = 4;
+// the fiskekort warden: a smug, profiteering bureaucrat who stamps papers and rubs his hands
+let licenseIdleTimer = 4, wardenStamp = 0, wardenScheme = 0, wardenLine = 0;
+const WARDEN_LINES = [
+  "Fiskeoppsynet var her i sted... heldig at du har kortet i orden, hva?",
+  "Et kort i dag holder boten unna i morgen. Smart investering.",
+  "Reglene er reglene. Jeg lager dem ikke — jeg bare... selger dem.",
+  "Hørte om han som fisket uten kort. Trist historie. Dyr historie.",
+  "Helt tilfeldig at oppsynet alltid vet akkurat hvor de skal lete, ja...",
+  "Stempel hit, stempel dit. Pengene ruller inn av seg selv.",
+  "Du ser ærlig ut. Men ærlige folk kjøper kort, ikke sant?",
+];
+function wardenChuckle() {
+  if (muted || !audioCtx) return;
+  blip(220, 0.08, "square", 0.045); blip(180, 0.09, "square", 0.04, 0.09); blip(150, 0.11, "square", 0.035, 0.19);
+}
+function wardenStampSfx() {
+  if (muted || !audioCtx) return;
+  noise(0.07, 220, 0.07); blip(130, 0.06, "square", 0.05);
+}
 
 function cricketChirp() {
   if (muted || !audioCtx) return;
@@ -1739,6 +1758,7 @@ function buyLicense(locKey) {
   save.money -= cost; save.licenses[key] = (save.licenses[key] || 0) + LICENSE_GRANT; persist();
   licenseBoughtThisVisit = true;
   sfxCoin(); playSample("buying", { vol: 0.6 });
+  wardenStamp = 1; wardenScheme = 2.2; setTimeout(wardenStampSfx, 120);   // he stamps your card with a smug flourish
   speak("licenseSpeech", `Vær så god — kort for ${loc.name} som varer ${LICENSE_GRANT} fangster.`);
   buildLicenses(); refreshHUD();
 }
@@ -2155,6 +2175,22 @@ function update(dt) {
   if (screen === "shopFish") { ladyIdleTimer -= dt; if (ladyIdleTimer <= 0) { ladyIdleTimer = 4 + Math.random() * 5; sfxLady(); } }
   if (screen === "shopRod") { rodIdleTimer -= dt; if (rodIdleTimer <= 0) { rodIdleTimer = 4.5 + Math.random() * 4; playSample("grumpyVoice", { vol: 0.5 }); } }
   if (screen === "shopKiosk") { kioskIdleTimer -= dt; if (kioskIdleTimer <= 0) { kioskIdleTimer = 5 + Math.random() * 5; sfxKiosk(); } }
+  // the warden idly stamps papers, mutters sly threats and rubs his hands
+  if (wardenStamp > 0) wardenStamp = Math.max(0, wardenStamp - dt * 1.8);
+  if (wardenScheme > 0) wardenScheme = Math.max(0, wardenScheme - dt);
+  if (screen === "shopLicense") {
+    licenseIdleTimer -= dt;
+    if (licenseIdleTimer <= 0) {
+      licenseIdleTimer = 5 + Math.random() * 4;
+      if (Math.random() < 0.55) {            // stamp another paper on his pile
+        wardenStamp = 1; wardenStampSfx();
+      } else {                               // drop a sly line + chuckle to himself
+        wardenLine = (wardenLine + 1 + Math.floor(Math.random() * (WARDEN_LINES.length - 1))) % WARDEN_LINES.length;
+        speak("licenseSpeech", WARDEN_LINES[wardenLine]);
+        wardenChuckle(); wardenScheme = 1.4;
+      }
+    }
+  }
   // market passers-by stroll the street
   if (screen === "market") {
     for (const n of marketNPCs) {
@@ -3496,11 +3532,31 @@ function drawLicenseWarden(x, y) {
   px(x + 15, y + 17, 4, 2, "#caa23a");
   for (let i = 0; i < 3; i++) px(x + 13, y + 22 + i * 3, 7, 1, "#9aa0a8");
   px(x + 9, y + 20, 4, 4, "#e3b58c");
+  // a rubber stamp he keeps thunking down on the paperwork
+  if (wardenStamp > 0) {
+    const lift = Math.round(wardenStamp * 9);
+    const sx = x + 14, sy = y + 15 - lift;
+    px(sx, sy + 3, 4, 3, "#9a2a2a");            // inked head
+    px(sx + 1, sy - 1, 2, 4, "#2a2026");        // handle
+    if (wardenStamp < 0.3) px(x + 15, y + 21, 3, 2, "#7a2a3a");   // fresh red mark left behind
+  }
+  // when scheming he rubs his greedy little hands together at his belly
+  if (wardenScheme > 0) {
+    const rub = Math.sin(t * 14) * 2;
+    px(x - 4 + rub, y + 20, 4, 3, "#e3b58c");
+    px(x + 1 - rub, y + 20, 4, 3, "#e3b58c");
+  }
   // head
   px(x - 8, y - 9, 16, 14, "#e7c19a"); px(x - 8, y + 3, 16, 2, "#d2a87c");
-  // friendly eyes + moustache + small smile
+  // friendly eyes + moustache + a smile that turns sly when he schemes
   px(x - 4, y - 3, 2, 2, "#2a2030"); px(x + 2, y - 3, 2, 2, "#2a2030");
-  px(x - 4, y + 1, 8, 1, "#6a5a3a"); px(x - 2, y + 3, 4, 1, "#9a6a5a");
+  px(x - 4, y + 1, 8, 1, "#6a5a3a");
+  if (wardenScheme > 0) {
+    px(x - 3, y + 3, 6, 1, "#7a4a4a"); px(x - 4, y + 2, 1, 1, "#7a4a4a"); px(x + 3, y + 2, 1, 1, "#7a4a4a"); // upturned sly grin
+    px(x - 5, y - 4, 2, 1, "#6a5a3a");                                                                       // one cocked eyebrow
+  } else {
+    px(x - 2, y + 3, 4, 1, "#9a6a5a");                                                                       // small neutral smile
+  }
   // peaked cap (dark green) with black brim + brass badge
   px(x - 9, y - 12, 18, 5, "#2f4a30"); px(x - 9, y - 7, 18, 2, "#243a26");
   px(x - 12, y - 5, 8, 2, "#1a1a1a");
