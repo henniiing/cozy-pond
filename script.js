@@ -250,6 +250,7 @@ const MARKET_TRUCK = { x: 6, y: 214, w: 60, h: 30 };
    ========================================================================= */
 let screen = "menu";        // menu | game | market | shopFish | shopRod | inventory
 let prevScreen = "menu";
+let menuReturn = "game";    // where «Fortsett» returns to — set when the menu is opened mid-game/market
 let fishState = "ready";    // ready | casting | waiting | bite | hooked | reveal | missed
 let t = 0, stateTime = 0;
 
@@ -1149,7 +1150,7 @@ function slotIsFresh(slot) {
 // "Start spill" from the menu: name first if this game has no fisher yet
 function startGame() {
   if (!save.playerName) promptNewGame(currentSlot);
-  else setScreen("game");
+  else setScreen(menuReturn === "market" ? "market" : "game");   // resume right where you opened the menu
 }
 // pick a slot: brand-new ones go through the name screen, played ones load straight in
 function enterSlot(slot) {
@@ -1196,7 +1197,7 @@ function doAction(a, data) {
     case "openMarket": setScreen("market"); break;
     case "openMap": mapReturn = screen === "market" ? "market" : "game"; setScreen("map"); break;
     case "openHelp": prevScreen = screen; setScreen("help"); break;
-    case "openMenu": setScreen("menu"); break;
+    case "openMenu": menuReturn = screen === "market" ? "market" : "game"; setScreen("menu"); break;
     case "backToGame": setScreen("game"); break;
     case "backFromMap": setScreen(mapReturn === "market" ? "market" : "game"); break;
     case "driveBack": startTravel(save.location); break;
@@ -2182,14 +2183,18 @@ function update(dt) {
     if (drinking <= 0.3 && !drinkThrown) { if (drinkKind === "beer") throwCan(); else if (drinkKind === "akevitt" || drinkKind === "snabel") throwBottle(); drinkThrown = true; }
     if (drinking <= 0) drinkThrown = false;
   }
-  // buffs + vices
-  if (buff.t > 0) buff.t -= dt;
+  // buffs + vices — these only tick while you're actually fishing, so opening the menu truly pauses them
+  if (screen === "game") {
+    if (buff.t > 0) buff.t -= dt;
+    if (drunk > 0) drunk = Math.max(0, drunk - dt * 0.045);
+    if (hangover > 0) hangover = Math.max(0, hangover - dt);
+    if (snusing > 0) snusing -= dt;
+  }
   if (buffFlash > 0) buffFlash -= dt;
   // soft "pop" the instant a flaks-buff fully wears off, so it doesn't just vanish silently
   const buffOn = buff.t > 0;
   if (buffWasOn && !buffOn) { blip(620, 0.05, "sine", 0.05); blip(360, 0.09, "sine", 0.045, 0.04); }
   buffWasOn = buffOn;
-  if (drunk > 0) drunk = Math.max(0, drunk - dt * 0.045);
   // gentle "pop" + sigh when the rus finally clears
   const drunkOn = drunk > 0.04;
   if (drunkWasOn && !drunkOn) { blip(300, 0.07, "sine", 0.05); staggerWarned = false; }
@@ -2201,11 +2206,9 @@ function update(dt) {
       setHint("Oi… nå vingler du skikkelig. Én tår til og du sovner!");
     }
   }
-  if (hangover > 0) hangover = Math.max(0, hangover - dt);
-  if (snusing > 0) snusing -= dt;
   if (smoking > 0) {
-    smoking -= dt;
-    if (Math.random() < dt * 12) smoke.push({ x: 80 + Math.random() * 2, y: 95, vx: 5 + Math.random() * 7, vy: -12 - Math.random() * 8, life: 1.5, size: 1 + Math.random() * 1.5 });
+    if (screen === "game") smoking -= dt;
+    if (screen === "game" && Math.random() < dt * 12) smoke.push({ x: 80 + Math.random() * 2, y: 95, vx: 5 + Math.random() * 7, vy: -12 - Math.random() * 8, life: 1.5, size: 1 + Math.random() * 1.5 });
   }
   for (const s of smoke) { s.x += s.vx * dt; s.y += s.vy * dt; s.vy *= 0.97; s.life -= dt * 0.7; s.size += dt * 2.5; }
   for (let i = smoke.length - 1; i >= 0; i--) if (smoke[i].life <= 0) smoke.splice(i, 1);
