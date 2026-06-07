@@ -1157,40 +1157,40 @@ function resolveInspector() {
 /* ---- random per-location happenings (unique flavour + small effects per water) ---- */
 const LOCATION_EVENTS = {
   skogstjern: [
-    { t: "Skogvokteren", l: "«Det napper bedre ved sivet!» roper en turg\u00e5er.", k: "luck", luck: 0.35, dur: 18, c: "#8affc0" },
-    { t: "Frekt ekorn", l: "Et ekorn napper en kjeks fra sekken og spretter til skogs.", k: "flavor", c: "#caa07a" },
-    { t: "Flaskepost", l: "Du fisker opp en flaske med {n} kr i!", k: "money", amt: [25, 60], c: "#ffd877" },
-    { t: "Villbring\u00e6r", l: "Du finner bring\u00e6r p\u00e5 bredden \u2014 s\u00f8tt og godt!", k: "luck", luck: 0.2, dur: 14, c: "#f06a8a" },
+    { t: "Skogvokteren", l: "«Det napper bedre ved sivet!» roper en turg\u00e5er.", k: "luck", luck: 0.35, dur: 18, c: "#8affc0", s: "hiker" },
+    { t: "Frekt ekorn", l: "Et ekorn napper en kjeks fra sekken og spretter til skogs.", k: "flavor", c: "#caa07a", s: "squirrel" },
+    { t: "Flaskepost", l: "Du fisker opp en flaske med {n} kr i!", k: "money", amt: [25, 60], c: "#ffd877", s: "bottle" },
+    { t: "Villbring\u00e6r", l: "Du finner bring\u00e6r p\u00e5 bredden \u2014 s\u00f8tt og godt!", k: "luck", luck: 0.2, dur: 14, c: "#f06a8a", s: "berries" },
   ],
   fjellvatn: [
-    { t: "Reinsdyr", l: "Et reinsdyr kommer ned for \u00e5 drikke. Magisk!", k: "luck", luck: 0.3, dur: 16, c: "#cfe6ff" },
-    { t: "Fjellvind", l: "En iskald kastevind \u2014 fisken s\u00f8ker mot dypet.", k: "scare", c: "#9ec2e0" },
-    { t: "Fjellklatrer", l: "En klatrer vinker og mister {n} kr i vannet til deg.", k: "money", amt: [40, 90], c: "#ffd877" },
-    { t: "Sn\u00f8fonn", l: "Et dr\u00f8nn i fjellet skremmer fisken vekk!", k: "scare", c: "#e0eaff" },
+    { t: "Reinsdyr", l: "Et reinsdyr kommer ned for \u00e5 drikke. Magisk!", k: "luck", luck: 0.3, dur: 16, c: "#cfe6ff", s: "reindeer" },
+    { t: "Fjellvind", l: "En iskald kastevind \u2014 fisken s\u00f8ker mot dypet.", k: "scare", c: "#9ec2e0", s: "wind" },
+    { t: "Fjellklatrer", l: "En klatrer vinker og mister {n} kr i vannet til deg.", k: "money", amt: [40, 90], c: "#ffd877", s: "climber" },
+    { t: "Sn\u00f8fonn", l: "Et dr\u00f8nn i fjellet skremmer fisken vekk!", k: "scare", c: "#e0eaff", s: "avalanche" },
   ],
   elva: [
-    { t: "T\u00f8mmerfl\u00f8ting", l: "En diger t\u00f8mmerstokk sklir forbi og r\u00f8rer opp vannet.", k: "scare", c: "#8a6a3a" },
-    { t: "Kajakkpadler", l: "En padler suser forbi \u2014 fisken sprer seg!", k: "scare", c: "#5ad0ff" },
-    { t: "Gullvasking", l: "Du ser gullglimt i grunna og plukker {n} kr!", k: "money", amt: [50, 120], c: "#ffd877" },
-    { t: "Fossegrimen", l: "Fossegrimen spiller fela \u2014 flaksen f\u00f8lger tonene.", k: "luck", luck: 0.45, dur: 20, c: "#b0ffe6" },
+    { t: "T\u00f8mmerfl\u00f8ting", l: "En diger t\u00f8mmerstokk sklir forbi og r\u00f8rer opp vannet.", k: "scare", c: "#8a6a3a", s: "log" },
+    { t: "Kajakkpadler", l: "En padler suser forbi \u2014 fisken sprer seg!", k: "scare", c: "#5ad0ff", s: "kayak" },
+    { t: "Gullvasking", l: "Du ser gullglimt i grunna og plukker {n} kr!", k: "money", amt: [50, 120], c: "#ffd877", s: "goldpan" },
+    { t: "Fossegrimen", l: "Fossegrimen spiller fela \u2014 flaksen f\u00f8lger tonene.", k: "luck", luck: 0.45, dur: 20, c: "#b0ffe6", s: "fossegrim" },
   ],
   myra: [
-    { t: "Lyktemann", l: "Et bluss svever over myra og lokker fram napp.", k: "luck", luck: 0.4, dur: 16, c: "#aaffd0" },
-    { t: "Sur troll", l: "Trollet brummer \u2014 du kaster det en fisk for husfreden ({n} kr).", k: "loss", amt: [10, 30], c: "#6a8a4a" },
-    { t: "Myrgass", l: "En stor boble plopper \u2014 fisken rygger unna!", k: "scare", c: "#9abf6a" },
-    { t: "Gammelt s\u00f8lv", l: "Du roter opp {n} kr i gamle mynter fra mudderet.", k: "money", amt: [30, 80], c: "#cfd6dd" },
+    { t: "Lyktemann", l: "Et bluss svever over myra og lokker fram napp.", k: "luck", luck: 0.4, dur: 16, c: "#aaffd0", s: "wisp" },
+    { t: "Sur troll", l: "Trollet brummer \u2014 du kaster det en fisk for husfreden ({n} kr).", k: "loss", amt: [10, 30], c: "#6a8a4a", s: "troll" },
+    { t: "Myrgass", l: "En stor boble plopper \u2014 fisken rygger unna!", k: "scare", c: "#9abf6a", s: "bubble" },
+    { t: "Gammelt s\u00f8lv", l: "Du roter opp {n} kr i gamle mynter fra mudderet.", k: "money", amt: [30, 80], c: "#cfd6dd", s: "coins" },
   ],
   elgtjern: [
-    { t: "Frekk elg", l: "Elgen vasser uti og slubrer i seg agnet ditt!", k: "scare", c: "#7a5a3a" },
-    { t: "Piknikfamilie", l: "En familie deler vafler med deg \u2014 herlig hum\u00f8r!", k: "luck", luck: 0.3, dur: 18, c: "#ffd877" },
-    { t: "Bever", l: "En bever smeller halen i vannet \u2014 pladask!", k: "scare", c: "#6a4a2a" },
-    { t: "Fint s\u00f8kke", l: "Du finner et eksklusivt sluk verdt {n} kr.", k: "money", amt: [40, 100], c: "#caa23a" },
+    { t: "Frekk elg", l: "Elgen vasser uti og slubrer i seg agnet ditt!", k: "scare", c: "#7a5a3a", s: "moose" },
+    { t: "Piknikfamilie", l: "En familie deler vafler med deg \u2014 herlig hum\u00f8r!", k: "luck", luck: 0.3, dur: 18, c: "#ffd877", s: "picnic" },
+    { t: "Bever", l: "En bever smeller halen i vannet \u2014 pladask!", k: "scare", c: "#6a4a2a", s: "beaver" },
+    { t: "Fint s\u00f8kke", l: "Du finner et eksklusivt sluk verdt {n} kr.", k: "money", amt: [40, 100], c: "#caa23a", s: "lure" },
   ],
   nordlys: [
-    { t: "Stjerne\u00f8nske", l: "Et stjerneskudd! Du \u00f8nsker deg storfisk \u2014 flaksen flammer!", k: "luck", luck: 0.6, dur: 22, c: "#b0ffe6" },
-    { t: "Nordlyset blusser", l: "Himmelen flammer gr\u00f8nt \u2014 fisken biter ivrig!", k: "luck", luck: 0.45, dur: 20, c: "#8affc0" },
-    { t: "Fiskenisse", l: "En liten nisse legger igjen {n} kr p\u00e5 isen til deg.", k: "money", amt: [60, 140], c: "#ffd877" },
-    { t: "Polarkulde", l: "Bitende kulde \u2014 fisken blir doven og sky.", k: "scare", c: "#cfe6ff" },
+    { t: "Stjerne\u00f8nske", l: "Et stjerneskudd! Du \u00f8nsker deg storfisk \u2014 flaksen flammer!", k: "luck", luck: 0.6, dur: 22, c: "#b0ffe6", s: "wish" },
+    { t: "Nordlyset blusser", l: "Himmelen flammer gr\u00f8nt \u2014 fisken biter ivrig!", k: "luck", luck: 0.45, dur: 20, c: "#8affc0", s: "auroraflare" },
+    { t: "Fiskenisse", l: "En liten nisse legger igjen {n} kr p\u00e5 isen til deg.", k: "money", amt: [60, 140], c: "#ffd877", s: "gnome" },
+    { t: "Polarkulde", l: "Bitende kulde \u2014 fisken blir doven og sky.", k: "scare", c: "#cfe6ff", s: "frost" },
   ],
 };
 function triggerGameEvent() {
@@ -1210,7 +1210,9 @@ function triggerGameEvent() {
   } else {
     blip(440, 0.06, "triangle", 0.04);
   }
-  gameEvent = { active: true, t: 0, dur: 5.5, title: ev.t, line, color: ev.c };
+  // the visual actor crosses left↔right or appears for the whole banner duration
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  gameEvent = { active: true, t: 0, dur: 7, title: ev.t, line, color: ev.c, sprite: ev.s, dir, seed: Math.random() * 6.28 };
 }
 
 /* ---- kiosk (alcohol / snus / cigars) ---- */
@@ -2686,6 +2688,274 @@ function drawInspector() {
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   }
 }
+// Visual actor for a random event — a little animated sprite acting out the happening.
+// p = lifecycle 0..1; ea = fade alpha; dir = travel direction; sd = per-event random seed.
+function drawEventActor() {
+  if (!gameEvent.active || !gameEvent.sprite) return;
+  const p = clamp(gameEvent.t / gameEvent.dur, 0, 1);
+  const ea = Math.min(clamp(gameEvent.t / 0.5, 0, 1), clamp((gameEvent.dur - gameEvent.t) / 0.8, 0, 1));
+  const dir = gameEvent.dir || 1, sd = gameEvent.seed || 0;
+  const cross = dir > 0 ? -24 + p * (W + 48) : W + 24 - p * (W + 48); // left↔right crossing x
+  ctx.save();
+  ctx.globalAlpha = ea;
+  switch (gameEvent.sprite) {
+    case "squirrel": {
+      // scampers along the treeline, hopping, bushy tail flicking
+      const x = cross, hop = Math.abs(Math.sin(t * 9)) * 5, y = 128 - hop;
+      ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+      px(x - 4, y, 8, 5, "#a8702f"); px(x - 4, y, 8, 1, "#c08a45");      // body
+      px(x + 3, y - 4, 5, 5, "#a8702f"); px(x + 6, y - 6, 2, 2, "#a8702f"); // head + ear
+      px(x + 6, y - 2, 1, 1, "#1a1208");                                  // eye
+      // big curling tail
+      ctx.strokeStyle = "#9a6428"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 3, y + 2); ctx.quadraticCurveTo(x - 12, y - 2, x - 8, y - 9); ctx.stroke();
+      px(x - 3, y + 4, 2, 2, "#7a4e20"); px(x + 1, y + 4, 2, 2, "#7a4e20"); // legs
+      ctx.restore();
+      break;
+    }
+    case "hiker": {
+      // a rambler at the far bank, waving an arm
+      const x = 372, y = 116, wave = Math.sin(t * 6) * 4;
+      px(x - 4, y, 8, 12, "#3a6a4a"); px(x - 4, y, 8, 2, "#4a7a5a");       // jacket
+      px(x - 5, y + 1, 3, 9, "#7a5a3a");                                   // backpack
+      px(x - 3, y + 12, 3, 7, "#2a3a2a"); px(x + 1, y + 12, 3, 7, "#2a3a2a"); // legs
+      px(x - 3, y - 7, 7, 7, "#e8c098"); px(x - 4, y - 9, 9, 3, "#b23a2a"); // head + cap
+      ctx.strokeStyle = "#3a6a4a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 3, y + 2); ctx.lineTo(x + 8, y - 6 + wave); ctx.stroke(); // waving arm
+      px(x + 7, y - 8 + wave, 2, 2, "#e8c098");
+      ctx.globalAlpha = ea * (0.5 + 0.5 * Math.sin(t * 5)); px(x - 12, y - 12, 2, 6, "#ffe6a0"); // little "!" hint
+      break;
+    }
+    case "bottle": {
+      // a corked bottle bobbing on the water near the float, then a sparkle as you fish it up
+      const x = clamp(bobber.x + 20, 120, W - 30), y = WATER_Y + 8 + Math.sin(t * 2 + sd) * 1.5;
+      addRippleMaybe(x, y);
+      px(x - 2, y - 6, 4, 10, "#5a8a6a"); px(x - 1, y - 6, 1, 10, "#7aa888"); // glass
+      px(x - 1, y - 9, 2, 3, "#caa07a");                                       // cork
+      px(x - 2, y - 2, 4, 3, "#e8e0c0");                                       // paper note inside
+      if (p > 0.55) { sparkle(x, y - 2, t); }
+      break;
+    }
+    case "berries": {
+      // a raspberry bush on the bank, glistening
+      const x = 30, y = 210;
+      ctx.fillStyle = "#2c4a22"; for (const [ox, oy] of [[0, 0], [-5, 2], [5, 2], [-2, -4], [3, -3]]) { ctx.beginPath(); ctx.arc(x + ox, y + oy, 4, 0, 6.28); ctx.fill(); }
+      for (const [ox, oy] of [[-3, 1], [4, 2], [0, -2], [-5, 4], [3, 5]]) px(x + ox, y + oy, 2, 2, "#d23a5a");
+      sparkle(x + Math.sin(t * 2) * 4, y - 4, t * 1.3);
+      break;
+    }
+    case "reindeer": {
+      // a reindeer at the far shore dipping its head to drink
+      const x = 366, y = 150, dip = (Math.sin(t * 1.6) * 0.5 + 0.5) * 8;
+      px(x - 2, y + 4, 3, 9, "#6a4a32"); px(x + 6, y + 4, 3, 9, "#6a4a32"); // legs in shallows
+      px(x - 4, y - 4, 14, 9, "#7a5436"); px(x - 4, y - 4, 14, 2, "#8a6442"); // body
+      const hx = x + 11, hy = y - 6 + dip;                                    // head dips
+      px(hx, hy, 6, 6, "#7a5436"); px(hx + 4, hy + 3, 3, 2, "#5a3e28");       // head + muzzle
+      px(hx + 1, hy + 1, 1, 1, "#1a1208");                                    // eye
+      ctx.strokeStyle = "#caa07a"; ctx.lineWidth = 1;                         // antlers
+      ctx.beginPath(); ctx.moveTo(hx + 1, hy); ctx.lineTo(hx - 2, hy - 7); ctx.lineTo(hx - 5, hy - 6); ctx.moveTo(hx - 2, hy - 7); ctx.lineTo(hx, hy - 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(hx + 4, hy); ctx.lineTo(hx + 7, hy - 7); ctx.lineTo(hx + 10, hy - 6); ctx.stroke();
+      if (dip > 6) addRippleMaybe(hx + 3, y + 2);
+      break;
+    }
+    case "wind": {
+      // gusts sweeping across the surface, carrying flecks
+      ctx.strokeStyle = "rgba(220,235,255,0.5)"; ctx.lineWidth = 1;
+      for (let i = 0; i < 5; i++) {
+        const yy = 138 + i * 6, ph = (t * 2 + i * 0.7) % 1, xx = dir > 0 ? ph * (W + 40) - 20 : W + 20 - ph * (W + 40);
+        ctx.beginPath(); ctx.moveTo(xx, yy); ctx.quadraticCurveTo(xx + dir * 14, yy - 4, xx + dir * 26, yy); ctx.stroke();
+        ctx.globalAlpha = ea * 0.7; px(xx + dir * 26, yy - 1, 2, 2, "#eaf2ff"); ctx.globalAlpha = ea;
+      }
+      break;
+    }
+    case "climber": {
+      // a tiny climber up on the mountain, waving, then a coin glints down into the water
+      const x = 392, y = 78, wave = Math.sin(t * 6) * 3;
+      px(x - 2, y, 4, 6, "#b23a2a"); px(x - 2, y + 6, 2, 4, "#2a3a4a"); px(x, y + 6, 2, 4, "#2a3a4a");
+      px(x - 2, y - 4, 4, 4, "#e8c098");
+      ctx.strokeStyle = "#b23a2a"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 1, y + 1); ctx.lineTo(x + 4, y - 4 + wave); ctx.stroke();
+      if (p > 0.4) { const cy = lerp(86, WATER_Y, clamp((p - 0.4) / 0.5, 0, 1)); sparkle(x - 30, cy, t * 2); } // coin falling
+      break;
+    }
+    case "avalanche": {
+      // puffs of snow tumbling down the mountainside
+      for (let i = 0; i < 7; i++) {
+        const ph = (p + i * 0.13) % 1, xx = 360 + i * 6 - ph * 40, yy = 70 + ph * 70 + Math.sin(i) * 4;
+        ctx.globalAlpha = ea * (1 - ph) * 0.9; ctx.fillStyle = "#eef4ff"; ctx.beginPath(); ctx.arc(xx, yy, 3 + ph * 4, 0, 6.28); ctx.fill();
+      }
+      ctx.globalAlpha = ea;
+      break;
+    }
+    case "log": {
+      // a big log drifting across the surface, pushing a wake
+      const x = cross, y = WATER_Y + 7 + Math.sin(t * 2) * 1;
+      ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+      px(x - 20, y - 3, 40, 7, "#6a4628"); px(x - 20, y - 3, 40, 2, "#7d5736");
+      px(x - 20, y - 3, 4, 7, "#4a2e18"); px(x + 16, y - 3, 4, 7, "#8a6a45"); // dark / cut end
+      px(x + 17, y - 2, 2, 2, "#a8855a"); px(x + 17, y, 2, 1, "#7d5736");      // end rings
+      ctx.restore();
+      for (let i = 0; i < 3; i++) { ctx.globalAlpha = ea * 0.4; ctx.strokeStyle = "#b9c8ff"; ctx.beginPath(); ctx.ellipse(x - dir * 22, y + 3, 10 + i * 5, 3, 0, 0, 6.28); ctx.stroke(); }
+      ctx.globalAlpha = ea;
+      break;
+    }
+    case "kayak": {
+      // a paddler zipping across, paddle dipping side to side
+      const x = cross, y = WATER_Y + 6 + Math.sin(t * 3) * 1, pad = Math.sin(t * 8);
+      ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+      px(x - 12, y, 24, 5, "#d24a3a"); px(x - 12, y, 24, 2, "#e86a54");        // hull
+      px(x - 2, y - 7, 5, 7, "#ffd84a"); px(x - 1, y - 11, 3, 4, "#e8c098");   // torso + head
+      ctx.strokeStyle = "#caa07a"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 8, y - 8 + pad * 3); ctx.lineTo(x + 8, y - 4 - pad * 3); ctx.stroke();
+      px(x - 9, y - 9 + pad * 3, 3, 2, "#3a6a8a"); px(x + 7, y - 5 - pad * 3, 3, 2, "#3a6a8a"); // blades
+      ctx.restore();
+      addRippleMaybe(x - dir * 12, y + 3);
+      break;
+    }
+    case "goldpan": {
+      // gold flecks glinting in the shallows near shore
+      const x = 104, y = 159;
+      ctx.fillStyle = "#3a2a18"; ctx.beginPath(); ctx.ellipse(x, y, 9, 4, 0, 0, 6.28); ctx.fill(); // pan
+      ctx.strokeStyle = "#5a4226"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y, 9, 4, 0, 0, 6.28); ctx.stroke();
+      for (let i = 0; i < 4; i++) sparkle(x - 5 + i * 3, y - 1 + Math.sin(t * 2 + i) * 1, t * 1.5 + i);
+      break;
+    }
+    case "fossegrim": {
+      // a mystic figure by the falls playing a fiddle, notes drifting up
+      const x = 408, y = 128, bow = Math.sin(t * 7) * 4;
+      px(x - 4, y, 8, 12, "#2a4a5a"); px(x - 3, y + 12, 3, 6, "#1a2a3a"); px(x + 1, y + 12, 3, 6, "#1a2a3a");
+      px(x - 3, y - 6, 7, 7, "#cfe6e0"); ctx.globalAlpha = ea * 0.6; px(x - 5, y - 2, 11, 14, "#aef0e0"); ctx.globalAlpha = ea; // glow
+      px(x - 6, y + 2, 4, 5, "#8a5a2a"); // fiddle
+      ctx.strokeStyle = "#e8e0c0"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 7, y + 1); ctx.lineTo(x - 2, y + 7 + bow); ctx.stroke();
+      for (let i = 0; i < 3; i++) { const ny = y - 6 - ((t * 14 + i * 12) % 36); ctx.globalAlpha = ea * Math.max(0, 1 - ((t * 14 + i * 12) % 36) / 36); ctx.fillStyle = "#b0ffe6"; ctx.font = "9px monospace"; ctx.fillText("\u266a", x + 6 + Math.sin(ny) * 3, ny); }
+      ctx.globalAlpha = ea;
+      break;
+    }
+    case "wisp": {
+      // a will-o'-the-wisp drifting in a wavy path with a soft halo
+      const x = cross, y = 132 + Math.sin(t * 2 + sd) * 14;
+      const g = ctx.createRadialGradient(x, y, 1, x, y, 14); g.addColorStop(0, "rgba(170,255,200,0.9)"); g.addColorStop(1, "rgba(170,255,200,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 14, 0, 6.28); ctx.fill();
+      px(x - 1, y - 1, 3, 3, "#e6fff0");
+      for (let i = 0; i < 4; i++) { ctx.globalAlpha = ea * (1 - i / 4) * 0.5; px(x - dir * i * 4, y + Math.sin(t * 2 + i) * 3, 2, 2, "#aaffd0"); }
+      ctx.globalAlpha = ea;
+      break;
+    }
+    case "troll": {
+      // a lumpy bog troll rising at the treeline, then sinking back
+      const rise = Math.sin(p * Math.PI) * 26, x = 350, y = 150 - rise;
+      px(x - 12, y - 18, 26, 26, "#5a6a48"); px(x - 12, y - 18, 26, 3, "#6a7a56"); // hulking body
+      px(x - 8, y - 28, 18, 12, "#5a6a48");                                        // head
+      px(x + 2, y - 22, 6, 6, "#7a8a64"); px(x + 4, y - 18, 3, 4, "#4a5a3a");       // big nose
+      px(x - 5, y - 24, 3, 3, "#caa84a"); px(x + 5, y - 24, 3, 3, "#caa84a");       // glowing eyes
+      px(x - 6, y - 23, 1, 1, "#1a1208"); px(x + 6, y - 23, 1, 1, "#1a1208");
+      px(x - 4, y - 14, 8, 1, "#2a3a1a");                                           // grumpy mouth
+      px(x - 9, y - 30, 3, 4, "#4a3a22"); px(x + 6, y - 30, 3, 4, "#4a3a22");       // mossy tufts
+      break;
+    }
+    case "bubble": {
+      // a fat marsh-gas bubble rising and popping at the surface
+      const rise = clamp(p / 0.7, 0, 1), x = clamp(bobber.x, 140, W - 40), y = lerp(WATER_Y + 22, WATER_Y + 2, rise), r = 3 + rise * 4;
+      if (p < 0.72) { ctx.globalAlpha = ea * 0.7; ctx.fillStyle = "#9abf6a"; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill(); ctx.globalAlpha = ea * 0.9; px(x - 1, y - 1, 1, 1, "#d8f0a0"); }
+      else { for (let i = 0; i < 6; i++) { const a2 = i / 6 * 6.28; ctx.globalAlpha = ea * (1 - (p - 0.72) / 0.28); px(x + Math.cos(a2) * (r + (p - 0.72) * 40), y + Math.sin(a2) * (r + (p - 0.72) * 30), 2, 2, "#c8e89a"); } }
+      ctx.globalAlpha = ea; addRippleMaybe(x, WATER_Y + 2);
+      break;
+    }
+    case "coins": {
+      // old silver coins glinting in the mud by the shore
+      const x = 98, y = 161;
+      for (const [ox, oy] of [[0, 0], [4, 2], [-3, 3], [2, 5]]) { px(x + ox, y + oy, 3, 3, "#cfd6dd"); px(x + ox, y + oy, 3, 1, "#eef2f6"); }
+      sparkle(x + 1 + Math.sin(t * 2) * 3, y, t * 1.7);
+      break;
+    }
+    case "moose": {
+      // the cheeky moose wading in and slurping at the water
+      const x = 338, y = 150, dip = (Math.sin(t * 1.4) * 0.5 + 0.5) * 9;
+      px(x - 3, y + 3, 4, 11, "#4a3422"); px(x + 8, y + 3, 4, 11, "#4a3422"); // legs in water
+      px(x - 6, y - 8, 20, 12, "#5a3e26"); px(x - 6, y - 8, 20, 2, "#6a4a30"); // body
+      const hx = x + 13, hy = y - 8 + dip;
+      px(hx, hy, 8, 7, "#5a3e26"); px(hx + 5, hy + 3, 4, 3, "#3a2818");        // head + muzzle
+      px(hx + 2, hy + 1, 1, 1, "#1a1208");
+      px(hx - 4, hy - 4, 6, 3, "#7a5a3a"); px(hx + 6, hy - 4, 6, 3, "#7a5a3a"); // palmate antlers
+      if (dip > 7) { addRippleMaybe(hx + 4, y + 2); }
+      break;
+    }
+    case "picnic": {
+      // a little family on a checked blanket on the bank, waving
+      const x = 36, y = 220, wave = Math.sin(t * 5) * 3;
+      for (let i = 0; i < 5; i++) px(x - 8 + i * 4, y, 4, 4, i % 2 ? "#e8e0d0" : "#d23a3a"); // blanket
+      px(x - 6, y - 8, 5, 8, "#3a6a8a"); px(x - 5, y - 12, 3, 4, "#e8c098");   // grown-up
+      px(x + 2, y - 6, 4, 6, "#caa23a"); px(x + 3, y - 9, 3, 3, "#e8c098");    // child
+      ctx.strokeStyle = "#3a6a8a"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 2, y - 6); ctx.lineTo(x - 5, y - 11 + wave); ctx.stroke(); // wave
+      px(x + 8, y - 5, 3, 2, "#f0d8a0"); // a waffle
+      break;
+    }
+    case "beaver": {
+      // a beaver swimming across, then a big tail-slap splash
+      const x = cross, y = WATER_Y + 6, slap = p > 0.45 && p < 0.6;
+      ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+      px(x - 7, y - 2, 13, 5, "#6a4a2a"); px(x - 7, y - 2, 13, 2, "#7d5736");  // body
+      px(x + 5, y - 5, 5, 5, "#5a3e22"); px(x + 8, y - 3, 1, 1, "#1a1208");    // head
+      px(x - 10, y - 1, 4, 3, "#4a3018");                                      // flat tail
+      ctx.restore();
+      if (slap) { for (let i = 0; i < 8; i++) { const a2 = -1 + i * 0.3; ctx.globalAlpha = ea; px(x - dir * 9 + Math.cos(a2) * 10, y + 2 - Math.abs(Math.sin(a2)) * 12, 2, 2, "#cfe0ff"); } addRippleMaybe(x - dir * 9, y + 3); }
+      ctx.globalAlpha = ea;
+      break;
+    }
+    case "lure": {
+      // a fancy spinner glinting on the surface near the float
+      const x = clamp(bobber.x - 16, 130, W - 30), y = WATER_Y + 6 + Math.sin(t * 2) * 1;
+      px(x - 2, y - 2, 4, 5, "#caa23a"); px(x - 1, y - 2, 1, 5, "#ffe6a0");    // body
+      px(x - 1, y + 3, 2, 2, "#d24a3a");                                       // hook feather
+      sparkle(x, y - 2, t * 2.2);
+      break;
+    }
+    case "wish": {
+      // a bright shooting star arcing across the sky with a sparkle trail
+      const sx = lerp(W - 40, 60, p), sy = lerp(28, 70, p);
+      ctx.strokeStyle = "rgba(200,240,255,0.8)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 22, sy - 10); ctx.stroke();
+      px(sx - 1, sy - 1, 3, 3, "#ffffff"); sparkle(sx, sy, t * 3);
+      for (let i = 1; i < 5; i++) { ctx.globalAlpha = ea * (1 - i / 5); px(sx + i * 5, sy - i * 2, 2, 2, "#b0ffe6"); }
+      ctx.globalAlpha = ea;
+      break;
+    }
+    case "auroraflare": {
+      // the aurora surges — extra bright green curtains across the top
+      ctx.globalAlpha = ea * (0.25 + 0.2 * Math.sin(t * 3));
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = ["#7dffb0", "#5ad0ff", "#aef0a0"][i];
+        ctx.beginPath(); ctx.moveTo(0, 30 + i * 6);
+        for (let xx = 0; xx <= W; xx += 16) ctx.lineTo(xx, 30 + i * 6 + Math.sin(xx * 0.02 + t * 1.5 + i) * 12);
+        ctx.lineTo(W, 0); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill();
+      }
+      ctx.globalAlpha = ea;
+      break;
+    }
+    case "gnome": {
+      // a tiny red-capped gnome on the bank, leaving a coin behind
+      const x = 100, y = 158, bob = Math.sin(t * 3) * 1;
+      px(x - 3, y - 6 + bob, 6, 6, "#3a5a7a"); px(x - 3, y, 2, 3, "#3a2a1a"); px(x + 1, y, 2, 3, "#3a2a1a"); // body + boots
+      px(x - 2, y - 9 + bob, 4, 3, "#f0d8c0"); px(x - 2, y - 4 + bob, 4, 2, "#e8e0d0");                       // face + beard
+      ctx.fillStyle = "#c83a2a"; ctx.beginPath(); ctx.moveTo(x - 3, y - 9 + bob); ctx.lineTo(x + 3, y - 9 + bob); ctx.lineTo(x + 1, y - 15 + bob); ctx.closePath(); ctx.fill(); // pointed cap
+      if (p > 0.5) { px(x + 6, y + 2, 3, 3, "#ffd84a"); sparkle(x + 7, y + 1, t * 2); }
+      break;
+    }
+    case "frost": {
+      // biting cold — frost creeps in at the edges and crystals drift
+      ctx.globalAlpha = ea * 0.5;
+      const fg = ctx.createLinearGradient(0, 0, 0, H); fg.addColorStop(0, "rgba(180,215,255,0.35)"); fg.addColorStop(0.5, "rgba(180,215,255,0)"); fg.addColorStop(1, "rgba(180,215,255,0.3)");
+      ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = ea;
+      for (let i = 0; i < 12; i++) { const fx = (i * 53 + t * 8) % W, fy = (i * 37 + t * 18) % H; ctx.globalAlpha = ea * 0.8; px(fx, fy, 1, 1, "#eaf4ff"); px(fx, fy - 1, 1, 3, "#cfe6ff"); px(fx - 1, fy, 3, 1, "#cfe6ff"); }
+      ctx.globalAlpha = ea;
+      break;
+    }
+  }
+  ctx.restore();
+}
+function addRippleMaybe(x, y) { if (Math.random() < 0.08) addRipple(x, y, 10); }
+function sparkle(x, y, ph) {
+  const s = 0.5 + 0.5 * Math.sin(ph * 3), prev = ctx.globalAlpha;
+  ctx.globalAlpha = prev * (0.4 + s * 0.6);
+  px(x, y - 2, 1, 5, "#fff4c0"); px(x - 2, y, 5, 1, "#fff4c0"); px(x, y, 1, 1, "#ffffff");
+  ctx.globalAlpha = prev;
+}
 function drawGameEvent() {
   if (!gameEvent.active) return;
   const k = gameEvent.t;
@@ -3198,7 +3468,7 @@ function render() {
     case "game":
       drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore();
       drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
-      drawRevealFish(); drawFog(); drawBuffHud(); drawGameEvent(); drawHoverHighlight(); drawVignette();
+      drawRevealFish(); drawFog(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawVignette();
       break;
     case "menu": drawMenuBg(); break;
     case "market": drawMarketBg(); break;
