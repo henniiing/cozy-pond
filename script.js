@@ -293,7 +293,10 @@ const cans = []; // thrown beer cans {x,y,vx,vy,rot,life}
 // boosts / vices (consumables grant temporary luck + reeling ease)
 let buff = { label: "", luck: 0, reel: 0, t: 0, dur: 1, color: "#fff" };
 let buffFlash = 0, drunk = 0, smoking = 0, snusing = 0;
-// classic cartoon blackout when he drinks WAY past the limit (rus > 140 %)
+// one consistent fyll scale: each drink adds a fixed amount, capped at DRUNK_MAX,
+// and you keel over (cartoon blackout) once you cross DRUNK_KO.
+const DRUNK_KO = 1.4, DRUNK_MAX = 1.7;
+// classic cartoon blackout when he drinks WAY past the limit
 let knockout = { active: false, t: 0, phase: "fall" };
 const smoke = [];
 let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, funnPanel = false, kioskIdleTimer = 5, partyNode = null;
@@ -1020,6 +1023,17 @@ function buildSlots() {
     list.appendChild(row);
   }
 }
+// wipe every bit of transient world state so a fresh slot never inherits the old game's
+// buff/fyll, cat mid-steal, lingering event banner, knockout or thrown clutter
+function resetTransientState() {
+  buff = { label: "", luck: 0, reel: 0, t: 0, dur: 1, color: "#fff" };
+  drunk = 0; buffFlash = 0; smoking = 0; snusing = 0;
+  knockout.active = false; knockout.t = 0;
+  gameEvent.active = false;
+  inspector.active = false; inspectorTimer = 80 + Math.random() * 120;
+  cat.state = "away"; cat.x = -20; cat.mission = null; cat.fishKey = null; cat.action = "sit"; cat.timer = 14 + Math.random() * 26;
+  cans.length = 0; smoke.length = 0;
+}
 function playSlot(slot) {
   slot = parseInt(slot, 10);
   if (!(slot >= 0 && slot < SLOT_COUNT)) return;
@@ -1028,8 +1042,7 @@ function playSlot(slot) {
     currentSlot = slot;
     try { localStorage.setItem(SLOT_KEY, String(slot)); } catch (e) {}
     save = loadSave(slot);
-    buff = { label: "", luck: 0, reel: 0, t: 0, dur: 1, color: "#fff" };
-    drunk = 0;
+    resetTransientState();
     setLocation(save.location);
     refreshAll();
   }
@@ -1044,8 +1057,7 @@ function deleteSlot(slot) {
     save = loadSave(slot);
     persist();
     setLocation(save.location);
-    buff = { label: "", luck: 0, reel: 0, t: 0, dur: 1, color: "#fff" };
-    drunk = 0;
+    resetTransientState();
     refreshAll();
   }
   buildSlots();
@@ -1190,7 +1202,8 @@ function parseDreamlo(txt) {
   let j; try { j = JSON.parse(txt); } catch (e) { return []; }
   const lb = j && j.dreamlo && j.dreamlo.leaderboard;
   if (!lb || !lb.entry) return [];
-  return Array.isArray(lb.entry) ? lb.entry : [lb.entry];
+  const arr = Array.isArray(lb.entry) ? lb.entry : [lb.entry];
+  return arr.filter((e) => e && typeof e === "object");   // never let null/blank rows through to render
 }
 
 function renderScoreList(elId, entries, valFn) {
@@ -1456,7 +1469,7 @@ function drinkBeer() {
   setTimeout(sfxGulp, 700); setTimeout(sfxGulp, 1100); setTimeout(sfxGulp, 1500);
   setTimeout(() => { playSample("burp", { vol: 0.85 }); if (Math.random() < 0.45) setTimeout(() => playSample("fart", { vol: 0.6 }), 500); }, 2150);
   applyBuff("Ølmodig", 0.2, 0.12, 22, "#ffcf5a");
-  drunk = Math.min(1, drunk + 0.5);
+  drunk = Math.min(DRUNK_MAX, drunk + 0.30);
 }
 function drinkAkevitt() {
   drinking = 2.6; drinkKind = "akevitt"; sipAnim = 0;
@@ -1464,7 +1477,7 @@ function drinkAkevitt() {
   setTimeout(sfxGulp, 600); setTimeout(sfxGulp, 1000); setTimeout(sfxGulp, 1400);
   setTimeout(() => { playSample("burp", { vol: 1 }); setTimeout(() => playSample("fart", { vol: 0.7 }), 600); }, 2100);
   applyBuff("Brennevin", 0.55, 0.3, 45, "#ffe08a");
-  drunk = Math.min(1.2, drunk + 0.95);
+  drunk = Math.min(DRUNK_MAX, drunk + 0.55);
 }
 function drinkSnabel() {
   drinking = 2.8; drinkKind = "snabel"; sipAnim = 0;
@@ -1472,7 +1485,7 @@ function drinkSnabel() {
   setTimeout(sfxGulp, 600); setTimeout(sfxGulp, 1050); setTimeout(sfxGulp, 1500); setTimeout(sfxGulp, 1900);
   setTimeout(() => { playSample("burp", { vol: 1 }); setTimeout(() => playSample("fart", { vol: 0.85 }), 650); }, 2300);
   applyBuff("Snabelstoff", 0.8, 0.42, 60, "#d8e0c0");
-  drunk = Math.min(1.5, drunk + 1.25);
+  drunk = Math.min(DRUNK_MAX, drunk + 0.78);
 }
 function takeSnus() {
   snusing = 1.4;
@@ -1637,9 +1650,10 @@ function triggerGameEvent() {
   } else if (ev.k === "luck") {
     applyBuff(ev.t, ev.luck, 0, ev.dur, ev.c); blip(660, 0.1, "sine", 0.05);
   } else if (ev.k === "buddy") {
-    // a buddy shares a strong dram — same kick as a Blænnvin — then wades in for a fish
+    // a buddy shares a strong dram — same flaks-kick as a Blænnvin. It nudges you tipsy,
+    // but an *event* you didn't choose should never be the thing that knocks you out.
     applyBuff("Blænnvin", 0.55, 0.3, 45, "#caa84a");
-    drunk = Math.min(1.2, drunk + 0.8);
+    drunk = Math.min(drunk + 0.4, Math.max(drunk, 1.2));
     setTimeout(() => { try { sfxGulp(); } catch (e) {} }, 900);
     setTimeout(() => { try { playSample("burp", { vol: 0.9 }); } catch (e) {} }, 1700);
     setTimeout(() => { try { sfxSplash(); } catch (e) {} }, 3900);
@@ -2018,7 +2032,7 @@ function update(dt) {
   // buffs + vices
   if (buff.t > 0) buff.t -= dt;
   if (buffFlash > 0) buffFlash -= dt;
-  if (drunk > 0) drunk = Math.max(0, drunk - dt * 0.02);
+  if (drunk > 0) drunk = Math.max(0, drunk - dt * 0.045);
   if (snusing > 0) snusing -= dt;
   if (smoking > 0) {
     smoking -= dt;
@@ -2033,8 +2047,8 @@ function update(dt) {
     if (sipTimer <= 0) { sipTimer = 8 + Math.random() * 8; sipAnim = 1.2; sfxGulp(); }
   }
 
-  // too much moonshine — he keels right over the 140 % line (classic iris-out, then comes to)
-  if (drunk > 1.4 && !knockout.active && screen === "game") startKnockout();
+  // too much moonshine — he keels right over once past the limit (classic iris-out, then comes to)
+  if (drunk > DRUNK_KO && !knockout.active && screen === "game") startKnockout();
   if (knockout.active) updateKnockout(dt);
 
   if (screen !== "game") return; // fishing logic only on water
@@ -3951,17 +3965,20 @@ function drawGroundFish() {
   }
 }
 function drawBuffHud() {
+  // tuck the meters into the bottom-RIGHT corner so they never sit on top of the cat,
+  // the catch pile or the fisherman over on the left bank
+  if (coolerMenu || godsakerPanel || rodPanel || bagPanel || recordsPanel || funnPanel || truckMenu) return;
   const showBuff = buff.t > 0;
-  const dfrac = clamp(drunk / 1.4, 0, 1);            // 1.0 = blackout territory
+  const dfrac = clamp(drunk / DRUNK_KO, 0, 1);       // 1.0 = blackout territory
   const showDrunk = drunk > 0.05;
   if (!showBuff && !showDrunk) return;
-  const w = 104, x = 8;
+  const w = 104, x = W - w - 8;
   const rows = (showBuff ? 1 : 0) + (showDrunk ? 1 : 0);
   const h = 5 + rows * 13;
   const y = H - 8 - h;
   const intensity = clamp(buff.luck / 1.0, 0, 1);
   const buffCol = intensity < 0.4 ? "#5fbf5f" : intensity < 0.75 ? "#ffcf5a" : "#ff7a5a";
-  const near = dfrac > 0.82;                          // ~drunk 1.15 — the 1.4 blackout looms
+  const near = dfrac > 0.82;                          // ~drunk 1.15 — the blackout looms
   const drunkCol = dfrac < 0.5 ? "#8ad0ff" : dfrac < 0.82 ? "#ffb04a" : "#ff5a4a";
   px(x, y, w, h, "rgba(14,12,22,0.82)");
   px(x, y, w, 2, showBuff ? buffCol : drunkCol);
