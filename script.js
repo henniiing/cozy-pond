@@ -64,7 +64,7 @@ const fmt = (n) => Math.round(n).toLocaleString("nb-NO");
 // kr = base kr per kg. weight = rarity. min/max in kg.
 const FISH = [
   { key: "abbor",  name: "Abbor",  min: 0.1, max: 1.6, weight: 30, kr: 40,  shape: "normal", body: "#5f7d3a", belly: "#d9d2a6", fin: "#c23b2b", pattern: "stripes", spot: "#3a4a22", seed: 11 },
-  { key: "mort",   name: "Mort",   min: 0.08, max: 0.5, weight: 26, kr: 18, shape: "normal", body: "#97a6b2", belly: "#e8eef2", fin: "#d23b2b", pattern: "plain", seed: 23 },
+  { key: "mort",   name: "Mort",   min: 0.08, max: 0.5, weight: 26, kr: 24, shape: "normal", body: "#97a6b2", belly: "#e8eef2", fin: "#d23b2b", pattern: "plain", seed: 23 },
   { key: "sik",    name: "Sik",    min: 0.3, max: 2.2, weight: 14, kr: 55,  shape: "normal", body: "#aab6c2", belly: "#eef3f7", fin: "#8c9aa6", pattern: "plain", seed: 31 },
   { key: "brasme", name: "Brasme", min: 0.4, max: 3.5, weight: 12, kr: 25,  shape: "tall", body: "#9b8642", belly: "#e6dcb0", fin: "#5b4a2a", pattern: "plain", seed: 41 },
   { key: "gjedde", name: "Gjedde", min: 0.8, max: 9.0, weight: 12, kr: 45,  shape: "long", body: "#566b39", belly: "#d4d39a", fin: "#7a4030", pattern: "spots", spot: "#c6d488", seed: 53 },
@@ -190,11 +190,11 @@ const BOBBER_HOME = { x: 330, y: 178 };
 const SEKK = { x: 12, y: 150, w: 30, h: 26 };
 const RADIO = { x: 50, y: 160, w: 18, h: 13 };
 const TRUCK = { x: 2, y: 116, w: 44, h: 22 };
-const FISH_STALL = { x: 12, y: 90, w: 96, h: 100 };
-const KIOSK_STALL = { x: 132, y: 90, w: 96, h: 100 };
-const ROD_STALL = { x: 252, y: 90, w: 96, h: 100 };
-const CASINO_STALL = { x: 372, y: 90, w: 96, h: 100 };
-const LICENSE_BOOTH = { x: 250, y: 198, w: 78, h: 48 };   // the warden's permit booth out on the market square
+const FISH_STALL = { x: 7, y: 90, w: 90, h: 100 };
+const KIOSK_STALL = { x: 101, y: 90, w: 90, h: 100 };
+const ROD_STALL = { x: 195, y: 90, w: 90, h: 100 };
+const CASINO_STALL = { x: 289, y: 90, w: 90, h: 100 };
+const LICENSE_BOOTH = { x: 383, y: 90, w: 90, h: 100 };   // the warden's permit stall, now in line with the others
 const MARKET_TRUCK = { x: 6, y: 214, w: 60, h: 30 };
 
 /* =========================================================================
@@ -239,13 +239,18 @@ function startTravel(key) {
 }
 // travel to a water, buying its unlock first if needed (markedet is always free)
 function tryTravel(key) {
-  if (key === "market") { startTravel("market"); return; }
+  const atMarket = mapReturn === "market";
+  if (key === "market") {
+    if (atMarket) { setScreen("market"); return; }   // already standing in the market — no need to drive
+    startTravel("market"); return;
+  }
   const loc = LOCATIONS.find((l) => l.key === key); if (!loc) return;
   if ((save.unlocked || []).includes(key)) {
-    if (key === save.location) setScreen("game"); else startTravel(key);
+    if (key === save.location && !atMarket) setScreen("game");   // already sitting at this water
+    else startTravel(key);
     return;
   }
-  if (save.money < loc.cost) { setScreen("game"); setHint(`${loc.name} koster ${fmt(loc.cost)} kr — fisk litt mer`); sfxMiss(); return; }
+  if (save.money < loc.cost) { sfxMiss(); return; }   // can't afford it yet — the price is shown on the map
   save.money -= loc.cost; save.unlocked.push(key); persist(); refreshHUD(); sfxCoin();
   startTravel(key);
 }
@@ -257,6 +262,8 @@ const cans = []; // thrown beer cans {x,y,vx,vy,rot,life}
 // boosts / vices (consumables grant temporary luck + reeling ease)
 let buff = { label: "", luck: 0, reel: 0, t: 0, dur: 1, color: "#fff" };
 let buffFlash = 0, drunk = 0, smoking = 0, snusing = 0;
+// classic cartoon blackout when he drinks WAY past the limit (rus > 140 %)
+let knockout = { active: false, t: 0, phase: "fall" };
 const smoke = [];
 let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, kioskIdleTimer = 5, partyNode = null;
 let marketNode = null, casinoAmbNode = null, casinoSpinNode = null;
@@ -286,6 +293,14 @@ const marketNPCs = Array.from({ length: 4 }, (_, i) => ({
 }));
 const ripples = [];
 function addRipple(x, y, max = 14) { ripples.push({ x, y, r: 1, max, life: 1 }); }
+// occasional comical street happenings at the market
+let marketGag = { active: false, t: 0, dur: 0, kind: "", dir: 1, seed: 0 };
+let marketGagTimer = 4 + Math.random() * 6;
+const MARKET_GAGS = ["dog", "cat", "gull", "barrel", "balloon"];
+function startMarketGag() {
+  const kind = MARKET_GAGS[Math.floor(Math.random() * MARKET_GAGS.length)];
+  marketGag = { active: true, t: 0, dur: kind === "balloon" ? 4 : 3, kind, dir: Math.random() < 0.5 ? 1 : -1, seed: Math.random() * 6.28 };
+}
 
 let wolfTimer = 30 + Math.random() * 50;
 let cricketTimer = 0;
@@ -636,6 +651,7 @@ const padRect = (r, p) => ({ x: r.x - p, y: r.y - p, w: r.w + p * 2, h: r.h + p 
 
 function canvasPress(p) {
   ensureAudio();
+  if (knockout.active) return;          // passed out cold — no fishing until he comes to
   if (screen === "intro") { if (!intro.running) startIntroPlayback(); else endIntro(); return; }
   if (screen === "market") {
     if (inRect(p.x, p.y, MARKET_TRUCK)) { mapReturn = "market"; sfxHorn(); setScreen("map"); return; }
@@ -726,7 +742,8 @@ function canvasPress(p) {
     }
     startCast(); return;
   }
-  if (fishState === "waiting") { setMiss("For tidlig!"); return; }
+  // a click while the line is just out (casting/waiting) reels it back in — a clean cancel
+  if (fishState === "casting" || fishState === "waiting") { cancelFishing(); return; }
   if (fishState === "bite") { hookFish(); return; }
   if (fishState === "hooked") { holding = true; return; }
 }
@@ -736,11 +753,13 @@ canvas.addEventListener("mouseup", () => (holding = false));
 canvas.addEventListener("mouseleave", () => { holding = false; hover.on = false; hoverProp = null; canvas.style.cursor = "default"; });
 canvas.addEventListener("touchstart", (e) => { touchMode = true; e.preventDefault(); canvasPress(toCanvas(e)); }, { passive: false });
 canvas.addEventListener("touchend", (e) => { e.preventDefault(); holding = false; }, { passive: false });
+canvas.addEventListener("touchcancel", () => { holding = false; }, { passive: false });
 
 // hover feedback: a pointer cursor (and an in-scene highlight) over anything clickable
 let hover = { x: -1, y: -1, on: false };
 let touchMode = false;       // set on first touch — drives always-on labels for phones
 let hoverProp = null;        // "truck" | "sekk" | "radio" — highlighted in the fishing scene
+let marketHover = null;      // {rect,label} currently hovered in the market
 function interactiveAt(p) {
   if (screen === "intro") return "play";
   if (screen === "menu") return null; // menu uses real DOM buttons
@@ -771,9 +790,10 @@ function interactiveAt(p) {
   return null;
 }
 function updateCursor() {
-  if (!hover.on) { canvas.style.cursor = "default"; hoverProp = null; return; }
+  if (!hover.on) { canvas.style.cursor = "default"; hoverProp = null; marketHover = null; return; }
   const k = interactiveAt(hover);
   hoverProp = (screen === "game" && fishState === "ready" && (k === "truck" || k === "sekk" || k === "radio")) ? k : null;
+  marketHover = screen === "market" ? marketTarget(hover) : null;
   canvas.style.cursor = !k ? "default" : (k === "water" ? "crosshair" : "pointer");
 }
 canvas.addEventListener("mousemove", (e) => { const p = toCanvas(e); hover.x = p.x; hover.y = p.y; hover.on = true; updateCursor(); });
@@ -819,6 +839,31 @@ function drawTouchHints() {
     ctx.fillStyle = "#ffe6a0"; ctx.fillText(label, lx, ly);
   }
   ctx.globalAlpha = 1; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+// market interactables share the fishing scene's hover style (no permanent outlines)
+const MARKET_TARGETS = () => [
+  [FISH_STALL, "Selg fisk"], [KIOSK_STALL, "Kiosk"], [ROD_STALL, "Stenger"],
+  [CASINO_STALL, "Kasino"], [LICENSE_BOOTH, "Fiskekort"], [MARKET_TRUCK, "Reise"],
+];
+function marketTarget(p) {
+  for (const [r, label] of MARKET_TARGETS()) if (inRect(p.x, p.y, r)) return { rect: r, label };
+  return null;
+}
+function drawMarketLabel(r, label, alpha) {
+  ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const lx = r.x + r.w / 2, ly = r.y + r.h + 4, lw = ctx.measureText(label).width + 8;
+  ctx.globalAlpha = alpha; px(Math.round(lx - lw / 2), ly - 1, Math.round(lw), 11, "rgba(14,12,22,0.82)");
+  ctx.globalAlpha = 1; ctx.fillStyle = "#ffe6a0"; ctx.fillText(label, lx, ly + 1);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+function drawMarketHover() {
+  if (touchMode) { for (const [r, label] of MARKET_TARGETS()) drawMarketLabel(r, label, 0.7); return; }
+  if (!marketHover) return;
+  const r = marketHover.rect, pulse = 0.5 + 0.5 * Math.sin(t * 5);
+  ctx.globalAlpha = 0.45 + 0.45 * pulse; ctx.strokeStyle = "#ffe6a0"; ctx.lineWidth = 1;
+  ctx.strokeRect(Math.round(r.x) + 0.5, Math.round(r.y) + 0.5, r.w - 1, r.h - 1);
+  ctx.globalAlpha = 1;
+  drawMarketLabel(r, marketHover.label, 0.9);
 }
 
 window.addEventListener("keydown", (e) => {
@@ -1007,6 +1052,33 @@ function resetFishing() {
   castTarget.x = BOBBER_HOME.x; castTarget.y = BOBBER_HOME.y;
   reelEl.classList.add("hidden"); catchEl.classList.add("hidden");
   tensionEl.classList.remove("danger");
+}
+// reel the line straight back in without a fish — lets you bail out of a cast you regret
+function cancelFishing() {
+  resetFishing();
+  sfxPlop();
+  setHint("Du sveiver inn igjen — klikk for å kaste ut");
+}
+// ---- drunk blackout (cartoon iris-out) ----
+function startKnockout() {
+  knockout.active = true; knockout.t = 0; knockout.phase = "fall";
+  holding = false; if (fishState !== "ready") resetFishing();
+  setHint("");
+  blip(120, 0.18, "sawtooth", 0.08); setTimeout(() => { try { noise(0.22, 800, 0.08, "lowpass"); } catch (e) {} }, 160);
+  setTimeout(() => { try { playSample("burp", { vol: 0.95 }); } catch (e) {} }, 320);
+}
+function updateKnockout(dt) {
+  knockout.t += dt;
+  const ph = knockout.phase;
+  if (ph === "fall" && knockout.t > 1.1) { knockout.phase = "close"; knockout.t = 0; }
+  else if (ph === "close" && knockout.t > 0.7) { knockout.phase = "black"; knockout.t = 0; try { playSample("fart", { vol: 0.5 }); } catch (e) {} }
+  else if (ph === "black" && knockout.t > 1.0) { knockout.phase = "open"; knockout.t = 0; }
+  else if (ph === "open" && knockout.t > 0.9) {
+    // comes to — stone-cold sober, rus gone
+    knockout.active = false; drunk = 0;
+    buff.t = 0; buff.luck = 0; buff.reel = 0; buff.count = 0;
+    setHint("Du våkner på bredden… huff. Klikk for å kaste ut.");
+  }
 }
 function setMiss(reason) {
   setFish("missed"); missReason = reason; sfxMiss();
@@ -1232,6 +1304,7 @@ const LOCATION_EVENTS = {
     { t: "Fossegrimen", l: "Fossegrimen spiller fela \u2014 flaksen f\u00f8lger tonene.", k: "luck", luck: 0.45, dur: 20, c: "#b0ffe6", s: "fossegrim" },
   ],
   myra: [
+    { t: "TROLLET!", l: "Et ekte troll reiser seg br\u00f8lende opp av myra \u2014 fisken flykter i panikk!", k: "scare", c: "#3f5a2e", s: "trollbig" },
     { t: "Lyktemann", l: "Et bluss svever over myra og lokker fram napp.", k: "luck", luck: 0.4, dur: 16, c: "#aaffd0", s: "wisp" },
     { t: "Sur troll", l: "Trollet brummer \u2014 du kaster det en fisk for husfreden ({n} kr).", k: "loss", amt: [10, 30], c: "#6a8a4a", s: "troll" },
     { t: "Myrgass", l: "En stor boble plopper \u2014 fisken rygger unna!", k: "scare", c: "#9abf6a", s: "bubble" },
@@ -1269,6 +1342,7 @@ function triggerGameEvent() {
     setTimeout(() => { try { playSample("burp", { vol: 0.9 }); } catch (e) {} }, 1700);
     setTimeout(() => { try { sfxSplash(); } catch (e) {} }, 3900);
   } else if (ev.k === "scare") {
+    if (ev.s === "trollbig") { try { playSample("grumpyVoice", { vol: 0.75 }); } catch (e) {} blip(70, 0.45, "sawtooth", 0.09); setTimeout(() => { try { noise(0.4, 420, 0.1, "lowpass"); } catch (e) {} }, 140); }
     if (fishState === "waiting" || fishState === "bite") { setFish("waiting"); biteTimer = 5 + Math.random() * 7; addRipple(bobber.x, bobber.y, 20); setHint("Fisken ble skremt \u2014 vent litt..."); }
     sfxMiss();
   } else {
@@ -1569,7 +1643,7 @@ function update(dt) {
     }
     // per-location random happenings (can fire while you fish; not during the inspector or menus)
     if (gameEvent.active) { gameEvent.t += dt; if (gameEvent.t > gameEvent.dur) gameEvent.active = false; }
-    if (!gameEvent.active && cat.mission == null && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel) {
+    if ((fishState === "ready" || fishState === "waiting") && !gameEvent.active && cat.mission == null && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel) {
       eventTimer -= dt;
       if (eventTimer <= 0) { eventTimer = 50 + Math.random() * 70; triggerGameEvent(); }
     }
@@ -1587,6 +1661,9 @@ function update(dt) {
       else if (n.x > W - 10) { n.x = W - 10; n.dir = -1; if (Math.random() < 0.5) n.pause = 0.5 + Math.random(); }
       else if (Math.random() < dt * 0.25) n.dir *= -1;
     }
+    // a little comic relief now and then
+    if (marketGag.active) { marketGag.t += dt; if (marketGag.t > marketGag.dur) marketGag.active = false; }
+    else { marketGagTimer -= dt; if (marketGagTimer <= 0) { marketGagTimer = 6 + Math.random() * 9; startMarketGag(); } }
   }
   if (screen === "shopCasino" && casino.spinning) {
     casino.t += dt;
@@ -1629,7 +1706,12 @@ function update(dt) {
     if (sipTimer <= 0) { sipTimer = 8 + Math.random() * 8; sipAnim = 1.2; sfxGulp(); }
   }
 
+  // too much moonshine — he keels right over the 140 % line (classic iris-out, then comes to)
+  if (drunk > 1.4 && !knockout.active && screen === "game") startKnockout();
+  if (knockout.active) updateKnockout(dt);
+
   if (screen !== "game") return; // fishing logic only on water
+  if (knockout.active) return;   // out cold — skip the fishing state machine
 
   switch (fishState) {
     case "ready":
@@ -1655,6 +1737,8 @@ function update(dt) {
       break;
     case "hooked": {
       const r = rod();
+      // safety net: no fish fights forever — after a long struggle the line finally parts
+      if (stateTime > 24) { setMiss("Fisken rømte til slutt…"); break; }
       // how hard THIS fish fights, scaled by its actual weight (kg):
       // a small fish is a quick reel-in, a heavy trophy is a real battle
       const fishFight = currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.16, 0.4, 2.8);
@@ -2033,9 +2117,16 @@ function drawBobber() {
 }
 
 function drawGuy() {
+  if (knockout.active && knockout.phase !== "fall") return;   // hidden behind the black iris
   const bob = Math.sin(t * 1.4) * 0.6;
   const sway = drunk > 0 ? Math.sin(t * 1.7) * drunk * 2.2 : 0;
   const baseX = 70 + sway, baseY = 112 + bob;
+  const toppling = knockout.active && knockout.phase === "fall";
+  ctx.save();
+  if (toppling) {
+    const k = clamp(knockout.t / 1.1, 0, 1);
+    ctx.translate(58, 150); ctx.rotate(-k * 1.35); ctx.translate(-58, -150 + k * 8);   // tips backward off the chair
+  }
   // chair
   ctx.strokeStyle = "#3a3f55"; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(baseX - 14, baseY + 36); ctx.lineTo(baseX - 6, baseY - 6); ctx.stroke();
@@ -2078,6 +2169,30 @@ function drawGuy() {
   if (smoking > 0) { px(headX + 4, headY + 1, 4, 1, "#e8e2d0"); px(headX + 8, headY + 1, 1, 1, "#ff7a3a"); }
   if (buff.label === "Snusrus" && buff.t > 0) { px(headX - 2, headY + 3, 3, 2, "#caa07a"); }
   if (snusing > 0) { px(baseX + 2, headY + 1, 4, 4, "#e3b58c"); } // hand near lip
+  ctx.restore();
+}
+// the cartoon iris-out (and toppling stars) when he passes out
+function drawKnockout() {
+  if (!knockout.active) return;
+  const cx = 64, cy = 104;
+  if (knockout.phase === "fall") {
+    for (let i = 0; i < 4; i++) { const a = t * 5 + i * 1.57; sparkle(cx + Math.cos(a) * 11, cy - 16 + Math.sin(a) * 4, t * 2 + i); }
+    return;
+  }
+  let r;
+  if (knockout.phase === "close") r = lerp(470, 0, clamp(knockout.t / 0.7, 0, 1));
+  else if (knockout.phase === "black") r = 0;
+  else r = lerp(0, 470, clamp(knockout.t / 0.9, 0, 1));
+  ctx.save();
+  ctx.fillStyle = "#000"; ctx.beginPath(); ctx.rect(0, 0, W, H);
+  if (r > 0) ctx.arc(cx, cy, r, 0, 6.28, true);
+  ctx.fill("evenodd");
+  ctx.restore();
+  if (knockout.phase === "black") {
+    ctx.fillStyle = "#5a5a7a"; ctx.font = "bold 13px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("z Z z…", cx + 34, cy - 8);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  }
 }
 function drawRod(hx, hy) {
   const rc = rod();
@@ -2203,34 +2318,22 @@ function drawMarketBg() {
   ctx.globalAlpha = 1;
   // people strolling the street (drawn behind the stalls so they read as in the crowd)
   for (const n of marketNPCs) drawMarketNPC(n);
-  // stalls + shopkeepers (counter drawn last so they stand behind it)
-  drawStall(60, 110, "#7a3b3b");
-  drawLady(60, 150);
-  drawStallCounter(60, 110);
-  drawStall(180, 110, "#3b7a4a");
-  drawKioskKeeper(180, 150);
-  drawStallCounter(180, 110);
-  drawStall(300, 110, "#3b5a7a");
-  drawGrumpyMan(300, 150);
-  drawStallCounter(300, 110);
-  drawStall(420, 110, "#5a2a4a");
-  drawCroupier(420, 150);
-  drawStallCounter(420, 110);
+  drawMarketGag();
+  // stalls + shopkeepers (counter drawn last so they stand behind it) — five booths in a row
+  const SX = [52, 146, 240, 334, 428];
+  drawStall(SX[0], 110, "#7a3b3b", 90); drawLady(SX[0], 150); drawStallCounter(SX[0], 110, 90);
+  drawStall(SX[1], 110, "#3b7a4a", 90); drawKioskKeeper(SX[1], 150); drawStallCounter(SX[1], 110, 90);
+  drawStall(SX[2], 110, "#3b5a7a", 90); drawGrumpyMan(SX[2], 150); drawStallCounter(SX[2], 110, 90);
+  drawStall(SX[3], 110, "#5a2a4a", 90); drawCroupier(SX[3], 150); drawStallCounter(SX[3], 110, 90);
+  drawStall(SX[4], 110, "#3a5a44", 90); drawLicenseWarden(SX[4], 150); drawStallCounter(SX[4], 110, 90);
   // wooden signs (no emoji)
-  drawSign(60, 92, "FISKEHANDEL");
-  drawSign(180, 92, "KIOSK");
-  drawSign(300, 92, "FISKEUTSTYR");
-  drawSign(420, 92, "KASINO");
-  // pulsing «click me» outline on each stall
-  const pulse = 0.5 + 0.5 * Math.sin(t * 3);
-  ctx.globalAlpha = 0.35 + 0.45 * pulse; ctx.strokeStyle = "#ffe6a0"; ctx.lineWidth = 1;
-  ctx.strokeRect(FISH_STALL.x, FISH_STALL.y + 6, FISH_STALL.w, FISH_STALL.h - 10);
-  ctx.strokeRect(KIOSK_STALL.x, KIOSK_STALL.y + 6, KIOSK_STALL.w, KIOSK_STALL.h - 10);
-  ctx.strokeRect(ROD_STALL.x, ROD_STALL.y + 6, ROD_STALL.w, ROD_STALL.h - 10);
-  ctx.strokeRect(CASINO_STALL.x, CASINO_STALL.y + 6, CASINO_STALL.w, CASINO_STALL.h - 10);
-  ctx.globalAlpha = 1;
+  drawSign(SX[0], 92, "FISKEHANDEL");
+  drawSign(SX[1], 92, "KIOSK");
+  drawSign(SX[2], 92, "FISKEUTSTYR");
+  drawSign(SX[3], 92, "KASINO");
+  drawSign(SX[4], 92, "FISKEKORT");
   drawMarketTruck();
-  drawLicenseBooth();
+  drawMarketHover();
   drawFireflies(); drawVignette();
 }
 // our own truck parked at the market — click it to drive back to the water
@@ -2251,14 +2354,44 @@ function drawMarketTruck() {
   px(x + 3, y + 11, 2, 3, "#ffe9a0");
   ctx.strokeStyle = "#caa97a"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x + w - 6, y + 14); ctx.lineTo(x + w + 4, y - 1); ctx.stroke();
-  // pulsing «click» outline + label
-  const pulse = 0.5 + 0.5 * Math.sin(t * 3);
-  ctx.globalAlpha = 0.35 + 0.45 * pulse; ctx.strokeStyle = "#ffe6a0"; ctx.lineWidth = 1;
-  ctx.strokeRect(r.x, r.y + 2, r.w, r.h - 2);
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = "#ffe6a0"; ctx.font = "bold 8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("← til vannet", x + w / 2, y - 4);
-  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+function drawMarketGag() {
+  if (!marketGag.active) return;
+  const g = marketGag, p = clamp(g.t / g.dur, 0, 1), dir = g.dir;
+  const cross = dir > 0 ? -20 + p * (W + 40) : W + 20 - p * (W + 40);
+  ctx.save();
+  if (g.kind === "dog") {
+    const x = cross, y = 206 - Math.abs(Math.sin(t * 14)) * 2;
+    ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+    px(x - 5, y, 10, 5, "#8a5a32"); px(x + 4, y - 3, 4, 4, "#8a5a32");
+    px(x + 7, y - 2, 2, 1, "#1a1208"); px(x - 6, y - 1, 3, 2, "#6a4426");
+    px(x - 4, y + 5, 2, 3, "#6a4426"); px(x + 2, y + 5, 2, 3, "#6a4426");
+    ctx.restore();
+  } else if (g.kind === "cat") {
+    const x = cross, y = 207 - Math.abs(Math.sin(t * 16)) * 2;
+    ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+    px(x - 5, y, 9, 4, "#3a3340"); px(x + 3, y - 3, 4, 4, "#3a3340");
+    px(x + 3, y - 5, 1, 2, "#3a3340"); px(x + 6, y - 5, 1, 2, "#3a3340");
+    ctx.strokeStyle = "#3a3340"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 5, y + 1); ctx.quadraticCurveTo(x - 11, y - 3, x - 8, y - 6); ctx.stroke();
+    ctx.restore();
+  } else if (g.kind === "gull") {
+    const x = cross, y = 60 + Math.sin(t * 3 + g.seed) * 8, flap = Math.sin(t * 12) * 4;
+    ctx.strokeStyle = "#e8eef2"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x - 7, y + flap); ctx.lineTo(x, y); ctx.lineTo(x + 7, y + flap); ctx.stroke();
+    px(x - 1, y - 1, 2, 3, "#e8eef2"); px(x + 1, y, 2, 1, "#ffb03a");
+    if (p > 0.45 && p < 0.55) px(x | 0, (y | 0) + 6, 2, 2, "#dfe6ea");
+  } else if (g.kind === "barrel") {
+    const x = cross, y = 204;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(dir * t * 8);
+    px(-6, -6, 12, 12, "#7a5226"); px(-6, -3, 12, 2, "#3a2614"); px(-6, 1, 12, 2, "#3a2614");
+    ctx.restore();
+  } else if (g.kind === "balloon") {
+    const x = 60 + g.seed * 40 + Math.sin(t * 1.5) * 6, y = lerp(210, 20, p);
+    ctx.fillStyle = ["#e0506a", "#5a86d0", "#5fbf6a"][Math.floor(g.seed) % 3];
+    ctx.beginPath(); ctx.ellipse(x, y, 6, 7, 0, 0, 6.28); ctx.fill();
+    ctx.strokeStyle = "#caa"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 7); ctx.lineTo(x + Math.sin(t * 2) * 2, y + 18); ctx.stroke();
+  }
+  ctx.restore();
 }
 function drawMarketNPC(n) {
   const x = Math.round(n.x), y = Math.round(n.y);
@@ -2278,11 +2411,13 @@ function drawMarketNPC(n) {
   px(x - 2, yy - 5, 5, 5, "#e0b48a");
   px(x - 3, yy - 7, 7, 3, n.hat);
 }
-function drawStall(cx, cy, color) {
-  px(cx - 50, cy, 100, 70, "#2a2230");
+function drawStall(cx, cy, color, w = 100) {
+  const half = w / 2;
+  px(cx - half, cy, w, 70, "#2a2230");
   // roof stripes
-  for (let i = 0; i < 10; i++) px(cx - 50 + i * 10, cy - 14, 10, 14, i % 2 ? color : "#e8e2d0");
-  px(cx - 54, cy - 16, 108, 4, "#1c1622");
+  const n = Math.max(6, Math.round(w / 10)), sw = w / n;
+  for (let i = 0; i < n; i++) px(cx - half + i * sw, cy - 14, Math.ceil(sw), 14, i % 2 ? color : "#e8e2d0");
+  px(cx - half - 4, cy - 16, w + 8, 4, "#1c1622");
 }
 function drawSign(cx, y, text) {
   const w = Math.max(40, text.length * 6 + 12);
@@ -2293,8 +2428,9 @@ function drawSign(cx, y, text) {
   ctx.fillStyle = "#ffe6a0"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(text, cx, y); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
-function drawStallCounter(cx, cy, goods) {
-  px(cx - 50, cy + 50, 100, 8, "#4a3a2a"); px(cx - 50, cy + 50, 100, 2, "#5e4a32");
+function drawStallCounter(cx, cy, w = 100) {
+  const half = w / 2;
+  px(cx - half, cy + 50, w, 8, "#4a3a2a"); px(cx - half, cy + 50, w, 2, "#5e4a32");
 }
 function drawShopFishBg() {
   const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -2924,6 +3060,23 @@ function drawEventActor() {
   ctx.save();
   ctx.globalAlpha = ea;
   switch (gameEvent.sprite) {
+    case "trollbig": {
+      // a hulking troll heaves itself up out of the bog, then sinks back
+      const x = clamp(bobber.x, 150, W - 60), base = WATER_Y + 34;
+      const rise = Math.min(clamp(gameEvent.t / 1.2, 0, 1), clamp((gameEvent.dur - gameEvent.t) / 1.2, 0, 1));
+      const cy = base - rise * 66;
+      px(x - 26, cy, 52, 52, "#3f5a2e"); px(x - 26, cy, 52, 4, "#4f6e3a");          // head/shoulders
+      px(x - 32, cy + 10, 8, 14, "#3f5a2e"); px(x + 24, cy + 10, 8, 14, "#3f5a2e");   // ears
+      for (let i = 0; i < 8; i++) px(x - 22 + i * 6, cy - 4, 5, 6, "#2c421f");          // mossy hair
+      px(x - 18, cy + 4, 12, 3, "#22331a");                                            // brow
+      px(x - 16, cy + 14, 9, 7, "#ffd23a"); px(x + 7, cy + 14, 9, 7, "#ffd23a");       // glowing eyes
+      px(x - 13, cy + 16, 3, 3, "#1a1208"); px(x + 10, cy + 16, 3, 3, "#1a1208");
+      px(x - 4, cy + 21, 9, 13, "#365021");                                            // big nose
+      px(x - 14, cy + 38, 28, 4, "#1a2410");                                           // mouth
+      px(x - 12, cy + 38, 4, 6, "#dfe6c0"); px(x + 8, cy + 38, 4, 6, "#dfe6c0");        // tusks
+      if (rise > 0.55 && Math.random() < 0.4) { addRippleMaybe(x - 22, base + 6); addRippleMaybe(x + 22, base + 8); }
+      break;
+    }
     case "squirrel": {
       // scampers along the treeline, hopping, bushy tail flicking
       const x = cross, hop = Math.abs(Math.sin(t * 9)) * 5, y = 128 - hop;
@@ -3327,10 +3480,13 @@ function drawMapBg() {
   MAP_SPOTS.forEach((sp, i) => { if (i === 0) ctx.moveTo(sp.x, sp.y); else ctx.lineTo(sp.x, sp.y); });
   ctx.stroke(); ctx.setLineDash([]);
   // markers
+  const atMarket = mapReturn === "market";
   for (const sp of MAP_SPOTS) {
     const loc = LOCATIONS.find((l) => l.key === sp.key);
-    const current = LOC.key === sp.key;
+    const current = !atMarket && LOC.key === sp.key;
     const locked = !(save.unlocked || []).includes(sp.key);
+    // a little themed scene by each water so the map reads like a real region
+    drawMapIcon(sp.key, sp.x, sp.y, locked);
     if (current) { const pr = 14 + Math.sin(t * 4) * 3; ctx.strokeStyle = "rgba(210,70,50,0.8)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sp.x, sp.y - 12, pr, 0, 6.28); ctx.stroke(); }
     // pin
     ctx.fillStyle = locked ? "#6a6058" : "#c43a2a";
@@ -3347,12 +3503,12 @@ function drawMapBg() {
       ctx.fillText("🔒 " + fmt(loc.cost) + " kr", sp.x, sp.y + 16);
     }
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    if (current) drawMapHere(sp.x + 16, sp.y - 14);   // your parked pickup
   }
   // the market town — always reachable from the map (sell fish, buy gear)
   {
     const mx = MAP_MARKET.x, my = MAP_MARKET.y;
-    const pr = 0.5 + 0.5 * Math.sin(t * 3);
-    ctx.globalAlpha = 0.4 + 0.4 * pr; ctx.strokeStyle = "#c43a2a"; ctx.lineWidth = 1; ctx.strokeRect(mx - 12, my - 22, 24, 18); ctx.globalAlpha = 1;
+    if (atMarket) { const pr = 14 + Math.sin(t * 4) * 3; ctx.strokeStyle = "rgba(210,70,50,0.8)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(mx, my - 12, pr, 0, 6.28); ctx.stroke(); }
     // little market house: striped awning + walls
     px(mx - 10, my - 12, 20, 12, "#caa06a"); px(mx - 10, my - 12, 20, 2, "#a8814a");
     for (let i = 0; i < 5; i++) px(mx - 10 + i * 4, my - 18, 4, 6, i % 2 ? "#c43a2a" : "#e8e2d0");
@@ -3361,8 +3517,43 @@ function drawMapBg() {
     // label
     ctx.fillStyle = "#3a2c18"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "top";
     ctx.fillText("Markedet", mx, my + 4);
+    if (atMarket) { ctx.fillStyle = "#2a6a3a"; ctx.fillText("(her)", mx, my + 14); }
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    if (atMarket) drawMapHere(mx + 16, my - 14);
   }
+}
+// a tiny parked pickup that marks where you currently are on the map
+function drawMapHere(x, y) {
+  px(x - 6, y, 12, 5, "#c43a2a"); px(x - 6, y, 7, -3, "#c43a2a"); px(x - 5, y - 3, 6, 4, "#c43a2a");
+  px(x - 4, y - 2, 4, 3, "#bfe6ef");   // cab window
+  ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.arc(x - 4, y + 5, 2, 0, 6.28); ctx.fill(); ctx.beginPath(); ctx.arc(x + 4, y + 5, 2, 0, 6.28); ctx.fill();
+}
+// small themed decoration drawn next to each water (gives the map character + meaning)
+function drawMapIcon(key, x, y, locked) {
+  ctx.save();
+  if (locked) ctx.globalAlpha = 0.5;
+  const ix = x - 22, iy = y - 14;
+  if (key === "skogstjern") {            // pine forest
+    for (const ox of [0, 7]) { ctx.fillStyle = "#2c5a32"; ctx.beginPath(); ctx.moveTo(ix + ox, iy - 10); ctx.lineTo(ix + ox - 4, iy); ctx.lineTo(ix + ox + 4, iy); ctx.closePath(); ctx.fill(); px(ix + ox - 1, iy, 2, 3, "#5a3a22"); }
+  } else if (key === "myra") {           // a troll peeking out of the bog
+    px(ix - 2, iy - 6, 12, 10, "#3f5a2e"); px(ix - 4, iy - 9, 4, 5, "#3f5a2e"); px(ix + 6, iy - 9, 4, 5, "#3f5a2e"); // head + ears
+    px(ix, iy - 3, 2, 2, "#ffd23a"); px(ix + 6, iy - 3, 2, 2, "#ffd23a");   // glowing eyes
+    px(ix + 1, iy + 1, 6, 1, "#1a2410"); px(ix + 2, iy + 2, 1, 2, "#cfe0a0"); // grin + tusk
+  } else if (key === "elgtjern") {       // a moose head with antlers
+    px(ix, iy - 4, 8, 9, "#5a4030"); px(ix + 2, iy + 3, 5, 3, "#4a3326");
+    ctx.strokeStyle = "#caa07a"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ix + 1, iy - 4); ctx.lineTo(ix - 4, iy - 9); ctx.moveTo(ix + 7, iy - 4); ctx.lineTo(ix + 12, iy - 9); ctx.stroke();
+  } else if (key === "elva") {           // a little waterfall
+    px(ix, iy - 10, 8, 4, "#5a6a44"); ctx.strokeStyle = "#bfe6ef"; ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(ix + 1 + i * 2, iy - 6); ctx.lineTo(ix + 1 + i * 2, iy + 4 + Math.sin(t * 4 + i) * 1); ctx.stroke(); }
+  } else if (key === "fjellvatn") {      // a snowy peak
+    ctx.fillStyle = "#6a7283"; ctx.beginPath(); ctx.moveTo(ix + 4, iy - 11); ctx.lineTo(ix - 4, iy + 2); ctx.lineTo(ix + 12, iy + 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#eef3f7"; ctx.beginPath(); ctx.moveTo(ix + 4, iy - 11); ctx.lineTo(ix + 1, iy - 5); ctx.lineTo(ix + 7, iy - 5); ctx.closePath(); ctx.fill();
+  } else if (key === "nordlys") {        // dancing aurora ribbons + a star
+    ctx.strokeStyle = "rgba(120,255,180,0.85)"; ctx.lineWidth = 2;
+    for (let i = 0; i < 2; i++) { ctx.beginPath(); ctx.moveTo(ix - 4, iy - 4 + i * 4); ctx.quadraticCurveTo(ix + 4, iy - 10 + i * 4 + Math.sin(t * 2 + i) * 2, ix + 12, iy - 4 + i * 4); ctx.stroke(); }
+    px(ix + 10, iy - 10, 1, 1, "#fff");
+  }
+  ctx.restore();
 }
 
 /* ---- travel: red pickup driving to the next spot ---- */
@@ -3928,7 +4119,7 @@ function render() {
     case "game":
       drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore();
       drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
-      drawRevealFish(); drawFog(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette();
+      drawRevealFish(); drawFog(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette(); drawKnockout();
       break;
     case "menu": drawMenuBg(); break;
     case "market": drawMarketBg(); break;
