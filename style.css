@@ -1021,3 +1021,80 @@ canvas {
     border-radius: 0;
   }
 }
+
+/* ===== New game (name entry) ===== */
+.newgame-sub {
+  color: #c7cbe0;
+  font-size: clamp(13px, 1.9vw, 16px);
+  margin: 0 0 18px;
+  max-width: 360px;
+}
+#newGame .name-input {
+  width: 260px;
+  max-width: 78vw;
+  margin-bottom: 18px;
+  font-size: 17px;
+}
+
+/* =========================================================================
+   Portrait "rotate your phone" prompt
+   ========================================================================= */
+.rotate-hint {
+  display: none;
+}
+@media (orientation: portrait) and (pointer: coarse) {
+  .rotate-hint {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 40%, #14202b, #07070d 75%);
+    text-align: center;
+    padding: 24px;
+  }
+  .rotate-inner {
+    max-width: 320px;
+  }
+  .rotate-icon {
+    font-size: 64px;
+    display: inline-block;
+    animation: rotateTip 2.4s ease-in-out infinite;
+  }
+  .rotate-inner h2 {
+    color: #ffe6a0;
+    font-size: 26px;
+    margin: 14px 0 8px;
+  }
+  .rotate-inner p {
+    color: #c7cbe0;
+    font-size: 16px;
+    line-height: 1.5;
+    margin: 0;
+  }
+}
+@keyframes rotateTip {
+  0%, 40% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}
+
+/* phones: roomier topbar buttons + tappable name fields */
+@media (max-width: 760px), (pointer: coarse) {
+  .topbar {
+    padding: 8px 10px;
+  }
+  .name-input {
+    padding: 14px 16px;
+    font-size: 17px;
+  }
+  #newGame .name-input {
+    width: 280px;
+  }
+  .slot-row {
+    padding: 14px 16px;
+  }
+  .del-btn {
+    padding: 11px 15px;
+  }
+}

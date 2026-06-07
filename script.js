@@ -281,6 +281,7 @@ function startTravel(key) {
   hudEl.classList.add("hidden");
   stopRadio(); inspector.active = false;
   ensureAudio(); sfxHorn(); startEngine();
+  autoSubmitScore();   // the drive is a natural moment to quietly push the latest score
 }
 // travel to a water, buying its unlock first if needed (markedet is always free)
 function tryTravel(key) {
@@ -1019,6 +1020,11 @@ if (playerNameEl) {
   playerNameEl.addEventListener("change", () => { save.playerName = cleanName(playerNameEl.value); persist(); });
   playerNameEl.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submitScore(); } });
 }
+// new-game name field: Enter starts the game
+const newGameNameEl = $("newGameName");
+if (newGameNameEl) {
+  newGameNameEl.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); confirmNewGame(); } });
+}
 syncVolUI();
 
 /* =========================================================================
@@ -1087,9 +1093,64 @@ function deleteSlot(slot) {
   buildSlots();
 }
 
+/* =========================================================================
+   New game + name entry — every fresh game gets a fisher name up front, so the
+   leaderboard works automatically and players never juggle data by hand.
+   ========================================================================= */
+let pendingNewSlot = -1;       // which slot the name screen is creating a game for
+let newGameReturn = "menu";    // where «Avbryt» goes back to
+
+// a slot nobody has named or earned anything in yet
+function slotIsFresh(slot) {
+  const sum = slotSummary(slot);
+  return !sum || (!sum.name && !sum.money && !sum.species);
+}
+// "Start spill" from the menu: name first if this game has no fisher yet
+function startGame() {
+  if (!save.playerName) promptNewGame(currentSlot);
+  else setScreen("game");
+}
+// pick a slot: brand-new ones go through the name screen, played ones load straight in
+function enterSlot(slot) {
+  slot = parseInt(slot, 10);
+  if (!(slot >= 0 && slot < SLOT_COUNT)) return;
+  if (slotIsFresh(slot)) promptNewGame(slot);
+  else playSlot(slot);
+}
+function promptNewGame(slot) {
+  newGameReturn = screen === "slots" ? "slots" : "menu";
+  pendingNewSlot = parseInt(slot, 10);
+  setScreen("newGame");
+  const input = $("newGameName");
+  if (input) { input.value = ""; setTimeout(() => { try { input.focus(); } catch (e) {} }, 60); }
+}
+function confirmNewGame() {
+  const input = $("newGameName");
+  const name = cleanName(input ? input.value : "");
+  if (!name) { if (input) { try { input.focus(); } catch (e) {} } return; }
+  const slot = pendingNewSlot >= 0 ? pendingNewSlot : currentSlot;
+  if (slot !== currentSlot) {                    // switch into a different fresh slot
+    persist();
+    currentSlot = slot;
+    try { localStorage.setItem(SLOT_KEY, String(slot)); } catch (e) {}
+    save = loadSave(slot);
+    resetTransientState();
+    setLocation(save.location);
+  }
+  save.playerName = name; persist();
+  refreshAll();
+  pendingNewSlot = -1;
+  rollWeather();
+  setScreen("game");
+}
+function cancelNewGame() {
+  pendingNewSlot = -1;
+  setScreen(newGameReturn);
+}
+
 function doAction(a, data) {
   switch (a) {
-    case "startGame": setScreen("game"); break;
+    case "startGame": startGame(); break;
     case "watchIntro": if (menuNode) { stopSample(menuNode); menuNode = null; } startIntro(); startIntroPlayback(); break;
     case "openMarket": setScreen("market"); break;
     case "openMap": mapReturn = screen === "market" ? "market" : "game"; setScreen("map"); break;
@@ -1117,11 +1178,12 @@ function doAction(a, data) {
     case "submitScore": submitScore(); break;
     case "openSlots": prevScreen = screen; setScreen("slots"); break;
     case "backFromSlots": setScreen(prevScreen === "menu" ? "menu" : "game"); break;
-    case "playSlot": playSlot(data.slot); break;
+    case "playSlot": enterSlot(data.slot); break;
     case "deleteSlot": deleteSlot(data.slot); break;
+    case "confirmNewGame": confirmNewGame(); break;
+    case "cancelNewGame": cancelNewGame(); break;
     case "toggleMute": toggleMute(); break;
     case "toggleFullscreen": toggleFullscreen(); break;
-    case "resetSave": if (confirm("Nullstille ALL framgang? Penger, fisk, fiskekort og samlingen forsvinner.") && confirm("Helt sikker? Dette kan IKKE angres.")) { save = defaultSave(); setLocation(save.location); persist(); refreshAll(); } break;
   }
 }
 
@@ -1176,11 +1238,13 @@ const DREAMLO_PUBLIC = "6a25cca68f40bb17b07b2d4d";
 const DREAMLO_PRIVATE = "lV6DCx6CQEGJ1uIa1epi1AcY_5FKrgHUeWLrsvn-692A";
 const DREAMLO_BASE = "http://dreamlo.com/lb/";
 const SCORE_PROXIES = [
-  // allorigins /get reliably sends CORS headers; it wraps the body in JSON .contents
-  { url: (u) => "https://api.allorigins.win/get?url=" + encodeURIComponent(u), unwrap: (t) => { try { return JSON.parse(t).contents; } catch (e) { return t; } } },
+  // corsproxy.io + codetabs are the most reliable right now; allorigins is flaky (522s)
   { url: (u) => "https://corsproxy.io/?url=" + encodeURIComponent(u), unwrap: (t) => t },
-  { url: (u) => "https://thingproxy.freeboard.io/fetch/" + u, unwrap: (t) => t },
+  { url: (u) => "https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(u), unwrap: (t) => t },
   { url: (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u), unwrap: (t) => t },
+  // allorigins /get wraps the body in JSON .contents — last resort
+  { url: (u) => "https://api.allorigins.win/get?url=" + encodeURIComponent(u), unwrap: (t) => { try { return JSON.parse(t).contents; } catch (e) { return t; } } },
+  { url: (u) => "https://thingproxy.freeboard.io/fetch/" + u, unwrap: (t) => t },
 ];
 let scoresBusy = false;
 
@@ -1298,10 +1362,21 @@ async function submitScore() {
   }
 }
 
+// fire-and-forget submit during a travel cutscene — no UI, only if we have a name + score.
+// keeps the leaderboard fresh by itself so casual players never have to think about it.
+async function autoSubmitScore() {
+  const name = cleanName(save.playerName);
+  if (!name) return;
+  const sc = computeScore();
+  if (sc.score <= 0) return;
+  const url = DREAMLO_BASE + DREAMLO_PRIVATE + "/add/" + encodeURIComponent(name) + "/" + sc.score + "/" + sc.biggestG + "/" + encodeURIComponent(sc.text);
+  try { await proxyGet(url); } catch (e) {}
+}
+
 /* =========================================================================
    Screen management
    ========================================================================= */
-const OVERLAYS = ["menu", "market", "map", "help", "scores", "slots", "shopFish", "shopRod", "shopLicense", "shopKiosk", "shopCasino"];
+const OVERLAYS = ["menu", "market", "map", "help", "scores", "slots", "newGame", "shopFish", "shopRod", "shopLicense", "shopKiosk", "shopCasino"];
 function setScreen(name) {
   const from = screen;
   if (from === "travel") stopEngine();

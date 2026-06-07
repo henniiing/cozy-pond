@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#07070d" />
   <title>Cozy Pond</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%23123322'/%3E%3Cellipse%20cx='15'%20cy='17'%20rx='8'%20ry='5'%20fill='%235fbf5f'/%3E%3Cpath%20d='M22%2017l6-4v8z'%20fill='%235fbf5f'/%3E%3Ccircle%20cx='12'%20cy='15'%20r='1.4'%20fill='%23112'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -73,13 +74,13 @@
           <button class="big-btn ghost" data-action="openScores">Toppliste</button>
         </div>
         <button class="link-btn" data-action="watchIntro">Se introen igjen</button>
-        <button class="link-btn" data-action="resetSave">Nullstill spill</button>
       </div>
     </div>
 
     <!-- ===== Market hub ===== -->
     <div id="market" class="overlay market-overlay">
       <div class="topbar">
+        <button class="ui-btn" data-action="openMenu" title="Meny" aria-label="Meny">☰ Meny</button>
         <div class="coin"><span class="moneyMirror">0</span> kr</div>
       </div>
       <div class="market-hint">Klikk på en bod for å gå inn — eller bilen for å reise videre</div>
@@ -135,6 +136,19 @@
             <div class="score-sub">Din tyngste enkeltfisk</div>
             <ol id="listBiggest" class="score-list"><li class="score-empty">Laster …</li></ol>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== New game (name entry) ===== -->
+    <div id="newGame" class="overlay">
+      <div class="panel center">
+        <h1 class="title">Nytt spill</h1>
+        <p class="newgame-sub">Hva heter fiskeren? Navnet vises på topplista.</p>
+        <input id="newGameName" class="name-input" maxlength="18" placeholder="Skriv navnet ditt" autocomplete="off" spellcheck="false" />
+        <div class="menu-buttons">
+          <button class="big-btn" data-action="confirmNewGame">Start fiskelivet</button>
+          <button class="link-btn" data-action="cancelNewGame">Avbryt</button>
         </div>
       </div>
     </div>
@@ -240,6 +254,15 @@
           <div class="casino-result" id="casinoResult"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Portrait phones: nudge the player to rotate, since the scene is 16:9 landscape -->
+  <div id="rotateHint" class="rotate-hint" aria-hidden="true">
+    <div class="rotate-inner">
+      <div class="rotate-icon">📱</div>
+      <h2>Snu telefonen</h2>
+      <p>Cozy&nbsp;Pond fiskes best i liggende modus.<br>Vri enheten til siden for full opplevelse.</p>
     </div>
   </div>
 
