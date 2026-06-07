@@ -256,6 +256,7 @@ let inspectorTimer = 80 + Math.random() * 120;
 // per-location random happenings (themed like the inspector but unique to each water)
 let gameEvent = { active: false, t: 0, dur: 0, title: "", line: "", color: "#cfe" };
 let eventTimer = 45 + Math.random() * 65;
+let catStealTimer = 80 + Math.random() * 110;
 
 // ambient
 const fireflies = Array.from({ length: 14 }, () => ({ x: Math.random() * W, y: 40 + Math.random() * 110, ph: Math.random() * 6.28, sp: 0.3 + Math.random() * 0.5, drift: Math.random() * 6.28 }));
@@ -263,7 +264,7 @@ const stars = Array.from({ length: 42 }, () => ({ x: Math.random() * W, y: Math.
 // the occasional shooting star streaking across the arctic sky (Nordlysvatnet)
 let shootStar = { on: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, timer: 5 + Math.random() * 9 };
 // the cottage cat (Findus) — tags along on fishing trips and pads about doing its own thing
-let cat = { state: "away", x: -20, y: 220, timer: 14 + Math.random() * 26, t: 0, action: "sit", target: 116, chaseX: 0 };
+let cat = { state: "away", x: -20, y: 220, timer: 14 + Math.random() * 26, t: 0, action: "sit", target: 116, chaseX: 0, mission: null, eat: 0, munch: 0 };
 // market passers-by (cosmetic NPCs that stroll the street back and forth)
 const NPC_COLORS = [["#7a4a6a", "#caa23a"], ["#3a5a7a", "#d8d2c0"], ["#6a5a3a", "#b23a2a"], ["#4a6a4a", "#e0b48a"]];
 const marketNPCs = Array.from({ length: 4 }, (_, i) => ({
@@ -669,7 +670,7 @@ function canvasPress(p) {
   if (godsakerPanel) {
     if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { godsakerPanel = false; coolerMenu = true; sfxClink(); return; }
     for (const it of godsakerRects()) if (inRect(p.x, p.y, it)) {
-      godsakerPanel = false; useConsumable(it.key); return;
+      useConsumable(it.key); return;        // stay open so you can knock back several in a row
     }
     godsakerPanel = false; return;
   }
@@ -690,6 +691,13 @@ function canvasPress(p) {
   if (recordsPanel) {
     if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { recordsPanel = false; coolerMenu = true; sfxClink(); return; }
     recordsPanel = false; return;
+  }
+  // shoo the thieving cat before it finishes off your smallest fish
+  if (cat.mission === "steal" && (cat.state === "arrive" || cat.state === "eat") &&
+      inRect(p.x, p.y, { x: cat.x - 12, y: cat.y - 18, w: 30, h: 24 })) {
+    cat.state = "leave"; cat.mission = null; cat.t = 0; catHiss();
+    showCatEvent("Du jaget katten!", "Fisken er reddet — pus stikker av.");
+    return;
   }
   if (fishState === "reveal") { closeReveal(); return; }
   if (fishState === "ready") {
@@ -1020,18 +1028,17 @@ function closeReveal() { catchEl.classList.add("hidden"); setFish("ready"); setH
 
 /* ---- consumables / boosts ---- */
 function applyBuff(label, luck, reel, dur, color) {
-  if (buff.t > 0) {
-    // stacking — knock back several beers and the flaks/sveiv piles up (with a sensible cap)
-    buff.stacks = (buff.stacks || 1) + 1;
-    buff.luck = clamp(buff.luck + luck * 0.65, 0, 1.4);
-    buff.reel = clamp(buff.reel + reel * 0.65, 0, 0.95);
-    buff.t = Math.min(buff.t + dur * 0.85, 150);
-    buff.dur = Math.max(buff.dur, buff.t);
-    buff.label = buff.stacks >= 2 ? `${label} ×${buff.stacks}` : label;
-    buff.color = color;
-  } else {
-    buff = { label, luck, reel, t: dur, dur, color, stacks: 1 };
-  }
+  // one shared rus-meter: snus, øl, sigarillo … all feed the SAME pool, so mixing never bugs out
+  const fresh = buff.t <= 0;
+  if (fresh) { buff.luck = 0; buff.reel = 0; buff.t = 0; buff.dur = 0; buff.count = 0; }
+  buff.count = (buff.count || 0) + 1;
+  const fade = fresh ? 1 : 0.6;            // diminishing returns as the rus piles up
+  buff.luck = clamp(buff.luck + luck * fade, 0, 1.4);
+  buff.reel = clamp(buff.reel + reel * fade, 0, 0.95);
+  buff.t = Math.min(buff.t + dur * fade, 150);
+  buff.dur = Math.max(buff.dur, buff.t);
+  buff.label = label;
+  buff.color = color;
   buffFlash = 1;
 }
 function drinkBeer() {
@@ -1401,6 +1408,14 @@ function update(dt) {
     cricketTimer -= dt;
     if (cricketTimer <= 0) { cricketTimer = 0.6 + Math.random() * 1.4; if (Math.random() < 0.7) cricketChirp(); }
     updateCat(dt);
+    // the cat sometimes sneaks in to nick your smallest fish — tap it to shoo it off
+    if (screen === "game" && cat.state === "away" && cat.mission == null) {
+      catStealTimer -= dt;
+      if (catStealTimer <= 0) {
+        catStealTimer = 85 + Math.random() * 120;
+        if (save.basket.length > 0 && !inspector.active && !gameEvent.active && fishState !== "reveal") startCatSteal();
+      }
+    }
     wolfTimer -= dt;
     if (wolfTimer <= 0) { wolfTimer = 45 + Math.random() * 70; playSample("howl", { vol: 0.4 }); }
     // goofy ambient critters, themed per location
@@ -3030,14 +3045,22 @@ function drawGroundFish() {
 }
 function drawBuffHud() {
   if (buff.t <= 0) return;
-  const w = 96, h = 14, x = 8, y = H - 22;
-  px(x, y, w, h, "rgba(14,12,22,0.8)");
-  px(x, y, w, 2, buff.color);
-  ctx.fillStyle = buff.color; ctx.font = "7px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "top";
-  ctx.fillText(buff.label, x + 4, y + 3);
+  const w = 104, h = 16, x = 8, y = H - 24;
+  const intensity = clamp(buff.luck / 1.4, 0, 1);
+  const fillCol = intensity < 0.4 ? "#5fbf5f" : intensity < 0.75 ? "#ffcf5a" : "#ff7a5a";
+  px(x, y, w, h, "rgba(14,12,22,0.82)");
+  px(x, y, w, 2, fillCol);
+  // header: a standard RUS label + current flaks bonus
+  ctx.font = "7px monospace"; ctx.textBaseline = "top"; ctx.textAlign = "left";
+  ctx.fillStyle = "#f0e6d0"; ctx.fillText(buff.count >= 2 ? "RUS ×" + buff.count : "RUS", x + 4, y + 2);
+  ctx.textAlign = "right"; ctx.fillStyle = fillCol; ctx.fillText("+" + Math.round(buff.luck * 100) + "% flaks", x + w - 4, y + 2);
+  // the rus meter (intensity) with a thin time-remaining line beneath it
+  const barX = x + 4, barW = w - 8;
+  px(barX, y + 10, barW, 3, "rgba(255,255,255,0.10)");
+  px(barX, y + 10, barW * intensity, 3, fillCol);
   const frac = clamp(buff.t / buff.dur, 0, 1);
-  px(x + 2, y + h - 3, (w - 4) * frac, 2, buff.color);
-  ctx.textBaseline = "alphabetic";
+  px(barX, y + h - 1, barW * frac, 1, "rgba(255,255,255,0.55)");
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 function drawKioskKeeper(x, y) {
   const sway = Math.sin(t * 1.3) * 1; x += sway;
@@ -3292,6 +3315,26 @@ function catMeow() {
   // soft procedural meow: a little rise then fall
   blip(560, 0.12, "sine", 0.05); setTimeout(() => blip(430, 0.18, "sine", 0.045), 120);
 }
+function catHiss() {
+  // a startled hiss when you shoo it off
+  blip(820, 0.07, "sawtooth", 0.05); setTimeout(() => blip(300, 0.12, "sawtooth", 0.045), 80);
+}
+function startCatSteal() {
+  cat.mission = "steal"; cat.state = "arrive"; cat.x = -16; cat.target = 44 + Math.random() * 8; cat.t = 0;
+  catMeow();
+}
+function eatSmallestFish() {
+  if (!save.basket.length) return;
+  let mi = 0;
+  for (let i = 1; i < save.basket.length; i++) if (save.basket[i].weight < save.basket[mi].weight) mi = i;
+  const taken = save.basket.splice(mi, 1)[0];
+  persist(); buildBasket(); refreshHUD();
+  const f = FISH_BY_KEY[taken.key];
+  showCatEvent("Katten snappet " + (f ? f.name : "fisken") + "!", "Pus stakk av med den minste fangsten din.");
+}
+function showCatEvent(title, line) {
+  gameEvent = { active: true, t: 0, dur: 4.5, title, line, color: "#ffd27a", sprite: "_cat", dir: 1, seed: Math.random() };
+}
 function pickCatAction() {
   const actions = ["watch", "wash", "bat", "nap", "chase", "watch", "sit"];
   cat.action = actions[Math.floor(Math.random() * actions.length)];
@@ -3308,7 +3351,16 @@ function updateCat(dt) {
       break;
     case "arrive":
       cat.x = lerp(cat.x, cat.target, dt * 1.8);
-      if (cat.x > cat.target - 2) { cat.state = "settle"; pickCatAction(); if (Math.random() < 0.4) catMeow(); }
+      if (cat.x > cat.target - 2) {
+        if (cat.mission === "steal") { cat.state = "eat"; cat.eat = 5.5; cat.munch = 0; cat.action = "eat"; catMeow(); }
+        else { cat.state = "settle"; pickCatAction(); if (Math.random() < 0.4) catMeow(); }
+      }
+      break;
+    case "eat":
+      cat.eat -= dt; cat.munch += dt;
+      if (cat.munch > 0.45 && Math.random() < dt * 3) { blip(170 + Math.random() * 60, 0.05, "square", 0.04); cat.munch = 0; }
+      if (!save.basket.length) { cat.state = "leave"; cat.mission = null; cat.t = 0; }
+      else if (cat.eat <= 0) { eatSmallestFish(); cat.state = "leave"; cat.mission = null; cat.t = 0; catMeow(); }
       break;
     case "settle":
       cat.timer -= dt;
@@ -3363,6 +3415,17 @@ function drawCat() {
     // a firefly the cat is batting at, just ahead of it
     const fx = cat.x + 10 + Math.sin(t * 3) * 3, fy = y - 12 + Math.cos(t * 4) * 3;
     ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 9); px(fx, fy, 1, 1, "#fff2a0"); ctx.globalAlpha = 1;
+  }
+  if (cat.state === "eat") {
+    // the pilfered fish lying on the bank, getting chomped
+    const fx = cat.x + 10, fy = y - 1;
+    px(fx, fy, 6, 3, "#9fb8c8"); px(fx + 5, fy, 2, 3, "#7fa0b0"); px(fx, fy, 6, 1, "#c0d8e8");
+    px(fx + 1, fy + 1, 1, 1, "#24343f");
+    if (Math.sin(t * 9) > 0) px(fx + 2, fy, 2, 2, "rgba(0,0,0,0.28)"); // bite flicker
+    // pulsing warning so you have time to react and shoo it
+    const a = 0.55 + 0.45 * Math.sin(t * 6);
+    ctx.globalAlpha = a; ctx.font = "9px monospace"; ctx.textAlign = "center"; ctx.fillStyle = "#ffd27a";
+    ctx.fillText("!", cat.x + 2, y - 18); ctx.globalAlpha = 1; ctx.textAlign = "left";
   }
 }
 function drawFarmer(tt) {
