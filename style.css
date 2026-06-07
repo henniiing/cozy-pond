@@ -1049,6 +1049,40 @@ canvas {
   }
 }
 
+/* =========================================================================
+   Landscape phones: dock the shop panel to one side so the drawn shopkeeper
+   and the pixel-art scene behind stay visible (on desktop there's room for
+   the panel to sit above the scene, but on a short landscape screen it would
+   otherwise cover the keeper entirely).
+   ========================================================================= */
+@media (orientation: landscape) and (max-height: 540px),
+       (orientation: landscape) and (pointer: coarse) {
+  /* default: keepers (rod / kiosk / warden) stand on the LEFT → panel docks right */
+  .shop-body,
+  .casino-body {
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 8px 12px 12px;
+    gap: 8px;
+  }
+  .basket-panel,
+  .rod-panel {
+    width: min(54%, 360px);
+  }
+  .shop-body .speech,
+  .casino-body .speech {
+    max-width: min(54%, 360px);
+    align-self: flex-end;
+  }
+  /* the fish lady stands on the RIGHT → dock her panel to the left instead */
+  #shopFish .shop-body {
+    align-items: flex-start;
+  }
+  #shopFish .shop-body .speech {
+    align-self: flex-start;
+  }
+}
+
 /* ===== New game (name entry) ===== */
 .newgame-sub {
   color: #c7cbe0;
