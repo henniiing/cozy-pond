@@ -210,6 +210,20 @@ function rollWeight(f) {
   const p = Math.max(0.7, 1.8 - save.rodLevel * 0.22);
   return +(f.min + (f.max - f.min) * Math.pow(Math.random(), p)).toFixed(2);
 }
+// pick the weather for a fresh fishing session. Snowy/foggy waters lean misty;
+// everywhere else gets a gentle mix. Rain perks the fish up a touch.
+function rollWeather() {
+  const bag = ["clear", "clear", "clear", "overcast", "rain", "mist"];
+  if (LOC && (LOC.snow || LOC.fog)) bag.push("mist", "mist", "overcast");
+  const type = bag[Math.floor(Math.random() * bag.length)];
+  weather.type = type; weather.t = 0; weather.flash = 0;
+  rainDrops.length = 0;
+  if (type === "rain") for (let i = 0; i < 70; i++) rainDrops.push({ x: Math.random() * W, y: Math.random() * WATER_Y, sp: 220 + Math.random() * 120, len: 5 + Math.random() * 5 });
+}
+// gentle per-weather bite multiplier (smaller = bites sooner)
+function weatherBiteMul() {
+  return weather.type === "rain" ? 0.7 : weather.type === "overcast" ? 0.88 : 1;
+}
 
 /* =========================================================================
    Scene anchors
@@ -298,6 +312,14 @@ let buffFlash = 0, drunk = 0, smoking = 0, snusing = 0;
 const DRUNK_KO = 1.4, DRUNK_MAX = 1.7;
 // classic cartoon blackout when he drinks WAY past the limit
 let knockout = { active: false, t: 0, phase: "fall" };
+let hangover = 0;                  // woozy after-effect seconds once he comes to
+let staggerWarned = false;         // so the "you're hammered" warning only fires once per binge
+// little book-keeping so we can chirp a soft "pop" the moment a buff/rus fully wears off
+let buffWasOn = false, drunkWasOn = false;
+// per-session weather — picked fresh every time you arrive at a water, for a bit of life
+let weather = { type: "clear", t: 0, flash: 0 };
+const rainDrops = [];
+const WEATHER_HINT = { clear: "Klar og stille kveld \u2014 fint fiskev\u00e6r.", overcast: "Gr\u00e5tt og overskyet i kveld.", rain: "Lett regn pisler i vannet \u2014 fisken er p\u00e5hugget!", mist: "T\u00e5ka ligger t\u00e9tt over vannet i kveld." };
 const smoke = [];
 let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, funnPanel = false, kioskIdleTimer = 5, partyNode = null;
 let marketNode = null, casinoAmbNode = null, casinoSpinNode = null, casinoLoseNode = null, licenseAmbNode = null;
@@ -1029,6 +1051,7 @@ function resetTransientState() {
   buff = { label: "", luck: 0, reel: 0, t: 0, dur: 1, color: "#fff" };
   drunk = 0; buffFlash = 0; smoking = 0; snusing = 0;
   knockout.active = false; knockout.t = 0;
+  hangover = 0; staggerWarned = false;
   gameEvent.active = false;
   inspector.active = false; inspectorTimer = 80 + Math.random() * 120;
   cat.state = "away"; cat.x = -20; cat.mission = null; cat.fishKey = null; cat.action = "sit"; cat.timer = 14 + Math.random() * 26;
@@ -1046,6 +1069,7 @@ function playSlot(slot) {
     setLocation(save.location);
     refreshAll();
   }
+  rollWeather();
   setScreen("game");
 }
 function deleteSlot(slot) {
@@ -1363,24 +1387,31 @@ function cancelFishing() {
 }
 // ---- drunk blackout (cartoon iris-out) ----
 function startKnockout() {
-  knockout.active = true; knockout.t = 0; knockout.phase = "fall";
+  knockout.active = true; knockout.t = 0; knockout.phase = "wooze";
   holding = false; if (fishState !== "ready") resetFishing();
-  setHint("");
-  playSample("blackout", { vol: 0.85 });
-  blip(120, 0.18, "sawtooth", 0.08); setTimeout(() => { try { noise(0.22, 800, 0.08, "lowpass"); } catch (e) {} }, 160);
-  setTimeout(() => { try { playSample("burp", { vol: 0.95 }); } catch (e) {} }, 320);
+  // a clear, readable lead-in so the blackout never feels like it jumped out of nowhere
+  setHint("Uff… hodet snurrer. Du klarer ikke holde deg våken…");
+  blip(220, 0.4, "sine", 0.06); blip(150, 0.7, "sine", 0.05, 0.18);
+  setTimeout(() => { try { playSample("burp", { vol: 0.9 }); } catch (e) {} }, 260);
 }
 function updateKnockout(dt) {
   knockout.t += dt;
   const ph = knockout.phase;
-  if (ph === "fall" && knockout.t > 1.1) { knockout.phase = "close"; knockout.t = 0; }
-  else if (ph === "close" && knockout.t > 0.7) { knockout.phase = "black"; knockout.t = 0; try { playSample("fart", { vol: 0.5 }); } catch (e) {} }
-  else if (ph === "black" && knockout.t > 1.0) { knockout.phase = "open"; knockout.t = 0; }
-  else if (ph === "open" && knockout.t > 0.9) {
-    // comes to — stone-cold sober, rus gone
+  // slow, readable lead-in: he sways hard and the world dims before he actually drops
+  if (ph === "wooze" && knockout.t > 1.5) {
+    knockout.phase = "fall"; knockout.t = 0;
+    playSample("blackout", { vol: 0.85 });
+    blip(120, 0.18, "sawtooth", 0.08); setTimeout(() => { try { noise(0.22, 800, 0.08, "lowpass"); } catch (e) {} }, 160);
+  }
+  else if (ph === "fall" && knockout.t > 1.3) { knockout.phase = "close"; knockout.t = 0; }
+  else if (ph === "close" && knockout.t > 0.8) { knockout.phase = "black"; knockout.t = 0; try { playSample("fart", { vol: 0.5 }); } catch (e) {} }
+  else if (ph === "black" && knockout.t > 1.2) { knockout.phase = "open"; knockout.t = 0; }
+  else if (ph === "open" && knockout.t > 1.0) {
+    // comes to — stone-cold sober, rus gone, but woozy for a few seconds (tømmermenn)
     knockout.active = false; drunk = 0;
     buff.t = 0; buff.luck = 0; buff.reel = 0;
-    setHint("Du våkner på bredden… huff. Klikk for å kaste ut.");
+    staggerWarned = false; hangover = 5;
+    setHint("Tømmermenn… du våkner på bredden. Klikk for å kaste ut.");
   }
 }
 function setMiss(reason) {
@@ -1392,7 +1423,7 @@ function beginWaiting() {
   setFish("waiting");
   bobber.x = castTarget.x; bobber.y = castTarget.y; bobber.sink = 0;
   addRipple(bobber.x, bobber.y, 18); sfxPlop();
-  biteTimer = castOnRise ? 1.4 + Math.random() * 2 : 4 + Math.random() * 7;
+  biteTimer = (castOnRise ? 1.4 + Math.random() * 2 : 4 + Math.random() * 7) * weatherBiteMul();
   nibbleTimer = 1.5 + Math.random() * 2.5;
   setHint("Vent til duppen går under…");
 }
@@ -1872,7 +1903,10 @@ function update(dt) {
     if (travel.t >= travel.dur) {
       stopEngine();
       if (travel.key === "market") { resetFishing(); setScreen("market"); }
-      else { setLocation(travel.key); resetFishing(); setScreen("game"); }
+      else {
+        setLocation(travel.key); resetFishing(); rollWeather(); setScreen("game");
+        setHint(WEATHER_HINT[weather.type] || "");
+      }
     }
     return;
   }
@@ -2034,7 +2068,23 @@ function update(dt) {
   // buffs + vices
   if (buff.t > 0) buff.t -= dt;
   if (buffFlash > 0) buffFlash -= dt;
+  // soft "pop" the instant a flaks-buff fully wears off, so it doesn't just vanish silently
+  const buffOn = buff.t > 0;
+  if (buffWasOn && !buffOn) { blip(620, 0.05, "sine", 0.05); blip(360, 0.09, "sine", 0.045, 0.04); }
+  buffWasOn = buffOn;
   if (drunk > 0) drunk = Math.max(0, drunk - dt * 0.045);
+  // gentle "pop" + sigh when the rus finally clears
+  const drunkOn = drunk > 0.04;
+  if (drunkWasOn && !drunkOn) { blip(300, 0.07, "sine", 0.05); staggerWarned = false; }
+  drunkWasOn = drunkOn;
+  // one clear heads-up before the blackout, so passing out never feels like it came from nowhere
+  if (screen === "game" && !knockout.active) {
+    if (drunk > DRUNK_KO * 0.8 && drunk <= DRUNK_KO && !staggerWarned) {
+      staggerWarned = true;
+      setHint("Oi… nå vingler du skikkelig. Én tår til og du sovner!");
+    }
+  }
+  if (hangover > 0) hangover = Math.max(0, hangover - dt);
   if (snusing > 0) snusing -= dt;
   if (smoking > 0) {
     smoking -= dt;
@@ -2042,6 +2092,15 @@ function update(dt) {
   }
   for (const s of smoke) { s.x += s.vx * dt; s.y += s.vy * dt; s.vy *= 0.97; s.life -= dt * 0.7; s.size += dt * 2.5; }
   for (let i = smoke.length - 1; i >= 0; i--) if (smoke[i].life <= 0) smoke.splice(i, 1);
+  // weather drift — rain falls, an occasional far-off flash on rainy nights
+  if (screen === "game") {
+    weather.t += dt;
+    if (weather.type === "rain") {
+      for (const d of rainDrops) { d.y += d.sp * dt; d.x -= d.sp * 0.18 * dt; if (d.y > WATER_Y) { d.y = -4; d.x = Math.random() * W; } }
+      if (weather.flash > 0) weather.flash = Math.max(0, weather.flash - dt * 3);
+      else if (Math.random() < dt * 0.04) weather.flash = 1;
+    }
+  }
   // idle sips (visual only) when relaxed and not in a drink sequence
   sipAnim = Math.max(0, sipAnim - dt);
   if (screen === "game" && drinking <= 0 && (fishState === "ready" || fishState === "waiting")) {
@@ -2426,6 +2485,43 @@ function drawFog() {
   }
   ctx.globalAlpha = 1;
 }
+// per-session weather painted over the scene: overcast tint, rain streaks, thicker mist
+function drawWeather() {
+  if (screen !== "game") return;
+  if (weather.type === "overcast") {
+    ctx.globalAlpha = 0.16; ctx.fillStyle = "#3a3f52"; ctx.fillRect(0, 0, W, WATER_Y); ctx.globalAlpha = 1;
+  } else if (weather.type === "rain") {
+    ctx.globalAlpha = 0.12; ctx.fillStyle = "#2e3548"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(190,205,225,0.5)"; ctx.lineWidth = 1; ctx.beginPath();
+    for (const d of rainDrops) { ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len * 0.35, d.y + d.len); }
+    ctx.stroke();
+    if (weather.flash > 0.4) { ctx.globalAlpha = (weather.flash - 0.4) * 0.5; ctx.fillStyle = "#cdd6e6"; ctx.fillRect(0, 0, W, WATER_Y); ctx.globalAlpha = 1; }
+  } else if (weather.type === "mist") {
+    for (let i = 0; i < 3; i++) {
+      const y = WATER_Y - 26 + i * 16;
+      const off = Math.sin(t * 0.22 + i * 2.1) * 36;
+      ctx.globalAlpha = 0.16 + 0.06 * Math.sin(t * 0.3 + i);
+      ctx.fillStyle = "#cdd8e6";
+      ctx.beginPath(); ctx.ellipse(W / 2 + off, y, 240, 14, 0, 0, 6.28); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+// tømmermenn: a brief woozy haze after you come to from a blackout
+function drawHangover() {
+  if (hangover <= 0) return;
+  const k = clamp(hangover / 5, 0, 1);
+  ctx.save();
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.2);
+  ctx.globalAlpha = k * (0.12 + pulse * 0.06);
+  ctx.fillStyle = "#5a7a5e"; ctx.fillRect(0, 0, W, H);
+  const sx = Math.sin(t * 1.6) * 10 * k;
+  const g = ctx.createRadialGradient(W / 2 + sx, H / 2, 50, W / 2 + sx, H / 2, 230);
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(1, `rgba(10,14,18,${k * 0.4})`);
+  ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
 function drawFishShadow(x, y, dir) {
   ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
   ctx.beginPath(); ctx.ellipse(0, 0, 10, 3, 0, 0, 6.28); ctx.fill();
@@ -2463,9 +2559,11 @@ function drawBobber() {
 }
 
 function drawGuy() {
-  if (knockout.active && knockout.phase !== "fall") return;   // hidden behind the black iris
+  if (knockout.active && knockout.phase !== "fall" && knockout.phase !== "wooze") return;   // hidden behind the black iris
   const bob = Math.sin(t * 1.4) * 0.6;
-  const sway = drunk > 0 ? Math.sin(t * 1.7) * drunk * 2.2 : 0;
+  // sway harder and harder during the woozy lead-in, so the topple feels earned
+  const woozeK = (knockout.active && knockout.phase === "wooze") ? 1 + clamp(knockout.t / 1.5, 0, 1) * 2.5 : 1;
+  const sway = drunk > 0 ? Math.sin(t * 1.7) * drunk * 2.2 * woozeK : 0;
   const baseX = 70 + sway, baseY = 112 + bob;
   const toppling = knockout.active && knockout.phase === "fall";
   ctx.save();
@@ -2530,14 +2628,33 @@ function drawGuy() {
 function drawKnockout() {
   if (!knockout.active) return;
   const cx = 64, cy = 104;
+  // lead-in: the world dims and pulses at the edges, eyelids getting heavy — readable warning
+  if (knockout.phase === "wooze") {
+    const k = clamp(knockout.t / 1.5, 0, 1);
+    ctx.save();
+    // creeping vignette that grows as he fades
+    const g = ctx.createRadialGradient(cx, cy, 30, cx, cy, 220);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, `rgba(0,0,0,${0.25 + k * 0.55})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // eyelids drooping from top and bottom, with a slow blink wobble
+    const lid = (0.18 + k * 0.4) * H + Math.sin(t * 3) * 4 * k;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, W, lid * 0.6);
+    ctx.fillRect(0, H - lid * 0.6, W, lid * 0.6);
+    ctx.restore();
+    // a few woozy stars already circling
+    for (let i = 0; i < 3; i++) { const a = t * 3 + i * 2.09; sparkle(cx + Math.cos(a) * 9, cy - 16 + Math.sin(a) * 3, t * 1.5 + i); }
+    return;
+  }
   if (knockout.phase === "fall") {
     for (let i = 0; i < 4; i++) { const a = t * 5 + i * 1.57; sparkle(cx + Math.cos(a) * 11, cy - 16 + Math.sin(a) * 4, t * 2 + i); }
     return;
   }
   let r;
-  if (knockout.phase === "close") r = lerp(470, 0, clamp(knockout.t / 0.7, 0, 1));
+  if (knockout.phase === "close") r = lerp(470, 0, clamp(knockout.t / 0.8, 0, 1));
   else if (knockout.phase === "black") r = 0;
-  else r = lerp(0, 470, clamp(knockout.t / 0.9, 0, 1));
+  else r = lerp(0, 470, clamp(knockout.t / 1.0, 0, 1));
   ctx.save();
   ctx.fillStyle = "#000"; ctx.beginPath(); ctx.rect(0, 0, W, H);
   if (r > 0) ctx.arc(cx, cy, r, 0, 6.28, true);
@@ -3968,8 +4085,11 @@ function drawGroundFish() {
 }
 function drawBuffHud() {
   // tuck the meters into the bottom-RIGHT corner so they never sit on top of the cat,
-  // the catch pile or the fisherman over on the left bank
-  if (coolerMenu || godsakerPanel || rodPanel || bagPanel || recordsPanel || funnPanel || truckMenu) return;
+  // the catch pile or the fisherman over on the left bank.
+  // Keep them visible while the sekk / godsaker menu is open — that's exactly where you
+  // pop drinks and snus, so you want to watch FLAKS and RUS react. Those menus sit higher
+  // up on the right, so they don't collide with this bottom-corner bar.
+  if (rodPanel || bagPanel || recordsPanel || funnPanel || truckMenu) return;
   const showBuff = buff.t > 0;
   const dfrac = clamp(drunk / DRUNK_KO, 0, 1);       // 1.0 = blackout territory
   const showDrunk = drunk > 0.05;
@@ -4774,7 +4894,7 @@ function render() {
     case "game":
       drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore(); drawRiseSpot();
       drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
-      drawRevealFish(); drawFog(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette(); drawKnockout();
+      drawRevealFish(); drawFog(); drawWeather(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette(); drawHangover(); drawKnockout();
       break;
     case "menu": drawMenuBg(); break;
     case "market": drawMarketBg(); break;
