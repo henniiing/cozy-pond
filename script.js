@@ -39,7 +39,7 @@ const SLOT_COUNT = 3;
 const SLOT_KEY = "cozyPond_slot";      // which slot is currently active (0..2)
 function slotKey(i) { return SAVE_KEY + "_s" + i; }
 function defaultSave() {
-  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "" };
+  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "", hats: ["straw"], hat: "straw" };
 }
 // one-time migration: fold the old single save into slot 0 the first time we boot the slot system
 function migrateSaves() {
@@ -58,6 +58,10 @@ function loadSave(slot) {
     if (s && typeof s === "object") {
       const merged = Object.assign(defaultSave(), s);
       if (!merged.licenses || typeof merged.licenses !== "object") merged.licenses = {};
+      // hats are cosmetics; everyone always owns the free straw hat and wears a valid one
+      if (!Array.isArray(merged.hats) || !merged.hats.length) merged.hats = ["straw"];
+      if (!merged.hats.includes("straw")) merged.hats.unshift("straw");
+      if (!merged.hats.includes(merged.hat)) merged.hat = "straw";
       // migrate the old single global licence count onto whichever water you were last at
       if (typeof s.license === "number" && s.license > 0) merged.licenses[merged.location] = (merged.licenses[merged.location] || 0) + s.license;
       delete merged.license;
@@ -323,6 +327,20 @@ const rainDrops = [];
 const WEATHER_HINT = { clear: "Klar og stille kveld \u2014 fint fiskev\u00e6r.", overcast: "Gr\u00e5tt og overskyet i kveld.", rain: "Lett regn pisler i vannet \u2014 fisken er p\u00e5hugget!", mist: "T\u00e5ka ligger t\u00e9tt over vannet i kveld." };
 const smoke = [];
 let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, funnPanel = false, kioskIdleTimer = 5, partyNode = null;
+// cosmetic hats: bought from the wandering hat seller, equipped from the sekk
+let hatPanel = false, hatShop = false;
+let hatRowRects = [];
+const HATS = [
+  { key: "straw", name: "Str\u00e5hatt", cost: 0, blurb: "Den gode gamle str\u00e5hatten." },
+  { key: "jester", name: "Narrehatt", cost: 3200, blurb: "Fargerik festivalhatt med bjeller." },
+  { key: "pinkcowboy", name: "Rosa cowboyhatt", cost: 5500, blurb: "Glitrende rosa \u2014 for festivalkongen." },
+  { key: "tophat", name: "Flosshatt", cost: 8000, blurb: "Stilig herrehatt for finere fiskere." },
+  { key: "rabbit", name: "Blinkende kanin\u00f8rer", cost: 12000, blurb: "Lyser opp natten. Hvorfor? Hvem vet." },
+  { key: "viking", name: "Vikinghjelm", cost: 18000, blurb: "Med ekte horn. Skitt fiske, h\u00f8vding!" },
+];
+const HAT_BY_KEY = Object.fromEntries(HATS.map((h) => [h.key, h]));
+// the wandering Romanian hat seller — strolls up from the foreground, offers hats, leaves if ignored
+let hatSeller = { state: "away", x: 108, y: 280, t: 0, timer: 60 + Math.random() * 70, idleDur: 14 };
 let marketNode = null, casinoAmbNode = null, casinoSpinNode = null, casinoLoseNode = null, licenseAmbNode = null;
 let menuNode = null;
 // fiskeoppsynet (license inspector) — a rare visiting NPC
@@ -774,6 +792,7 @@ function canvasPress(p) {
       if (it.key === "_godsaker") { godsakerPanel = true; sfxClink(); }
       else if (it.key === "_bag") { bagPanel = true; sfxClink(); }
       else if (it.key === "_rods") { rodPanel = true; sfxClink(); }
+      else if (it.key === "_hats") { hatPanel = true; sfxClink(); }
       else if (it.key === "_records") { recordsPanel = true; sfxClink(); }
       else if (it.key === "_funn") { funnPanel = true; sfxClink(); }
       return;
@@ -787,6 +806,21 @@ function canvasPress(p) {
       useConsumable(it.key); return;        // stay open so you can knock back several in a row
     }
     godsakerPanel = false; return;
+  }
+  // hatter wardrobe (from the sekk): equip a hat you already own
+  if (hatPanel) {
+    if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { hatPanel = false; coolerMenu = true; sfxClink(); return; }
+    for (const rr of hatRowRects) if (inRect(p.x, p.y, rr)) {
+      if (save.hat !== rr.key) { save.hat = rr.key; persist(); setHint("Byttet til " + (HAT_BY_KEY[rr.key] || {}).name); }
+      sfxClink(); hatPanel = false; return;
+    }
+    hatPanel = false; return;
+  }
+  // hat seller's shop: buy a new hat (auto-equips) or switch to one you own — stays open
+  if (hatShop) {
+    if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { hatShop = false; hatSeller.t = 0; sfxClink(); return; }
+    for (const rr of hatRowRects) if (inRect(p.x, p.y, rr)) { buyOrEquipHat(rr.key); return; }
+    hatShop = false; hatSeller.t = 0; return;
   }
   // in-scene rod picker (no overlay menu)
   if (rodPanel) {
@@ -809,6 +843,11 @@ function canvasPress(p) {
   if (funnPanel) {
     if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { funnPanel = false; coolerMenu = true; sfxClink(); return; }
     funnPanel = false; return;
+  }
+  // the wandering hat seller — tap her while she's up on the bank to open her hat stall
+  if ((hatSeller.state === "approach" || hatSeller.state === "idle") &&
+      inRect(p.x, p.y, { x: hatSeller.x - 16, y: hatSeller.y - 26, w: 34, h: 38 })) {
+    openHatShop(); return;
   }
   // shoo the thieving cat before it slinks off with your smallest fish
   if (cat.mission === "steal" && (cat.state === "arrive" || cat.state === "grab" || cat.state === "carry") &&
@@ -929,7 +968,7 @@ function drawHoverHighlight() {
 // touch devices have no hover, so always label the three tappable props while you're idle
 function drawTouchHints() {
   if (!touchMode || screen !== "game" || fishState !== "ready") return;
-  if (truckMenu || coolerMenu || godsakerPanel || rodPanel || bagPanel || recordsPanel || funnPanel) return;
+  if (truckMenu || coolerMenu || godsakerPanel || rodPanel || bagPanel || recordsPanel || funnPanel || hatPanel || hatShop) return;
   const pulse = 0.55 + 0.45 * Math.sin(t * 3);
   ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (const [r, label] of [[TRUCK, "Reise"], [SEKK, "Sekk"], [RADIO, "Radio"]]) {
@@ -1061,6 +1100,8 @@ function resetTransientState() {
   gameEvent.active = false;
   inspector.active = false; inspectorTimer = 80 + Math.random() * 120;
   cat.state = "away"; cat.x = -20; cat.mission = null; cat.fishKey = null; cat.action = "sit"; cat.timer = 14 + Math.random() * 26;
+  hatSeller.state = "away"; hatSeller.x = 108; hatSeller.y = 280; hatSeller.t = 0; hatSeller.timer = 60 + Math.random() * 70;
+  hatPanel = false; hatShop = false;
   cans.length = 0; smoke.length = 0; ripples.length = 0;
 }
 function playSlot(slot) {
@@ -1383,8 +1424,8 @@ function setScreen(name) {
   if (name !== "game") { stopMotor(); stopPurr(); }
   // cut any lingering voice/greeting lines from the previous screen before the new one speaks
   if (name !== from) stopAllVoices();
-  coolerMenu = false; truckMenu = false; rodPanel = false; bagPanel = false; recordsPanel = false; godsakerPanel = false; funnPanel = false;
-  if (name !== "game") { resetFishing(); stopRadio(); inspector.active = false; }
+  coolerMenu = false; truckMenu = false; rodPanel = false; bagPanel = false; recordsPanel = false; godsakerPanel = false; funnPanel = false; hatPanel = false; hatShop = false;
+  if (name !== "game") { resetFishing(); stopRadio(); inspector.active = false; hatSeller.state = "away"; }
   // rod seller: hooooo on entry (sour until purchase), fart on the way out
   if (name === "shopRod" && from !== "shopRod") { speak("rodSpeech", "Hmf. Skal du kjøpe noe, eller bare glo?"); playSample("hoo", { vol: 0.45 }); rodGrumpyBuy = false; rodHop = 0; }
   if (from === "shopRod" && name !== "shopRod") playSample("fart", { vol: 0.7 });
@@ -1991,12 +2032,13 @@ function update(dt) {
     cricketTimer -= dt;
     if (cricketTimer <= 0) { cricketTimer = 0.6 + Math.random() * 1.4; if (Math.random() < 0.7) cricketChirp(); }
     updateCat(dt);
+    if (screen === "game") updateHatSeller(dt);
     // the cat sometimes sneaks in to nick your smallest fish — tap it to shoo it off
     if (screen === "game" && cat.state === "away" && cat.mission == null) {
       catStealTimer -= dt;
       if (catStealTimer <= 0) {
         catStealTimer = 85 + Math.random() * 120;
-        const menuOpen = coolerMenu || truckMenu || rodPanel || bagPanel || recordsPanel || godsakerPanel || funnPanel;
+        const menuOpen = coolerMenu || truckMenu || rodPanel || bagPanel || recordsPanel || godsakerPanel || funnPanel || hatPanel || hatShop;
         if (save.basket.length > 0 && !menuOpen && !inspector.active && !gameEvent.active && fishState !== "reveal") startCatSteal();
       }
     }
@@ -2072,7 +2114,7 @@ function update(dt) {
     }
     // per-location random happenings (can fire while you fish; not during the inspector or menus)
     if (gameEvent.active) { gameEvent.t += dt; if (gameEvent.t > gameEvent.dur) gameEvent.active = false; }
-    if ((fishState === "ready" || fishState === "waiting") && !gameEvent.active && cat.mission == null && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel && !funnPanel) {
+    if ((fishState === "ready" || fishState === "waiting") && !gameEvent.active && cat.mission == null && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel && !funnPanel && !hatPanel && !hatShop) {
       eventTimer -= dt;
       if (eventTimer <= 0) { eventTimer = 50 + Math.random() * 70; triggerGameEvent(); }
     }
@@ -2664,7 +2706,7 @@ function drawGuy() {
   const sip = Math.max(drinkRaise, sipAnim > 0 ? Math.sin((1.2 - sipAnim) / 1.2 * Math.PI) : 0);
   const headX = baseX, headY = baseY - 14 - sip * 2;
   px(headX - 4, headY - 4, 9, 8, "#e3b58c"); px(headX - 4, headY + 3, 9, 2, "#caa07a");
-  px(headX - 8, headY - 2, 17, 2, "#d8b25a"); px(headX - 5, headY - 7, 11, 6, "#e7c56e"); px(headX - 5, headY - 3, 11, 1, "#b8923f");
+  drawPlayerHat(headX, headY, save.hat || "straw");
   // arm
   const armY = baseY - 2;
   if (sip > 0.15) {
@@ -3430,6 +3472,7 @@ const PANEL_R = 472;
 const COOLER_MENU = [
   { key: "_godsaker", name: "Godsaker", action: true },
   { key: "_rods", name: "Bytt stang", action: true },
+  { key: "_hats", name: "Hatter", action: true },
   { key: "_bag", name: "Se fangst", action: true },
   { key: "_records", name: "Rekorder", action: true },
   { key: "_funn", name: "Skrotsamling", action: true },
@@ -3459,7 +3502,7 @@ function drawCoolerMenu() {
     px(it.x, it.y, it.w, it.h, "#2a2440");
     px(it.x, it.y, it.w, 1, "#3a2e4a");
     const cy = it.y + it.h / 2;
-    const ic = it.key === "_godsaker" ? "🍬" : it.key === "_rods" ? "🎣" : it.key === "_bag" ? "🎒" : it.key === "_funn" ? "📦" : "🏆";
+    const ic = it.key === "_godsaker" ? "🍬" : it.key === "_rods" ? "🎣" : it.key === "_hats" ? "🎩" : it.key === "_bag" ? "🎒" : it.key === "_funn" ? "📦" : "🏆";
     ctx.fillStyle = "#bfc8ff"; ctx.font = "8px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.fillText(ic, it.x + 5, cy);
     ctx.fillStyle = "#dfe6ff"; ctx.font = "9px monospace"; ctx.fillText(it.name, it.x + 20, cy + 1);
@@ -3474,7 +3517,7 @@ function godsakerRects() {
 function drawGodsakerPanel() {
   if (!godsakerPanel) return;
   const rects = godsakerRects();
-  const top = rects[rects.length - 1].y - 15, bot = rects[0].y + 17 + 4;
+  const top = rects[rects.length - 1].y - 15, bot = rects[0].y + 17 + 4 + 26;   // extra room for the RUS gauge
   const x0 = rects[0].x - 4, pw = 130;
   px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
   px(x0, top, pw, 3, "#caa46a");
@@ -3492,6 +3535,21 @@ function drawGodsakerPanel() {
     ctx.fillStyle = stock > 0 ? "#ffe6a0" : "#a06a6a";
     ctx.textAlign = "right"; ctx.fillText(stock + " stk", it.x + it.w - 5, cy + 1);
   }
+  // live RUS gauge so you can see how close you are to blacking out before you keel over
+  const gy = rects[0].y + 17 + 8, gx = x0 + 8, gw = pw - 16, gh = 7;
+  const dfrac = clamp(drunk / DRUNK_KO, 0, 1);
+  const near = dfrac >= 0.82;
+  const col = dfrac < 0.5 ? "#8ad0ff" : dfrac < 0.82 ? "#ffb04a" : "#ff5a4a";
+  ctx.font = "bold 7px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "#cbb9c6"; ctx.fillText("RUS", gx, gy - 4);
+  if (near) {
+    ctx.textAlign = "right"; ctx.fillStyle = (Math.sin(t * 8) > 0) ? "#ff7a6a" : "#ffd27a";
+    ctx.fillText(dfrac >= 1 ? "BLACKOUT!" : "STOPP!", gx + gw, gy - 4);
+  }
+  px(gx, gy, gw, gh, "#241c30"); px(gx, gy, gw, 1, "#3a2e4a");
+  px(gx + 1, gy + 1, Math.max(1, Math.round((gw - 2) * dfrac)), gh - 2, col);
+  // limit marker at the blackout line
+  px(gx + 1 + Math.round((gw - 2) * 1.0) - 1, gy - 1, 1, gh + 2, "#ff5a4a");
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 /* in-scene rod picker (replaces the old inventory overlay for "Bytt stang") */
@@ -4550,6 +4608,213 @@ function drawCatSprite(x, y, walking, body, stripe, gait, sitting = false) {
   ctx.beginPath(); ctx.moveTo(x - 9, y - 8 + tailSway * 0.6); ctx.lineTo(x - 10, y - 10 + tailSway * 0.8); ctx.stroke();
   ctx.restore();
 }
+// ---- cosmetic hats: drawn on the fisherman, in panels, and on the seller's stack ----
+// draws the equipped hat around the fisherman's head point (hx, hy)
+function drawPlayerHat(hx, hy, hat) {
+  switch (hat) {
+    case "pinkcowboy": {
+      px(hx - 9, hy - 2, 19, 2, "#e85aa8");                                   // wide brim
+      px(hx - 10, hy - 3, 3, 1, "#ff8ad0"); px(hx + 8, hy - 3, 3, 1, "#ff8ad0"); // upturned tips
+      px(hx - 5, hy - 8, 11, 6, "#ff7ac0"); px(hx - 5, hy - 8, 11, 1, "#ffb0dc"); // crown + highlight
+      px(hx - 5, hy - 4, 11, 1, "#cf4f94");                                   // hat band
+      px(hx - 1, hy - 8, 1, 6, "#ffa0d4");                                    // centre crease
+      if (Math.sin(t * 4) > 0.4) sparkle(hx + 7, hy - 9, t);
+      break;
+    }
+    case "rabbit": {
+      const glow = 0.5 + 0.5 * Math.sin(t * 7), prevA = ctx.globalAlpha;
+      px(hx - 6, hy - 3, 14, 2, "#ff5a9a");                                   // headband
+      ctx.globalAlpha = prevA * (0.25 + glow * 0.5);                          // neon halo behind ears
+      px(hx - 6, hy - 18, 5, 16, "#ff9ad8"); px(hx + 3, hy - 18, 5, 16, "#9af0ff");
+      ctx.globalAlpha = prevA;
+      px(hx - 5, hy - 17, 3, 15, "#fdf6ff"); px(hx + 3, hy - 17, 3, 15, "#fdf6ff"); // ears
+      px(hx - 4, hy - 15, 1, 10, "#ff9ac0"); px(hx + 4, hy - 15, 1, 10, "#9af0ff"); // inner
+      ctx.globalAlpha = prevA * glow;                                         // blinking tips
+      px(hx - 5, hy - 18, 3, 2, "#ff6ad0"); px(hx + 3, hy - 18, 3, 2, "#6ae0ff");
+      ctx.globalAlpha = prevA;
+      if (glow > 0.7) { sparkle(hx - 4, hy - 20, t); sparkle(hx + 4, hy - 19, t + 1); }
+      break;
+    }
+    case "jester": {
+      px(hx - 5, hy - 4, 11, 3, "#7a3aa8");                                   // band
+      const pts = [[-6, -12, "#ff5a5a", "#ffd23a"], [0, -15, "#3ad07a", "#ff8ad0"], [6, -12, "#3a8aff", "#ffd23a"]];
+      for (const [ox, oy, c, bell] of pts) {
+        const sway = Math.sin(t * 2 + ox) * 1.5;
+        px(hx + ox - 1, hy + oy, 3, 8, c);
+        px(Math.round(hx + ox + sway), hy + oy - 2, 2, 2, bell);              // jingling bell tip
+      }
+      break;
+    }
+    case "tophat": {
+      px(hx - 8, hy - 2, 17, 2, "#23202c");                                   // brim
+      px(hx - 5, hy - 12, 11, 10, "#2c2836"); px(hx - 5, hy - 12, 11, 1, "#3a3548");
+      px(hx - 5, hy - 5, 11, 2, "#b03a3a");                                   // red band
+      break;
+    }
+    case "viking": {
+      px(hx - 6, hy - 4, 13, 3, "#8a8f9a"); px(hx - 6, hy - 7, 13, 3, "#9aa0ac"); // dome
+      px(hx - 6, hy - 7, 13, 1, "#c0c6d2");
+      px(hx - 2, hy - 4, 1, 2, "#5a5f6a"); px(hx + 1, hy - 4, 1, 2, "#5a5f6a"); // rivets
+      px(hx - 9, hy - 9, 3, 3, "#e8e2d0"); px(hx - 11, hy - 12, 3, 4, "#e8e2d0"); px(hx - 11, hy - 13, 2, 2, "#f4f0e6"); // L horn
+      px(hx + 7, hy - 9, 3, 3, "#e8e2d0"); px(hx + 9, hy - 12, 3, 4, "#e8e2d0"); px(hx + 10, hy - 13, 2, 2, "#f4f0e6"); // R horn
+      break;
+    }
+    default: {  // straw — the original
+      px(hx - 8, hy - 2, 17, 2, "#d8b25a"); px(hx - 5, hy - 7, 11, 6, "#e7c56e"); px(hx - 5, hy - 3, 11, 1, "#b8923f");
+    }
+  }
+}
+// a tiny hat swatch for the shop/wardrobe rows
+function drawHatPreview(hk, x, y) {
+  switch (hk) {
+    case "pinkcowboy": px(x - 6, y, 13, 2, "#ff7ac0"); px(x - 3, y - 3, 7, 3, "#ff7ac0"); px(x - 3, y - 1, 7, 1, "#cf4f94"); break;
+    case "rabbit": px(x - 4, y, 9, 2, "#ff5a9a"); px(x - 3, y - 6, 2, 6, "#fdf6ff"); px(x + 2, y - 6, 2, 6, "#fdf6ff"); px(x - 3, y - 6, 2, 2, "#ff6ad0"); px(x + 2, y - 6, 2, 2, "#6ae0ff"); break;
+    case "jester": px(x - 4, y, 9, 2, "#7a3aa8"); px(x - 4, y - 3, 2, 3, "#ff5a5a"); px(x, y - 4, 2, 4, "#3ad07a"); px(x + 3, y - 3, 2, 3, "#3a8aff"); break;
+    case "tophat": px(x - 6, y, 13, 2, "#23202c"); px(x - 3, y - 5, 7, 5, "#2c2836"); px(x - 3, y - 2, 7, 1, "#b03a3a"); break;
+    case "viking": px(x - 4, y, 9, 3, "#9aa0ac"); px(x - 6, y - 2, 2, 3, "#e8e2d0"); px(x + 4, y - 2, 2, 3, "#e8e2d0"); break;
+    default: px(x - 5, y, 11, 2, "#d8b25a"); px(x - 3, y - 3, 7, 3, "#e7c56e");
+  }
+}
+// shared renderer for the seller's shop (isShop=true, shows prices) and the sekk wardrobe
+function drawHatList(title, listKeys, isShop) {
+  const w = 176, x = PANEL_R - w, rh = 21, top = 28, headH = 22;
+  const h = headH + listKeys.length * rh + 10;
+  px(x, top, w, h, "rgba(14,12,22,0.96)");
+  px(x, top, w, 3, "#ff8ad0");
+  ctx.fillStyle = "#ffd0ec"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(title, x + w / 2, top + 11);
+  drawBackArrow(x, w, top);
+  hatRowRects = [];
+  ctx.textBaseline = "middle";
+  listKeys.forEach((hk, i) => {
+    const hat = HAT_BY_KEY[hk]; if (!hat) return;
+    const owned = (save.hats || []).includes(hk);
+    const equipped = save.hat === hk;
+    const ry = top + headH + i * rh;
+    const rr = { key: hk, x: x + 4, y: ry, w: w - 8, h: rh - 3 };
+    hatRowRects.push(rr);
+    px(rr.x, rr.y, rr.w, rr.h, equipped ? "#3a2a40" : "#241c30");
+    px(rr.x, rr.y, rr.w, 1, equipped ? "#ff8ad0" : "#3a2e4a");
+    const cy = rr.y + rr.h / 2;
+    drawHatPreview(hk, rr.x + 13, cy + 3);
+    ctx.font = "9px monospace"; ctx.textAlign = "left";
+    ctx.fillStyle = owned ? "#f0e6d0" : "#d4bcc8";
+    ctx.fillText(hat.name, rr.x + 26, cy + 1);
+    ctx.textAlign = "right"; ctx.font = "8px monospace";
+    if (equipped) { ctx.fillStyle = "#9affc0"; ctx.fillText("i bruk", rr.x + rr.w - 6, cy + 1); }
+    else if (owned) { ctx.fillStyle = "#9aa6d0"; ctx.fillText("bruk \u203a", rr.x + rr.w - 6, cy + 1); }
+    else { ctx.fillStyle = save.money >= hat.cost ? "#ffe6a0" : "#a06a6a"; ctx.fillText(fmt(hat.cost) + " kr", rr.x + rr.w - 6, cy + 1); }
+  });
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+function drawHatShop() { if (hatShop) drawHatList("HATTESELGER", HATS.map((h) => h.key), true); }
+function drawHatPanel() { if (hatPanel) drawHatList("HATTENE DINE", (save.hats || ["straw"]), false); }
+// buy a hat (auto-equips) or switch to one you already own — called from the seller's shop
+function buyOrEquipHat(hk) {
+  const hat = HAT_BY_KEY[hk]; if (!hat) return;
+  if ((save.hats || []).includes(hk)) {
+    if (save.hat === hk) { sfxClink(); return; }
+    save.hat = hk; persist(); sfxClink(); setHint("Du tok p\u00e5 " + hat.name + "!");
+    return;
+  }
+  if (save.money < hat.cost) { sfxMiss(); setHint("Ikke nok penger til " + hat.name + " (" + fmt(hat.cost) + " kr)"); return; }
+  save.money -= hat.cost; save.hats.push(hk); save.hat = hk; persist(); refreshHUD();
+  sfxCoin(); playSample("buying", { vol: 0.6 }); setHint("Kj\u00f8pte og tok p\u00e5 " + hat.name + "! \ud83c\udfa9");
+}
+// open the seller's stall (also nudges her into the waiting pose so she sticks around)
+function openHatShop() {
+  hatSeller.state = "idle"; hatSeller.t = 0;
+  hatShop = true; coolerMenu = false; godsakerPanel = false; rodPanel = false; hatPanel = false;
+  sfxClink();
+}
+// the seller's traditional call when she ambles up
+function sellerCall() {
+  blip(440, 0.1, "triangle", 0.05); blip(620, 0.12, "triangle", 0.05, 0.12); blip(540, 0.14, "triangle", 0.045, 0.26);
+}
+// ---- wandering Romanian hat seller ----
+function updateHatSeller(dt) {
+  hatSeller.t += dt;
+  const STAND_Y = 208, START_Y = 280;
+  switch (hatSeller.state) {
+    case "away": {
+      hatSeller.timer -= dt;
+      const busy = coolerMenu || truckMenu || rodPanel || bagPanel || recordsPanel || godsakerPanel || funnPanel || hatPanel || hatShop || inspector.active || gameEvent.active || cat.mission != null || knockout.active;
+      if (hatSeller.timer <= 0 && !busy && (fishState === "ready" || fishState === "waiting")) {
+        hatSeller.state = "approach"; hatSeller.x = 108; hatSeller.y = START_Y; hatSeller.t = 0;
+        sellerCall();
+      } else if (hatSeller.timer <= 0) {
+        hatSeller.timer = 6 + Math.random() * 8;   // try again shortly when the coast clears
+      }
+      break;
+    }
+    case "approach":
+      hatSeller.y = lerp(hatSeller.y, STAND_Y, dt * 1.7);
+      if (hatSeller.y < STAND_Y + 1.5) { hatSeller.y = STAND_Y; hatSeller.state = "idle"; hatSeller.t = 0; }
+      break;
+    case "idle":
+      if (hatShop) { hatSeller.t = 0; break; }      // she waits patiently while you browse
+      if (hatSeller.t > hatSeller.idleDur) { hatSeller.state = "leave"; hatSeller.t = 0; blip(330, 0.12, "sine", 0.04); }
+      break;
+    case "leave":
+      hatSeller.y += dt * 46;
+      if (hatSeller.y > START_Y) { hatSeller.state = "away"; hatSeller.timer = 70 + Math.random() * 80; }
+      break;
+  }
+}
+function drawHatSeller() {
+  if (hatSeller.state === "away") return;
+  const x = Math.round(hatSeller.x), y = Math.round(hatSeller.y);
+  const walking = hatSeller.state === "approach" || hatSeller.state === "leave";
+  const gait = walking ? Math.sin(t * 8) * 1.2 : Math.sin(t * 1.6) * 0.5;
+  const prevA = ctx.globalAlpha;
+  // soft shadow
+  ctx.globalAlpha = prevA * 0.3; ctx.fillStyle = "#0c1330";
+  ctx.beginPath(); ctx.ellipse(x, y + 16, 11, 3, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = prevA;
+  // long traditional skirt
+  px(x - 7, y - 2, 15, 14, "#7a2a4a"); px(x - 7, y - 2, 15, 2, "#9a3a5a"); px(x - 7, y + 9, 15, 3, "#b83a5a");
+  for (let i = 0; i < 3; i++) px(x - 6 + i * 5, y + 2, 1, 7, "#ffd23a");      // embroidery
+  // legs shuffling
+  px(x - 4, y + 12 + (gait > 0 ? 1 : 0), 3, 4, "#5a4a3a"); px(x + 1, y + 12 + (gait < 0 ? 1 : 0), 3, 4, "#5a4a3a");
+  // apron
+  px(x - 3, y - 1, 7, 11, "#e8d4a0"); px(x - 3, y - 1, 7, 1, "#c0a878");
+  px(x - 2, y + 2, 5, 1, "#b8473f"); px(x - 2, y + 5, 5, 1, "#3a7a4a");
+  // shawl over the shoulders
+  px(x - 6, y - 8, 13, 7, "#5a2a3a"); px(x - 6, y - 8, 13, 1, "#7a3a4a");
+  // arms
+  px(x - 8, y - 4, 3, 6, "#5a2a3a"); px(x + 6, y - 4, 3, 6, "#5a2a3a");
+  px(x - 9, y + 1, 3, 3, "#d8a878"); px(x + 7, y + 1, 3, 3, "#d8a878");        // hands
+  // head + headscarf (babushka)
+  px(x - 4, y - 15, 9, 8, "#d8a878");
+  px(x - 5, y - 17, 11, 5, "#b8344a"); px(x - 5, y - 12, 2, 5, "#b8344a"); px(x + 4, y - 12, 2, 5, "#b8344a");
+  px(x - 5, y - 17, 11, 1, "#d8546a");
+  px(x - 2, y - 12, 1, 1, "#3a2018"); px(x + 2, y - 12, 1, 1, "#3a2018");      // eyes
+  px(x - 1, y - 9, 3, 1, "#9a6a5a");                                          // kindly mouth
+  // a colourful stack of festival hats balanced on her free hand
+  const sx = x + 10, sy = y + 1;
+  px(sx - 2, sy, 5, 1, "#ff7ac0"); px(sx - 1, sy - 2, 3, 2, "#ff7ac0");        // pink cowboy
+  px(sx - 2, sy - 4, 5, 1, "#3ad07a"); px(sx - 1, sy - 6, 3, 2, "#3ad07a");    // green
+  px(sx - 2, sy - 8, 5, 1, "#ffd23a"); px(sx - 1, sy - 10, 3, 2, "#ffd23a");   // yellow
+  // speech bubble while she's around to be tapped
+  if (hatSeller.state === "idle" || hatSeller.state === "approach") {
+    const txt = "Kj\u00f8pe hatt?!";
+    ctx.font = "bold 7px monospace";
+    const bw = ctx.measureText(txt).width + 8;
+    const bx = clamp(x - bw / 2, 2, W - bw - 2), by = y - 30;
+    px(bx, by, bw, 11, "rgba(255,250,240,0.96)"); px(bx, by, bw, 2, "#ff8ad0");
+    px(x - 2, by + 11, 3, 3, "rgba(255,250,240,0.96)");
+    ctx.fillStyle = "#7a2a4a"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "bold 7px monospace";
+    ctx.fillText(txt, bx + bw / 2, by + 6);
+    // a gentle tap-prompt so it's clear she's interactive
+    if (hatSeller.state === "idle") {
+      const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+      ctx.globalAlpha = prevA * (0.5 + pulse * 0.5);
+      ctx.fillStyle = "#ffd27a"; ctx.font = "7px monospace";
+      ctx.fillText(touchMode ? "Trykk!" : "Klikk!", x, y + 22);
+      ctx.globalAlpha = prevA;
+    }
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  }
+}
 // ---- in-game cat companion (the same orange tabby from the intro) ----
 function catMeow() {
   // soft procedural meow: a little rise then fall
@@ -4968,7 +5233,7 @@ function render() {
   switch (screen) {
     case "game":
       drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore(); drawRiseSpot();
-      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
+      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawHatSeller(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawHatPanel(); drawHatShop(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
       drawRevealFish(); drawFog(); drawWeather(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette(); drawHangover(); drawKnockout();
       break;
     case "menu": drawMenuBg(); break;
