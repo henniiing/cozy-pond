@@ -263,7 +263,7 @@ const stars = Array.from({ length: 42 }, () => ({ x: Math.random() * W, y: Math.
 // the occasional shooting star streaking across the arctic sky (Nordlysvatnet)
 let shootStar = { on: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, timer: 5 + Math.random() * 9 };
 // the cottage cat (Findus) — tags along on fishing trips and pads about doing its own thing
-let cat = { state: "away", x: -20, y: 212, timer: 14 + Math.random() * 26, t: 0, action: "sit", target: 116, chaseX: 0 };
+let cat = { state: "away", x: -20, y: 220, timer: 14 + Math.random() * 26, t: 0, action: "sit", target: 116, chaseX: 0 };
 // market passers-by (cosmetic NPCs that stroll the street back and forth)
 const NPC_COLORS = [["#7a4a6a", "#caa23a"], ["#3a5a7a", "#d8d2c0"], ["#6a5a3a", "#b23a2a"], ["#4a6a4a", "#e0b48a"]];
 const marketNPCs = Array.from({ length: 4 }, (_, i) => ({
@@ -3002,17 +3002,17 @@ function updateCat(dt) {
   switch (cat.state) {
     case "away":
       cat.timer -= dt;
-      if (cat.timer <= 0) { cat.state = "arrive"; cat.x = W + 16; cat.target = 100 + Math.random() * 44; cat.t = 0; if (Math.random() < 0.6) catMeow(); }
+      if (cat.timer <= 0) { cat.state = "arrive"; cat.x = -16; cat.target = 30 + Math.random() * 56; cat.t = 0; if (Math.random() < 0.6) catMeow(); }
       break;
     case "arrive":
       cat.x = lerp(cat.x, cat.target, dt * 1.8);
-      if (cat.x < cat.target + 2) { cat.state = "settle"; pickCatAction(); if (Math.random() < 0.4) catMeow(); }
+      if (cat.x > cat.target - 2) { cat.state = "settle"; pickCatAction(); if (Math.random() < 0.4) catMeow(); }
       break;
     case "settle":
       cat.timer -= dt;
       if (cat.action === "chase") {
-        // pad back and forth chasing a firefly
-        cat.x = cat.chaseX + Math.sin(cat.t * 2.2) * 18;
+        // pad back and forth chasing a firefly, but stay on the grassy bank
+        cat.x = clamp(cat.chaseX + Math.sin(cat.t * 2.2) * 16, 18, 96);
       } else if (cat.action === "bat" && Math.random() < dt * 1.5) {
         blip(300 + Math.random() * 80, 0.04, "triangle", 0.03);
       }
@@ -3022,8 +3022,8 @@ function updateCat(dt) {
       }
       break;
     case "leave":
-      cat.x += dt * 22;
-      if (cat.x > W + 16) { cat.state = "away"; cat.timer = 22 + Math.random() * 40; }
+      cat.x -= dt * 22;
+      if (cat.x < -16) { cat.state = "away"; cat.timer = 22 + Math.random() * 40; }
       break;
   }
 }
@@ -3035,11 +3035,11 @@ function drawCat() {
   const gait = walking ? Math.sin(t * 13) * 1.4 : (cat.action === "chase" ? Math.sin(t * 10) * 1.2 : 0);
   let y = cat.y;
   if (cat.action === "bat" && sitting) y += Math.abs(Math.sin(t * 7)) * 1.2; // little pounce bob
-  // arriving cat faces left (flip); settled/leaving faces right toward the water
-  const faceLeft = cat.state === "arrive";
+  // padding off to the left → face left (flip); otherwise face right toward the water
+  const faceLeft = cat.state === "leave";
   if (faceLeft) {
-    ctx.save(); ctx.translate(cat.x, 0); ctx.scale(-1, 1);
-    drawCatSprite(0, y, walking, "#d9863a", "#b8662a", gait, false);
+    ctx.save(); ctx.translate(cat.x * 2, 0); ctx.scale(-1, 1);
+    drawCatSprite(cat.x, y, walking, "#d9863a", "#b8662a", gait, false);
     ctx.restore();
   } else {
     drawCatSprite(cat.x, y, walking, "#d9863a", "#b8662a", gait, sitting && !napping);
