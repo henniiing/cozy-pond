@@ -36,7 +36,7 @@ const licenseStateEl = $("licenseState");
    ========================================================================= */
 const SAVE_KEY = "cozyPond_v1";
 function defaultSave() {
-  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false };
+  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false };
 }
 function loadSave() {
   try {
@@ -77,8 +77,11 @@ const FISH = [
 const FISH_BY_KEY = Object.fromEntries(FISH.map((f) => [f.key, f]));
 
 const JUNK = [
-  { key: "stovel", name: "Gammel støvel", junk: true, weight: 3, tag: "...skuffende.", kind: "boot" },
-  { key: "boks",   name: "Blikkboks",     junk: true, weight: 2, tag: "Forsøpling!", kind: "can" },
+  { key: "stovel", name: "Gammel støvel", junk: true, weight: 3, tag: "Passer ikke. Rett i samlingen!", kind: "boot" },
+  { key: "boks",   name: "Blikkboks",     junk: true, weight: 2, tag: "Pant? Niks. Men en kuriositet.", kind: "can" },
+  { key: "truse",  name: "Damestringtruse", junk: true, weight: 1.4, tag: "Øh… best å ikke spørre. Lommeboka gråter, samlingen jubler.", kind: "thong" },
+  { key: "and",    name: "Gummiand",      junk: true, weight: 1.6, tag: "Kvakk! En trofast badevenn.", kind: "duck" },
+  { key: "briller",name: "Gamle briller", junk: true, weight: 1.3, tag: "Noen ser nok dårlig nå. Fint funn!", kind: "glasses" },
 ];
 
 const RODS = [
@@ -157,7 +160,7 @@ const locFish = () => FISH.filter((f) => LOC.fish.includes(f.key));
 
 function pickFish() {
   const r = rod().rare;
-  const luck = buff.t > 0 ? buff.luck : 0;
+  const luck = (buff.t > 0 ? buff.luck : 0) + (castOnRise ? 0.5 : 0);
   // legendary catch of this location
   if (LOC.rare && Math.random() < 0.014 + r * 0.02 + luck * 0.04) return LOC.rare;
   const pool = [];
@@ -207,6 +210,7 @@ let t = 0, stateTime = 0;
 
 let biteTimer = 0, biteWindow = 0, nibbleTimer = 0, nibbleShake = 0;
 let holding = false, progress = 0, tension = 0, pullTimer = 0, pulling = 0;
+let bigFishTired = false;   // one-shot flag: a heavy fish has visibly worn down
 let currentFish = null, currentCatch = null, currentWeight = 0, missReason = "";
 let castProgress = 0;
 
@@ -265,7 +269,7 @@ let buffFlash = 0, drunk = 0, smoking = 0, snusing = 0;
 // classic cartoon blackout when he drinks WAY past the limit (rus > 140 %)
 let knockout = { active: false, t: 0, phase: "fall" };
 const smoke = [];
-let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, kioskIdleTimer = 5, partyNode = null;
+let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, funnPanel = false, kioskIdleTimer = 5, partyNode = null;
 let marketNode = null, casinoAmbNode = null, casinoSpinNode = null;
 let menuNode = null;
 // fiskeoppsynet (license inspector) — a rare visiting NPC
@@ -275,6 +279,9 @@ let inspectorTimer = 80 + Math.random() * 120;
 let gameEvent = { active: false, t: 0, dur: 0, title: "", line: "", color: "#cfe" };
 let eventTimer = 45 + Math.random() * 65;
 let catStealTimer = 80 + Math.random() * 110;
+// a fish «vaker» (rises) out in the open water now and then — cast onto it for a luck/size bonus
+let riseSpot = { active: false, x: 0, y: 0, t: 0, dur: 0, timer: 7 + Math.random() * 12, ringT: 0 };
+let castOnRise = false;
 
 // ambient
 const fireflies = Array.from({ length: 14 }, () => ({ x: Math.random() * W, y: 40 + Math.random() * 110, ph: Math.random() * 6.28, sp: 0.3 + Math.random() * 0.5, drift: Math.random() * 6.28 }));
@@ -349,7 +356,7 @@ function noise(dur, freq, vol = 0.15, type = "lowpass") {
 }
 
 /* ---- recorded samples (mp3 files in /lyder) ---- */
-const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", scream: "Red girl screaming loud", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music" };
+const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", scream: "Red girl screaming loud", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music", catPurr: "cat-purring", catAngry: "cat-angry-meow", sinister: "sinister-laugh", motor: "backgorund-motor.sound" };
 const sampleEls = {};
 for (const k in SAMPLES) { const a = new Audio(`lyder/${encodeURIComponent(SAMPLES[k])}.mp3`); a.preload = "auto"; sampleEls[k] = a; }
 const activeLoops = new Set();
@@ -416,6 +423,11 @@ function frogCroak() { if (muted || !audioCtx) return; const f = 88 + Math.rando
 function owlHoot() { if (muted || !audioCtx) return; blip(430, 0.16, "sine", 0.055); blip(380, 0.22, "sine", 0.05, 0.24); }
 function plopRandom() { if (muted || !audioCtx) return; blip(300 + Math.random() * 120, 0.09, "sine", 0.07); }
 let engineNode = null;
+let motorNode = null;        // looping idle motor while you hover the parked truck
+let purrNode = null;         // looping purr while you pet the cat
+let licenseBoughtThisVisit = false;
+function stopMotor() { if (motorNode) { stopSample(motorNode); motorNode = null; } }
+function stopPurr() { if (purrNode) { stopSample(purrNode); purrNode = null; } }
 function startEngine() {
   engineNode = playSample("engine", { vol: 0.45, loop: true });
   playSample("yiha", { vol: 0.85 });
@@ -604,6 +616,24 @@ function drawJunkSprite(g, ox, oy, u, kind) {
     for (let x = -3; x <= 3; x++) for (let y = -5; y <= 5; y++) cell(x, y, x <= -2 ? "#9aa0a8" : "#c9ccd2");
     for (let y = -5; y <= 5; y++) cell(-1, y, "#cf3b3b");
     cell(0, -6, "#7f8189"); cell(1, -6, "#7f8189");
+  } else if (kind === "thong") {
+    // a frilly pink ladies' thong (a daft catch)
+    for (let x = -4; x <= 4; x++) { cell(x, -3, "#e87aa6"); cell(x, -2, "#f4a8c8"); }
+    for (let x = -2; x <= 2; x++) cell(x, -1, "#f099bd");
+    cell(-1, 0, "#f099bd"); cell(0, 0, "#f099bd"); cell(1, 0, "#f099bd");
+    cell(0, 1, "#f099bd"); cell(0, 2, "#f099bd");
+    cell(-4, -4, "#ffd0e2"); cell(0, -4, "#ffd0e2"); cell(4, -4, "#ffd0e2");
+  } else if (kind === "duck") {
+    for (let x = -2; x <= 2; x++) for (let y = 0; y <= 2; y++) cell(x, y, "#f4c83a");   // body
+    for (let x = -3; x <= -1; x++) for (let y = -3; y <= -1; y++) cell(x, y, "#f4c83a"); // head
+    cell(-4, -2, "#e8902a"); cell(-5, -2, "#e8902a");                                    // beak
+    cell(-2, -2, "#1a1a1a");                                                             // eye
+    for (let x = -2; x <= 3; x++) cell(x, 3, "#3a6a8a");                                 // water line
+  } else if (kind === "glasses") {
+    for (const lx of [-3, 1]) { cell(lx, -1, "#2a2a2a"); cell(lx + 1, -1, "#2a2a2a"); cell(lx, 0, "#2a2a2a"); cell(lx + 1, 0, "#2a2a2a"); }
+    cell(-2, -1, "#bfe6ef"); cell(2, -1, "#bfe6ef");   // glints in the lenses
+    cell(-1, -1, "#2a2a2a"); cell(0, -1, "#2a2a2a");   // bridge
+    cell(-5, -1, "#2a2a2a"); cell(3, -1, "#2a2a2a");   // arms
   } else { // boot
     for (let x = -2; x <= 2; x++) for (let y = -6; y <= 2; y++) cell(x, y, "#4a3b2c");
     for (let x = -2; x <= 5; x++) cell(x, 3, "#3a2e22");
@@ -691,6 +721,7 @@ function canvasPress(p) {
       else if (it.key === "_bag") { bagPanel = true; sfxClink(); }
       else if (it.key === "_rods") { rodPanel = true; sfxClink(); }
       else if (it.key === "_records") { recordsPanel = true; sfxClink(); }
+      else if (it.key === "_funn") { funnPanel = true; sfxClink(); }
       return;
     }
     coolerMenu = false; return;
@@ -721,12 +752,21 @@ function canvasPress(p) {
     if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { recordsPanel = false; coolerMenu = true; sfxClink(); return; }
     recordsPanel = false; return;
   }
+  if (funnPanel) {
+    if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { funnPanel = false; coolerMenu = true; sfxClink(); return; }
+    funnPanel = false; return;
+  }
   // shoo the thieving cat before it slinks off with your smallest fish
   if (cat.mission === "steal" && (cat.state === "arrive" || cat.state === "grab" || cat.state === "carry") &&
       inRect(p.x, p.y, { x: cat.x - 14, y: cat.y - 20, w: 34, h: 26 })) {
     cat.state = "flee"; cat.mission = null; cat.fishKey = null; cat.t = 0; catYowl();
     showCatEvent("Du jaget katten!", "Pus mjauer surt og stikker av — fisken er reddet.");
     return;
+  }
+  // pet the friendly cat while it's lounging on the bank → happy purring
+  if ((cat.state === "settle") && cat.mission == null &&
+      inRect(p.x, p.y, { x: cat.x - 12, y: cat.y - 18, w: 28, h: 24 })) {
+    petCat(); return;
   }
   if (fishState === "reveal") { closeReveal(); return; }
   if (fishState === "ready") {
@@ -740,6 +780,9 @@ function canvasPress(p) {
     } else {
       castTarget.x = BOBBER_HOME.x; castTarget.y = BOBBER_HOME.y;
     }
+    // a cast that lands on the rising fish gets a luck + quick-bite bonus
+    castOnRise = riseSpot.active && Math.hypot(castTarget.x - riseSpot.x, castTarget.y - riseSpot.y) < 32;
+    if (castOnRise) { riseSpot.active = false; sfxCoin(); setHint("Rett p\u00e5 vaket! Her napper det godt \uD83C\uDFAF"); }
     startCast(); return;
   }
   // a click while the line is just out (casting/waiting) reels it back in — a clean cancel
@@ -760,6 +803,7 @@ let hover = { x: -1, y: -1, on: false };
 let touchMode = false;       // set on first touch — drives always-on labels for phones
 let hoverProp = null;        // "truck" | "sekk" | "radio" — highlighted in the fishing scene
 let marketHover = null;      // {rect,label} currently hovered in the market
+let mapHoverSpot = null;     // map spot currently hovered (for the info tooltip)
 function interactiveAt(p) {
   if (screen === "intro") return "play";
   if (screen === "menu") return null; // menu uses real DOM buttons
@@ -776,6 +820,7 @@ function interactiveAt(p) {
   if (truckMenu) { for (const it of truckItemRects()) if (inRect(p.x, p.y, it)) return "btn"; return "btn"; }
   if (coolerMenu) { if (backBtnRect && inRect(p.x, p.y, backBtnRect)) return "btn"; for (const it of coolerItemRects()) if (inRect(p.x, p.y, it)) return "btn"; return "btn"; }
   if (godsakerPanel) { if (backBtnRect && inRect(p.x, p.y, backBtnRect)) return "btn"; for (const it of godsakerRects()) if (inRect(p.x, p.y, it)) return "btn"; return "btn"; }
+  if (funnPanel) return "btn";
   if (rodPanel) { if (backBtnRect && inRect(p.x, p.y, backBtnRect)) return "btn"; for (const it of rodPanelRects()) if (inRect(p.x, p.y, it)) return "btn"; return "btn"; }
   if (bagPanel || recordsPanel) return "btn";
   if (fishState === "reveal") return "btn";
@@ -790,10 +835,19 @@ function interactiveAt(p) {
   return null;
 }
 function updateCursor() {
-  if (!hover.on) { canvas.style.cursor = "default"; hoverProp = null; marketHover = null; return; }
+  if (!hover.on) { canvas.style.cursor = "default"; hoverProp = null; marketHover = null; mapHoverSpot = null; stopMotor(); return; }
   const k = interactiveAt(hover);
   hoverProp = (screen === "game" && fishState === "ready" && (k === "truck" || k === "sekk" || k === "radio")) ? k : null;
   marketHover = screen === "market" ? marketTarget(hover) : null;
+  // map: hovering a water reveals its fish + how good the fishing is
+  mapHoverSpot = null;
+  if (screen === "map") {
+    if (Math.hypot(hover.x - MAP_MARKET.x, hover.y - (MAP_MARKET.y - 12)) < 20) mapHoverSpot = { market: true, x: MAP_MARKET.x, y: MAP_MARKET.y };
+    else for (const sp of MAP_SPOTS) if (Math.hypot(hover.x - sp.x, hover.y - (sp.y - 12)) < 18) { mapHoverSpot = sp; break; }
+  }
+  // the parked truck idles + smokes while you hover it
+  if (hoverProp === "truck" && !motorNode) motorNode = playSample("motor", { loop: true, vol: 0.4 });
+  else if (hoverProp !== "truck") stopMotor();
   canvas.style.cursor = !k ? "default" : (k === "water" ? "crosshair" : "pointer");
 }
 canvas.addEventListener("mousemove", (e) => { const p = toCanvas(e); hover.x = p.x; hover.y = p.y; hover.on = true; updateCursor(); });
@@ -827,7 +881,7 @@ function drawHoverHighlight() {
 // touch devices have no hover, so always label the three tappable props while you're idle
 function drawTouchHints() {
   if (!touchMode || screen !== "game" || fishState !== "ready") return;
-  if (truckMenu || coolerMenu || godsakerPanel || rodPanel || bagPanel || recordsPanel) return;
+  if (truckMenu || coolerMenu || godsakerPanel || rodPanel || bagPanel || recordsPanel || funnPanel) return;
   const pulse = 0.55 + 0.45 * Math.sin(t * 3);
   ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (const [r, label] of [[TRUCK, "Reise"], [SEKK, "Sekk"], [RADIO, "Radio"]]) {
@@ -988,9 +1042,10 @@ const OVERLAYS = ["menu", "market", "map", "help", "shopFish", "shopRod", "shopL
 function setScreen(name) {
   const from = screen;
   if (from === "travel") stopEngine();
+  if (name !== "game") { stopMotor(); stopPurr(); }
   // cut any lingering voice/greeting lines from the previous screen before the new one speaks
   if (name !== from) stopAllVoices();
-  coolerMenu = false; truckMenu = false; rodPanel = false; bagPanel = false; recordsPanel = false; godsakerPanel = false;
+  coolerMenu = false; truckMenu = false; rodPanel = false; bagPanel = false; recordsPanel = false; godsakerPanel = false; funnPanel = false;
   if (name !== "game") { resetFishing(); stopRadio(); inspector.active = false; }
   // rod seller: hooooo on entry (sour until purchase), fart on the way out
   if (name === "shopRod" && from !== "shopRod") { speak("rodSpeech", "Hmf. Skal du kjøpe noe, eller bare glo?"); playSample("hoo", { vol: 0.45 }); rodGrumpyBuy = false; rodHop = 0; }
@@ -999,6 +1054,9 @@ function setScreen(name) {
   if (name === "shopFish" && from !== "shopFish") { speak("ladySpeech", "Hei, kjekken… har du noe fint til meg i dag?"); playSample("ladyWelcome", { vol: 0.8 }); }
   // casino croupier greeting
   if (name === "shopCasino" && from !== "shopCasino") playSample("ohbro", { vol: 0.7 });
+  // fishing warden: a sinister cackle as you leave after actually buying a permit
+  if (name === "shopLicense" && from !== "shopLicense") licenseBoughtThisVisit = false;
+  if (from === "shopLicense" && name !== "shopLicense" && licenseBoughtThisVisit) { playSample("sinister", { vol: 0.7 }); licenseBoughtThisVisit = false; }
   // fishing warden: a polite greeting + paper shuffle when you visit the permit booth
   if (name === "shopLicense" && from !== "shopLicense") { speak("licenseSpeech", "God dag! Skal det være et gyldig fiskekort? Husk — fiskeoppsynet er ute og går."); blip(520, 0.05, "square", 0.04); setTimeout(() => blip(440, 0.05, "square", 0.035), 90); }  // kiosk: muffled party music on loop while inside + a greeting
   if (name === "shopKiosk" && from !== "shopKiosk") { speak("kioskSpeech", "Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske."); playSample("eyybro", { vol: 0.7 }); }
@@ -1007,7 +1065,7 @@ function setScreen(name) {
   if (marketNode) { stopSample(marketNode); marketNode = null; }
   if (casinoAmbNode) { stopSample(casinoAmbNode); casinoAmbNode = null; }
   if (casinoSpinNode) { stopSample(casinoSpinNode); casinoSpinNode = null; }
-  if (menuNode && name !== "menu") { stopSample(menuNode); menuNode = null; }
+  if (menuNode && name !== "menu" && name !== "help") { stopSample(menuNode); menuNode = null; }   // «hvordan spille» is still part of the menu — keep the music going
   if (casino.spinning && name !== "shopCasino") { casino.spinning = false; casino.win = false; }
   if (name === "shopKiosk") partyNode = playSample("party", { loop: true, vol: 0.4 });
   else if (name === "market") marketNode = playSample("market", { loop: true, vol: 0.45 });
@@ -1052,6 +1110,7 @@ function resetFishing() {
   castTarget.x = BOBBER_HOME.x; castTarget.y = BOBBER_HOME.y;
   reelEl.classList.add("hidden"); catchEl.classList.add("hidden");
   tensionEl.classList.remove("danger");
+  castOnRise = false; bigFishTired = false;
 }
 // reel the line straight back in without a fish — lets you bail out of a cast you regret
 function cancelFishing() {
@@ -1084,12 +1143,12 @@ function setMiss(reason) {
   setFish("missed"); missReason = reason; sfxMiss();
   reelEl.classList.add("hidden");
 }
-function startCast() { setFish("casting"); castProgress = 0; sfxCast(); setHint(""); }
+function startCast() { setFish("casting"); castProgress = 0; sfxCast(); setHint(""); stopMotor(); }
 function beginWaiting() {
   setFish("waiting");
   bobber.x = castTarget.x; bobber.y = castTarget.y; bobber.sink = 0;
   addRipple(bobber.x, bobber.y, 18); sfxPlop();
-  biteTimer = 4 + Math.random() * 7;
+  biteTimer = castOnRise ? 1.4 + Math.random() * 2 : 4 + Math.random() * 7;
   nibbleTimer = 1.5 + Math.random() * 2.5;
   setHint("Vent til duppen går under…");
 }
@@ -1104,12 +1163,16 @@ function hookFish() {
   setFish("hooked");
   progress = 10; tension = 10; pullTimer = 0.5 + Math.random() * 0.7; pulling = 0; holding = false;
   reelEl.classList.remove("hidden");
-  setHint("Hold for å sveive — slipp når den drar!");
+  bigFishTired = false;
+  setHint(currentWeight >= 4 ? "Diger fisk! Hold ut — den blir sliten etter hvert" : "Hold for å sveive — slipp når den drar!");
   sfxSplash();
 }
 function finalizeCatch() {
   const f = currentFish;
   if (f.junk) {
+    save.junk = save.junk || {};
+    save.junk[f.key] = (save.junk[f.key] || 0) + 1;
+    persist();
     currentCatch = { f, junk: true, tag: f.tag };
   } else {
     const weight = currentWeight || rollWeight(f);
@@ -1131,7 +1194,7 @@ function catchFish() {
   finalizeCatch();
   setFish("reveal");
   const c = currentCatch;
-  if (c.junk) { catchName.textContent = c.f.name; catchInfo.textContent = "verdiløst"; catchTag.textContent = c.tag || ""; }
+  if (c.junk) { catchName.textContent = c.f.name; catchInfo.textContent = "til samlingen · " + ((save.junk && save.junk[c.f.key]) || 1) + " stk"; catchTag.textContent = c.tag || ""; }
   else { catchName.textContent = c.f.name; catchInfo.textContent = c.weight.toFixed(2) + " kg · " + fmt(c.value) + " kr"; catchTag.textContent = c.tag || ""; }
   catchEl.classList.remove("hidden");
   setHint("");
@@ -1258,6 +1321,7 @@ function buyLicense(locKey) {
   const cost = licenseCostFor(key);
   if (save.money < cost) { speak("licenseSpeech", "Fiskekort koster penger, det også. Kom igjen med kontanter."); sfxMiss(); return; }
   save.money -= cost; save.licenses[key] = (save.licenses[key] || 0) + LICENSE_GRANT; persist();
+  licenseBoughtThisVisit = true;
   sfxCoin();
   speak("licenseSpeech", `Vær så god — kort for ${loc.name} som varer ${LICENSE_GRANT} fangster.`);
   buildLicenses(); refreshHUD();
@@ -1567,7 +1631,7 @@ function update(dt) {
       catStealTimer -= dt;
       if (catStealTimer <= 0) {
         catStealTimer = 85 + Math.random() * 120;
-        const menuOpen = coolerMenu || truckMenu || rodPanel || bagPanel || recordsPanel || godsakerPanel;
+        const menuOpen = coolerMenu || truckMenu || rodPanel || bagPanel || recordsPanel || godsakerPanel || funnPanel;
         if (save.basket.length > 0 && !menuOpen && !inspector.active && !gameEvent.active && fishState !== "reveal") startCatSteal();
       }
     }
@@ -1634,7 +1698,7 @@ function update(dt) {
         inspector.x -= dt * 45;
         if (inspector.x < -22) inspector.active = false;
       }
-    } else if (fishState === "ready" && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel) {
+    } else if (fishState === "ready" && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel && !funnPanel) {
       inspectorTimer -= dt;
       if (inspectorTimer <= 0) {
         inspectorTimer = 130 + Math.random() * 160;
@@ -1643,9 +1707,23 @@ function update(dt) {
     }
     // per-location random happenings (can fire while you fish; not during the inspector or menus)
     if (gameEvent.active) { gameEvent.t += dt; if (gameEvent.t > gameEvent.dur) gameEvent.active = false; }
-    if ((fishState === "ready" || fishState === "waiting") && !gameEvent.active && cat.mission == null && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel) {
+    if ((fishState === "ready" || fishState === "waiting") && !gameEvent.active && cat.mission == null && !inspector.active && !coolerMenu && !truckMenu && !rodPanel && !bagPanel && !recordsPanel && !godsakerPanel && !funnPanel) {
       eventTimer -= dt;
       if (eventTimer <= 0) { eventTimer = 50 + Math.random() * 70; triggerGameEvent(); }
+    }
+    // the rising fish: appears for a few seconds, leaving spreading rings; cast on it for a bonus
+    if (riseSpot.active) {
+      riseSpot.t += dt; riseSpot.ringT += dt;
+      if (riseSpot.ringT > 0.75) { riseSpot.ringT = 0; addRipple(riseSpot.x, riseSpot.y, 15); if (Math.random() < 0.5) plopRandom(); }
+      if (riseSpot.t > riseSpot.dur) riseSpot.active = false;
+    } else if (fishState === "ready" || fishState === "waiting") {
+      riseSpot.timer -= dt;
+      if (riseSpot.timer <= 0) {
+        riseSpot.timer = 9 + Math.random() * 14;
+        riseSpot.active = true; riseSpot.t = 0; riseSpot.dur = 4.5 + Math.random() * 3; riseSpot.ringT = 0.75;
+        riseSpot.x = 210 + Math.random() * 230; riseSpot.y = WATER_Y + 24 + Math.random() * (H - WATER_Y - 54);
+        plopRandom();
+      }
     }
   }
   // chatty shopkeepers make idle noises
@@ -1738,10 +1816,13 @@ function update(dt) {
     case "hooked": {
       const r = rod();
       // safety net: no fish fights forever — after a long struggle the line finally parts
-      if (stateTime > 24) { setMiss("Fisken rømte til slutt…"); break; }
+      if (stateTime > 30) { setMiss("Fisken rømte til slutt…"); break; }
       // how hard THIS fish fights, scaled by its actual weight (kg):
       // a small fish is a quick reel-in, a heavy trophy is a real battle
-      const fishFight = currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.16, 0.4, 2.8);
+      // …but it tires: after a few seconds the runs ease off so big fish are actually landable
+      const fatigue = clamp((stateTime - 4) / 16, 0, 0.72);
+      if (fatigue > 0.35 && !bigFishTired && currentWeight >= 3) { bigFishTired = true; setHint("Den begynner å bli sliten — sveiv jevnt inn!"); }
+      const fishFight = (currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.16, 0.4, 2.8)) * (1 - fatigue);
       pullTimer -= dt;
       if (pulling > 0) {
         pulling -= dt;
@@ -2801,6 +2882,7 @@ const COOLER_MENU = [
   { key: "_rods", name: "Bytt stang", action: true },
   { key: "_bag", name: "Se fangst", action: true },
   { key: "_records", name: "Rekorder", action: true },
+  { key: "_funn", name: "Samlingen", action: true },
 ];
 const CONSUMABLES = [
   { key: "beer", name: "Trygdepatron" },
@@ -2826,7 +2908,7 @@ function drawCoolerMenu() {
     px(it.x, it.y, it.w, it.h, "#2a2440");
     px(it.x, it.y, it.w, 1, "#3a2e4a");
     const cy = it.y + it.h / 2;
-    const ic = it.key === "_godsaker" ? "🍬" : it.key === "_rods" ? "🎣" : it.key === "_bag" ? "🎒" : "🏆";
+    const ic = it.key === "_godsaker" ? "🍬" : it.key === "_rods" ? "🎣" : it.key === "_bag" ? "🎒" : it.key === "_funn" ? "📦" : "🏆";
     ctx.fillStyle = "#bfc8ff"; ctx.font = "8px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.fillText(ic, it.x + 5, cy);
     ctx.fillStyle = "#dfe6ff"; ctx.font = "9px monospace"; ctx.fillText(it.name, it.x + 20, cy + 1);
@@ -2927,6 +3009,35 @@ function drawBagPanel() {
   ctx.fillText("klikk for å lukke", x + w - 6, top + h - 7);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
+/* the silly collectibles you fish up — a little side-quest to complete the set */
+function drawFunnPanel() {
+  if (!funnPanel) return;
+  let found = 0;
+  for (const j of JUNK) if ((save.junk || {})[j.key] > 0) found++;
+  const x = 8, w = 200, rh = 16, top = 30, headH = 26;
+  const h = headH + JUNK.length * rh + 18;
+  px(x, top, w, h, "rgba(14,12,22,0.96)");
+  px(x, top, w, 3, "#caa46a");
+  ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("SAMLINGEN", x + w / 2, top + 10);
+  drawBackArrow(x, w, top);
+  ctx.font = "7px monospace"; ctx.fillStyle = found === JUNK.length ? "#9affc0" : "#9aa6d0";
+  ctx.fillText(found === JUNK.length ? "Komplett! Du har funnet alt rart." : "Funn: " + found + "/" + JUNK.length + " typer", x + w / 2, top + 19);
+  ctx.textBaseline = "middle";
+  JUNK.forEach((j, i) => {
+    const n = (save.junk || {})[j.key] || 0;
+    const has = n > 0;
+    const y = top + headH + i * rh + 8;
+    if (has) drawJunkSprite(ctx, x + 14, y, 1.4, j.kind);
+    ctx.textAlign = "left"; ctx.font = "8px monospace";
+    ctx.fillStyle = has ? "#f0e6d0" : "#6a6472";
+    ctx.fillText(has ? j.name : "???", x + 28, y);
+    ctx.textAlign = "right";
+    ctx.fillStyle = has ? "#ffe6a0" : "#6a6472";
+    ctx.fillText(has ? "×" + n : "ikke funnet", x + w - 8, y);
+  });
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
 /* in-scene record book (replaces the old inventory "Rekorder" tab) */
 function drawRecordsPanel() {
   if (!recordsPanel) return;
@@ -3003,10 +3114,20 @@ function drawTruckMenu() {
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 function drawParkedTruck() {
-  const r = TRUCK, x = r.x, y = r.y;
+  const r = TRUCK;
+  const on = hoverProp === "truck";                 // hovered → engine idles, shakes, lights on, puffs exhaust
+  const shake = on ? Math.sin(t * 38) * 0.6 : 0;
+  const x = r.x + shake, y = r.y + (on ? Math.sin(t * 31) * 0.4 : 0);
   // small earthy tyre-track patch so it reads as parked on the bank (not floating)
   ctx.fillStyle = "#241a10";
-  ctx.beginPath(); ctx.ellipse(x + r.w / 2, y + r.h, r.w / 2 - 1, 3, 0, 0, 6.28); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(r.x + r.w / 2, r.y + r.h, r.w / 2 - 1, 3, 0, 0, 6.28); ctx.fill();
+  // exhaust puffs from the tailpipe at the back while idling
+  if (on) {
+    const puff = (t * 1.4) % 1;
+    ctx.globalAlpha = (1 - puff) * 0.4; ctx.fillStyle = "#b9b4ad";
+    ctx.beginPath(); ctx.arc(x + r.w - 2, y + 20 - puff * 10, 1.5 + puff * 3, 0, 6.28); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   // body (side view, cab to the left)
   px(x + 3, y + 11, r.w - 5, 10, "#b23a2a");   // bed
   px(x + 3, y + 4, 18, 10, "#c64636");         // cab
@@ -3015,8 +3136,13 @@ function drawParkedTruck() {
   // wheels
   px(x + 8, y + 20, 6, 5, "#1a1a1a"); px(x + 10, y + 22, 2, 2, "#555");
   px(x + r.w - 12, y + 20, 6, 5, "#1a1a1a"); px(x + r.w - 10, y + 22, 2, 2, "#555");
-  // headlight
-  px(x + 2, y + 9, 2, 3, "#ffe9a0");
+  // headlight (glows brighter + casts a little beam when idling)
+  px(x + 2, y + 9, 2, 3, on ? "#fff6c8" : "#ffe9a0");
+  if (on) {
+    ctx.globalAlpha = 0.28 + 0.1 * Math.sin(t * 30); ctx.fillStyle = "#fff0b0";
+    ctx.beginPath(); ctx.moveTo(x + 1, y + 8); ctx.lineTo(x - 14, y + 5); ctx.lineTo(x - 14, y + 14); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   // rod sticking out of the bed
   ctx.strokeStyle = "#caa97a"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x + r.w - 5, y + 11); ctx.lineTo(x + r.w + 3, y - 2); ctx.stroke();
@@ -3379,6 +3505,21 @@ function sparkle(x, y, ph) {
   px(x, y - 2, 1, 5, "#fff4c0"); px(x - 2, y, 5, 1, "#fff4c0"); px(x, y, 1, 1, "#ffffff");
   ctx.globalAlpha = prev;
 }
+function drawRiseSpot() {
+  if (!riseSpot.active) return;
+  const x = riseSpot.x, y = riseSpot.y;
+  const fade = Math.min(clamp(riseSpot.t / 0.5, 0, 1), clamp((riseSpot.dur - riseSpot.t) / 0.8, 0, 1));
+  ctx.save();
+  ctx.globalAlpha = 0.85 * fade;
+  // a fish back breaking the surface — a little dark arc that bobs with each ring cycle
+  const arc = Math.sin(riseSpot.ringT / 0.75 * Math.PI);
+  ctx.fillStyle = "#33434b";
+  ctx.beginPath(); ctx.ellipse(x, y - arc * 2, 5, 2 + arc * 1.4, 0, Math.PI, 2 * Math.PI); ctx.fill();
+  px(Math.round(x + 4), Math.round(y - arc * 2 - 1), 2, 1, "#56666e");   // tail flick
+  // a glint so it clearly reads as a spot worth casting at
+  sparkle(x - 1, y - 6, t + riseSpot.x);
+  ctx.restore();
+}
 function drawGameEvent() {
   if (!gameEvent.active) return;
   const k = gameEvent.t;
@@ -3521,6 +3662,45 @@ function drawMapBg() {
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     if (atMarket) drawMapHere(mx + 16, my - 14);
   }
+  drawMapTooltip();
+}
+// hover info: what swims here + how good the fishing is (price level = quality)
+function drawMapTooltip() {
+  if (!mapHoverSpot) return;
+  let title, lines, stars, accent, sx, sy;
+  if (mapHoverSpot.market) {
+    title = "Markedet"; lines = ["Selg fisk · kjøp utstyr", "stenger · fiskekort · kasino"]; stars = 0;
+    accent = "#ffe6a0"; sx = mapHoverSpot.x; sy = mapHoverSpot.y;
+  } else {
+    const loc = LOCATIONS.find((l) => l.key === mapHoverSpot.key); if (!loc) return;
+    const fish = loc.fish.map((k) => FISH_BY_KEY[k]).filter(Boolean);
+    const avg = fish.reduce((s, f) => s + f.kr, 0) / Math.max(1, fish.length);
+    stars = clamp(Math.round(avg / 22), 1, 5);
+    const locked = !(save.unlocked || []).includes(loc.key);
+    const names = fish.slice(0, 4).map((f) => f.name).join(", ") + (fish.length > 4 ? " m.fl." : "");
+    lines = [names];
+    if (loc.rare) lines.push("Storfisk: " + loc.rare.name + " (" + fmt(loc.rare.kr) + " kr/kg)");
+    lines.push(locked ? "🔒 Lås opp: " + fmt(loc.cost) + " kr" : (LOC.key === loc.key ? "Du er her" : "Tilgang ✓"));
+    accent = locked ? "#ffd08a" : "#9affc0"; sx = mapHoverSpot.x; sy = mapHoverSpot.y;
+  }
+  // box sizing
+  ctx.font = "7px monospace";
+  let bw = ctx.measureText(title).width + 16;
+  for (const l of lines) bw = Math.max(bw, ctx.measureText(l).width + 12);
+  if (stars) bw = Math.max(bw, 70);
+  bw = Math.min(bw, 190);
+  const bh = 14 + lines.length * 9 + (stars ? 9 : 0) + 4;
+  let bx = Math.round(clamp(sx - bw / 2, 12, W - 12 - bw));
+  let by = Math.round(sy - 22 - bh); if (by < 14) by = Math.round(sy + 14);
+  px(bx, by, bw, bh, "rgba(14,12,22,0.94)"); px(bx, by, bw, 2, accent);
+  ctx.textAlign = "left"; ctx.textBaseline = "top";
+  ctx.fillStyle = accent; ctx.font = "bold 8px monospace"; ctx.fillText(title, bx + 6, by + 5);
+  ctx.font = "7px monospace"; ctx.fillStyle = "#dfe6ff";
+  let ly = by + 15;
+  if (stars) { ctx.fillStyle = "#ffd877"; ctx.fillText("Fiske: " + "★".repeat(stars) + "☆".repeat(5 - stars), bx + 6, ly); ly += 9; }
+  ctx.fillStyle = "#cdd6ea";
+  for (const l of lines) { ctx.fillText(l, bx + 6, ly); ly += 9; }
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 // a tiny parked pickup that marks where you currently are on the map
 function drawMapHere(x, y) {
@@ -3767,6 +3947,7 @@ function catHiss() {
 }
 function catYowl() {
   // an aggressive, indignant meow when shooed off the fish
+  playSample("catAngry", { vol: 0.95 });
   catHiss();
   setTimeout(() => blip(640, 0.13, "sawtooth", 0.06), 60);
   setTimeout(() => blip(360, 0.22, "square", 0.05), 220);
@@ -3774,6 +3955,12 @@ function catYowl() {
 function startCatSteal() {
   cat.mission = "steal"; cat.state = "arrive"; cat.x = -16; cat.target = 44 + Math.random() * 8; cat.t = 0;
   cat.fishKey = null; catMeow();
+}
+// give the cat a fuss — it purrs contentedly; the loop stops ~3s after you stop petting
+function petCat() {
+  cat.action = "pet"; cat.petHappy = 3; cat.timer = Math.max(cat.timer, 3.2); cat.t = 0;
+  if (!purrNode) purrNode = playSample("catPurr", { loop: true, vol: 0.5 });
+  blip(760, 0.05, "sine", 0.02);
 }
 function eatStolenFish() {
   if (!save.basket.length) return;
@@ -3829,14 +4016,19 @@ function updateCat(dt) {
       break;
     case "settle":
       cat.timer -= dt;
-      if (cat.action === "chase") {
+      if (cat.action === "pet") {
+        // stays content while being fussed; purr loop trails off ~3s after the last pet
+        cat.petHappy -= dt;
+        if (cat.petHappy <= 0) { stopPurr(); pickCatAction(); }
+      } else if (cat.action === "chase") {
         // pad back and forth chasing a firefly, but stay on the grassy bank
         cat.x = clamp(cat.chaseX + Math.sin(cat.t * 2.2) * 16, 18, 96);
       } else if (cat.action === "bat" && Math.random() < dt * 1.5) {
         blip(300 + Math.random() * 80, 0.04, "triangle", 0.03);
       }
       if (cat.timer <= 0) {
-        if (Math.random() < 0.38) { cat.state = "leave"; cat.t = 0; if (Math.random() < 0.4) catMeow(); }
+        if (cat.action === "pet") break;   // never wander off mid-fuss
+        if (Math.random() < 0.38) { cat.state = "leave"; cat.t = 0; stopPurr(); if (Math.random() < 0.4) catMeow(); }
         else pickCatAction();
       }
       break;
@@ -3880,6 +4072,17 @@ function drawCat() {
   if (cat.action === "wash" && sitting) {
     // licking a raised paw
     px(cat.x + 2, y - 5, 2, 2, "#e8a85a");
+  }
+  if (cat.action === "pet") {
+    // content kitty: a happy closed-eye smile + little hearts floating up
+    px(cat.x - 3, y - 9, 2, 1, "#1a1208"); px(cat.x + 3, y - 9, 2, 1, "#1a1208");   // squinty happy eyes
+    px(cat.x - 1, y - 6, 3, 1, "#7a4a3a");                                            // smile
+    for (let i = 0; i < 2; i++) {
+      const hp = ((t * 0.9 + i * 0.5) % 1), hy = y - 14 - hp * 14, hx = cat.x + 4 + Math.sin(t * 3 + i * 2) * 3;
+      ctx.globalAlpha = (1 - hp) * 0.9; ctx.fillStyle = "#ff7a9a";
+      px(hx, hy, 1, 1, "#ff7a9a"); px(hx + 2, hy, 1, 1, "#ff7a9a"); px(hx - 1, hy + 1, 4, 1, "#ff7a9a"); px(hx, hy + 2, 2, 1, "#ff7a9a");
+      ctx.globalAlpha = 1;
+    }
   }
   if (cat.action === "chase" && !walking) {
     // a firefly the cat is batting at, just ahead of it
@@ -4117,8 +4320,8 @@ function render() {
   ctx.clearRect(0, 0, W, H);
   switch (screen) {
     case "game":
-      drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore();
-      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
+      drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore(); drawRiseSpot();
+      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
       drawRevealFish(); drawFog(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette(); drawKnockout();
       break;
     case "menu": drawMenuBg(); break;
