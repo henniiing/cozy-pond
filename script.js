@@ -1366,7 +1366,7 @@ function updateKnockout(dt) {
   else if (ph === "open" && knockout.t > 0.9) {
     // comes to — stone-cold sober, rus gone
     knockout.active = false; drunk = 0;
-    buff.t = 0; buff.luck = 0; buff.reel = 0; buff.count = 0;
+    buff.t = 0; buff.luck = 0; buff.reel = 0;
     setHint("Du våkner på bredden… huff. Klikk for å kaste ut.");
   }
 }
@@ -1436,15 +1436,16 @@ function closeReveal() { catchEl.classList.add("hidden"); setFish("ready"); setH
 
 /* ---- consumables / boosts ---- */
 function applyBuff(label, luck, reel, dur, color) {
-  // one shared rus-meter: snus, øl, sigarillo … all feed the SAME pool, so mixing never bugs out
-  const fresh = buff.t <= 0;
-  if (fresh) { buff.luck = 0; buff.reel = 0; buff.t = 0; buff.dur = 0; buff.count = 0; }
-  buff.count = (buff.count || 0) + 1;
-  const fade = fresh ? 1 : 0.6;            // diminishing returns as the rus piles up
-  buff.luck = clamp(buff.luck + luck * fade, 0, 1.4);
-  buff.reel = clamp(buff.reel + reel * fade, 0, 0.95);
-  buff.t = Math.min(buff.t + dur * fade, 150);
-  buff.dur = Math.max(buff.dur, buff.t);
+  // ONE shared flaks-meter shared by drinks, snus AND magical events. A fresh source
+  // starts clean; topping up an active buff stacks the bonus (with diminishing returns)
+  // and REFRESHES the timer to the longest natural duration in play — it never piles
+  // up into a weird multi-minute reservoir, so the time bar always drains cleanly.
+  const active = buff.t > 0;
+  const stackFade = active ? 0.5 : 1;            // half effect when stacked on top
+  buff.luck = clamp((active ? buff.luck : 0) + luck * stackFade, 0, 1.0);   // flaks caps at +100 %
+  buff.reel = clamp((active ? buff.reel : 0) + reel * stackFade, 0, 0.7);
+  buff.t = Math.max(buff.t, dur);
+  buff.dur = buff.t;                             // bar starts full and drains from here
   buff.label = label;
   buff.color = color;
   buffFlash = 1;
@@ -1656,7 +1657,7 @@ function triggerGameEvent() {
 
 /* ---- kiosk (alcohol / snus / cigars) ---- */
 const KIOSK_GOODS = {
-  beer: { name: "Trygdepatron", per: 6, cost: 36, blurb: "Sekspakning på billigtilbud — lite napp, kort flaks (~22 s). Drikk flere for stablet rus!", color: "#caa23a" },
+  beer: { name: "Trygdepatron", per: 6, cost: 36, blurb: "Sekspakning på billigtilbud — grei flaks i god tid (~22 s). Den naturlige favoritten!", color: "#caa23a" },
   snus: { name: "Snus", per: 20, cost: 50, blurb: "Boks med 20 prilla under leppa — billig, men bare et lite napp i kort tid (~12 s). Øl varer lenger.", color: "#3a7a3a" },
   cigar: { name: "Sigarillo", per: 12, cost: 80, blurb: "Pakke med 12 — røykpause med roligere hånd, god flaks (~30 s).", color: "#7a5a2a" },
   akevitt: { name: "Blænnvin", per: 1, cost: 110, blurb: "Hjemmekjært brennevin! Stor flaks, lang tid (~45 s) — men du vingler.", color: "#caa84a" },
@@ -3958,7 +3959,7 @@ function drawBuffHud() {
   const rows = (showBuff ? 1 : 0) + (showDrunk ? 1 : 0);
   const h = 5 + rows * 13;
   const y = H - 8 - h;
-  const intensity = clamp(buff.luck / 1.4, 0, 1);
+  const intensity = clamp(buff.luck / 1.0, 0, 1);
   const buffCol = intensity < 0.4 ? "#5fbf5f" : intensity < 0.75 ? "#ffcf5a" : "#ff7a5a";
   const near = dfrac > 0.82;                          // ~drunk 1.15 — the 1.4 blackout looms
   const drunkCol = dfrac < 0.5 ? "#8ad0ff" : dfrac < 0.82 ? "#ffb04a" : "#ff5a4a";
@@ -3967,14 +3968,13 @@ function drawBuffHud() {
   ctx.font = "7px monospace"; ctx.textBaseline = "top";
   const barX = x + 4, barW = w - 8;
   let ry = y + 3;
-  // RUS row: flaks bonus + intensity + time remaining
+  // FLAKS row: bonus % up top, a single time-remaining bar that drains cleanly
   if (showBuff) {
-    ctx.textAlign = "left"; ctx.fillStyle = "#f0e6d0"; ctx.fillText(buff.count >= 2 ? "RUS \u00d7" + buff.count : "RUS", x + 4, ry);
-    ctx.textAlign = "right"; ctx.fillStyle = buffCol; ctx.fillText("+" + Math.round(buff.luck * 100) + "% flaks", x + w - 4, ry);
-    px(barX, ry + 7, barW, 2, "rgba(255,255,255,0.10)");
-    px(barX, ry + 7, barW * intensity, 2, buffCol);
+    ctx.textAlign = "left"; ctx.fillStyle = "#f0e6d0"; ctx.fillText("FLAKS", x + 4, ry);
+    ctx.textAlign = "right"; ctx.fillStyle = buffCol; ctx.fillText("+" + Math.round(buff.luck * 100) + "%", x + w - 4, ry);
     const frac = clamp(buff.t / buff.dur, 0, 1);
-    px(barX, ry + 10, barW * frac, 1, "rgba(255,255,255,0.55)");
+    px(barX, ry + 7, barW, 2, "rgba(255,255,255,0.10)");
+    px(barX, ry + 7, barW * frac, 2, buffCol);
     ry += 13;
   }
   // FYLL row: how close he is to keeling over — pulses red near the limit
