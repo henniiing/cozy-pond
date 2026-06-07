@@ -35,12 +35,19 @@ const rodNameEl = $("rodName");
    ========================================================================= */
 const SAVE_KEY = "cozyPond_v1";
 function defaultSave() {
-  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, license: 0, gated: true, seenIntro: false };
+  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false };
 }
 function loadSave() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (s && typeof s === "object") return Object.assign(defaultSave(), s);
+    if (s && typeof s === "object") {
+      const merged = Object.assign(defaultSave(), s);
+      if (!merged.licenses || typeof merged.licenses !== "object") merged.licenses = {};
+      // migrate the old single global licence count onto whichever water you were last at
+      if (typeof s.license === "number" && s.license > 0) merged.licenses[merged.location] = (merged.licenses[merged.location] || 0) + s.license;
+      delete merged.license;
+      return merged;
+    }
   } catch (e) {}
   return defaultSave();
 }
@@ -692,11 +699,11 @@ function canvasPress(p) {
     if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { recordsPanel = false; coolerMenu = true; sfxClink(); return; }
     recordsPanel = false; return;
   }
-  // shoo the thieving cat before it finishes off your smallest fish
-  if (cat.mission === "steal" && (cat.state === "arrive" || cat.state === "eat") &&
-      inRect(p.x, p.y, { x: cat.x - 12, y: cat.y - 18, w: 30, h: 24 })) {
-    cat.state = "leave"; cat.mission = null; cat.t = 0; catHiss();
-    showCatEvent("Du jaget katten!", "Fisken er reddet — pus stikker av.");
+  // shoo the thieving cat before it slinks off with your smallest fish
+  if (cat.mission === "steal" && (cat.state === "arrive" || cat.state === "grab" || cat.state === "carry") &&
+      inRect(p.x, p.y, { x: cat.x - 14, y: cat.y - 20, w: 34, h: 26 })) {
+    cat.state = "flee"; cat.mission = null; cat.fishKey = null; cat.t = 0; catYowl();
+    showCatEvent("Du jaget katten!", "Pus mjauer surt og stikker av — fisken er reddet.");
     return;
   }
   if (fishState === "reveal") { closeReveal(); return; }
@@ -850,7 +857,8 @@ function doAction(a, data) {
     case "buyRod": buyRod(parseInt(data.level, 10)); break;
     case "equipRod": equipRod(parseInt(data.level, 10)); break;
     case "buyConsumable": buyConsumable(data.kind); break;
-    case "buyLicense": buyLicense(); break;
+    case "buyLicense": buyLicense(data.key); break;
+    case "rodTab": rodTab(data.tab); break;
     case "openKiosk": setScreen("shopKiosk"); break;
     case "casinoColor": casinoColor(data.color); break;
     case "casinoBet": casinoBet(data.amt); break;
@@ -939,7 +947,7 @@ function setScreen(name) {
   if (name !== "game") { reelEl.classList.add("hidden"); catchEl.classList.add("hidden"); hintEl.classList.add("hidden"); }
   if (name === "game") { resetFishing(); setHint("Klikk for å kaste ut"); }
   if (name === "shopFish") buildBasket();
-  if (name === "shopRod") buildRods();
+  if (name === "shopRod") { buildRods(); buildLicenses(); rodTab("rods"); }
   if (name === "shopKiosk") buildKiosk();
   if (name === "shopCasino") { speak("casinoSpeech", "Welcome, my friend! Velg rød eller svart, sett innsatsen og spinn. Treffer fargen vinner du dobbelt — men pass deg for grønn null! 🎩"); buildCasino(); }
   refreshHUD();
@@ -953,7 +961,7 @@ function refreshHUD() {
   rodNameEl.textContent = rod().name;
   document.querySelectorAll(".moneyMirror").forEach((e) => (e.textContent = fmt(save.money)));
 }
-function refreshAll() { refreshHUD(); buildBasket(); buildRods(); buildKiosk(); }
+function refreshAll() { refreshHUD(); buildBasket(); buildRods(); buildLicenses(); buildKiosk(); }
 
 /* =========================================================================
    Fishing state machine
@@ -1005,7 +1013,7 @@ function finalizeCatch() {
     rec.count++; if (weight > rec.best) rec.best = weight;
     save.record[f.key] = rec;
     save.basket.push({ key: f.key, weight, value });
-    if (save.license > 0) save.license--;
+    if (currentLicense() > 0) save.licenses[save.location] = currentLicense() - 1;
     persist();
     // legendary fish keep their flavour line; otherwise celebrate a real new record
     const tag = f.legendary ? (f.tag || "Sjelden fangst! 🏆") : (isPB ? "Ny rekord! 🏆" : "");
@@ -1131,14 +1139,22 @@ function equipRod(level) {
 }
 function speak(id, text) { const e = $(id); if (e) e.textContent = text; }
 
-/* ---- fiskekort (fishing license) sold by the rod seller ---- */
-const LICENSE_COST = 100, LICENSE_GRANT = 60, LICENSE_FINE = 50, LICENSE_FINE_PCT = 0.25;
-function buyLicense() {
-  if (save.money < LICENSE_COST) { speak("rodSpeech", "Fiskekort koster penger, det også. Kom igjen med kontanter."); sfxMiss(); return; }
-  save.money -= LICENSE_COST; save.license = (save.license || 0) + LICENSE_GRANT; persist();
+/* ---- fiskekort (fishing license) sold by the rod seller — one per water ---- */
+const LICENSE_GRANT = 60, LICENSE_FINE = 50, LICENSE_FINE_PCT = 0.25;
+function licenseCostFor(key) {
+  const l = LOCATIONS.find((x) => x.key === key) || LOCATIONS[0];
+  return 50 + Math.round((l.cost || 0) / 16);   // pricier waters carry pricier permits
+}
+function currentLicense() { return (save.licenses && save.licenses[save.location]) || 0; }
+function buyLicense(locKey) {
+  const key = locKey || save.location;
+  const loc = LOCATIONS.find((x) => x.key === key) || LOCATIONS[0];
+  const cost = licenseCostFor(key);
+  if (save.money < cost) { speak("rodSpeech", "Fiskekort koster penger, det også. Kom igjen med kontanter."); sfxMiss(); return; }
+  save.money -= cost; save.licenses[key] = (save.licenses[key] || 0) + LICENSE_GRANT; persist();
   sfxCoin();
-  speak("rodSpeech", `Vær så god — et fiskekort som varer ${LICENSE_GRANT} fangster. Hold deg på rett side av loven.`);
-  buildRods(); refreshHUD();
+  speak("rodSpeech", `Vær så god — kort for ${loc.name} som varer ${LICENSE_GRANT} fangster.`);
+  buildLicenses(); refreshHUD();
 }
 
 /* ---- fiskeoppsynet: a rare inspector who checks your license ---- */
@@ -1147,7 +1163,7 @@ function triggerInspector() {
   playSample("grumpyVoice", { vol: 0.55 });
 }
 function resolveInspector() {
-  if ((save.license || 0) > 0) {
+  if (currentLicense() > 0) {
     inspector.line = "Fiskekortet i orden. God fangst!";
     sfxClink();
   } else if (save.money >= LICENSE_FINE) {
@@ -1189,7 +1205,7 @@ const LOCATION_EVENTS = {
   ],
   elgtjern: [
     { t: "Frekk elg", l: "Elgen vasser uti og slubrer i seg agnet ditt!", k: "scare", c: "#7a5a3a", s: "moose" },
-    { t: "Piknikfamilie", l: "En familie deler vafler med deg \u2014 herlig hum\u00f8r!", k: "luck", luck: 0.3, dur: 18, c: "#ffd877", s: "picnic" },
+    { t: "Fiskekompis", l: "Kompisen din kommer med en sterk dram og napper en fisk med en gang!", k: "buddy", c: "#ffd877", s: "buddy" },
     { t: "Bever", l: "En bever smeller halen i vannet \u2014 pladask!", k: "scare", c: "#6a4a2a", s: "beaver" },
     { t: "Fint s\u00f8kke", l: "Du finner et eksklusivt sluk verdt {n} kr.", k: "money", amt: [40, 100], c: "#caa23a", s: "lure" },
   ],
@@ -1211,6 +1227,13 @@ function triggerGameEvent() {
     else if (ev.k === "loss") { const loss = Math.min(amount, save.money); save.money -= loss; persist(); refreshHUD(); sfxMiss(); line = line.replace("{n}", fmt(loss)); }
   } else if (ev.k === "luck") {
     applyBuff(ev.t, ev.luck, 0, ev.dur, ev.c); blip(660, 0.1, "sine", 0.05);
+  } else if (ev.k === "buddy") {
+    // a buddy shares a strong dram — same kick as a Blænnvin — then wades in for a fish
+    applyBuff("Blænnvin", 0.55, 0.3, 45, "#caa84a");
+    drunk = Math.min(1.2, drunk + 0.8);
+    setTimeout(() => { try { sfxGulp(); } catch (e) {} }, 900);
+    setTimeout(() => { try { playSample("burp", { vol: 0.9 }); } catch (e) {} }, 1700);
+    setTimeout(() => { try { sfxSplash(); } catch (e) {} }, 3900);
   } else if (ev.k === "scare") {
     if (fishState === "waiting" || fishState === "bite") { setFish("waiting"); biteTimer = 5 + Math.random() * 7; addRipple(bobber.x, bobber.y, 20); setHint("Fisken ble skremt \u2014 vent litt..."); }
     sfxMiss();
@@ -1355,13 +1378,32 @@ function buildRods() {
     row.innerHTML = `<img class="rod-pic" src="${rodSpriteURL(r)}" alt=""><div class="rod-info"><div class="rod-title">${r.name}</div><div class="rod-stats">${stats}</div></div>${btn}`;
     list.appendChild(row);
   });
-  // fiskekort (fishing licence) — keeps the inspector off your back
-  const lic = save.license || 0;
-  const licRow = document.createElement("div");
-  licRow.className = "rod-row" + (save.money < LICENSE_COST ? " locked" : "");
-  const licStatus = lic > 0 ? `Gyldig — dekker ${lic} fangster til` : "Du mangler fiskekort!";
-  licRow.innerHTML = `<div class="rod-info"><div class="rod-title">🎫 Fiskekort</div><div class="rod-stats">${licStatus} · slipp bot fra fiskeoppsynet</div></div><button class="buy-btn" data-action="buyLicense" ${save.money < LICENSE_COST ? "disabled" : ""}>${fmt(LICENSE_COST)} kr</button>`;
-  list.appendChild(licRow);
+}
+function buildLicenses() {
+  const list = $("licenseList"); if (!list) return;
+  list.innerHTML = "";
+  // one fiskekort per water you've unlocked — pricier lakes need pricier permits
+  for (const loc of LOCATIONS) {
+    if (!save.unlocked.includes(loc.key)) continue;
+    const cost = licenseCostFor(loc.key);
+    const have = (save.licenses && save.licenses[loc.key]) || 0;
+    const here = loc.key === save.location;
+    const afford = save.money >= cost;
+    const status = have > 0 ? `Gyldig — dekker ${have} fangster til` : "Mangler kort!";
+    const row = document.createElement("div");
+    row.className = "rod-row" + (afford ? "" : " locked") + (here ? " equipped" : "");
+    row.innerHTML = `<div class="rod-info"><div class="rod-title">🎫 ${loc.name}${here ? " <small>(her nå)</small>" : ""}</div><div class="rod-stats">${status} · slipp bot fra fiskeoppsynet</div></div><button class="buy-btn" data-action="buyLicense" data-key="${loc.key}" ${afford ? "" : "disabled"}>${fmt(cost)} kr</button>`;
+    list.appendChild(row);
+  }
+}
+function rodTab(tab) {
+  const rods = $("rodList"), lics = $("licenseList");
+  if (!rods || !lics) return;
+  const showLic = tab === "licenses";
+  rods.classList.toggle("hidden", showLic);
+  lics.classList.toggle("hidden", !showLic);
+  document.querySelectorAll("#shopRod .shop-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+  sfxClink();
 }
 
 /* =========================================================================
@@ -2924,14 +2966,17 @@ function drawEventActor() {
       if (dip > 7) { addRippleMaybe(hx + 4, y + 2); }
       break;
     }
-    case "picnic": {
-      // a little family on a checked blanket on the bank, waving
-      const x = 36, y = 220, wave = Math.sin(t * 5) * 3;
-      for (let i = 0; i < 5; i++) px(x - 8 + i * 4, y, 4, 4, i % 2 ? "#e8e0d0" : "#d23a3a"); // blanket
-      px(x - 6, y - 8, 5, 8, "#3a6a8a"); px(x - 5, y - 12, 3, 4, "#e8c098");   // grown-up
-      px(x + 2, y - 6, 4, 6, "#caa23a"); px(x + 3, y - 9, 3, 3, "#e8c098");    // child
-      ctx.strokeStyle = "#3a6a8a"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 2, y - 6); ctx.lineTo(x - 5, y - 11 + wave); ctx.stroke(); // wave
-      px(x + 8, y - 5, 3, 2, "#f0d8a0"); // a waffle
+    case "buddy": {
+      // your fishing buddy: ambles in, hands you a strong dram, then wades in and yanks out a fish
+      const ground = 220;
+      let x, y = ground, walk = false, face = 1, bottle = false, fish = false, sub = 0;
+      if (p < 0.20) { x = lerp(-22, 42, p / 0.20); walk = true; face = 1; }                         // walk in
+      else if (p < 0.38) { x = 42; bottle = true; }                                                  // hand over the dram
+      else if (p < 0.52) { x = lerp(42, 116, (p - 0.38) / 0.14); walk = true; face = 1; }            // head for the water
+      else if (p < 0.64) { x = 116; sub = (p - 0.52) / 0.12; y = ground + sub * 12; }                // wade in / dunk
+      else if (p < 0.78) { x = 116; sub = 1 - (p - 0.64) / 0.14; y = ground + sub * 12; fish = true; } // rise with a fish
+      else { x = lerp(116, -22, (p - 0.78) / 0.22); walk = true; face = -1; fish = true; }            // saunter off with the catch
+      drawBuddy(x, y, face, walk, bottle, fish, sub, ea);
       break;
     }
     case "beaver": {
@@ -2998,6 +3043,48 @@ function drawEventActor() {
   ctx.restore();
 }
 function addRippleMaybe(x, y) { if (Math.random() < 0.08) addRipple(x, y, 10); }
+function drawBuddy(x, y, face, walk, bottle, fish, sub, ea) {
+  // a sturdy fishing buddy — same build as the player, but a navy jacket + red beanie so he reads as a pal
+  ctx.save();
+  if (face < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+  const step = walk ? Math.sin(t * 11) * 2 : 0;
+  // soft shadow
+  const prevA = ctx.globalAlpha;
+  ctx.globalAlpha = prevA * 0.25; ctx.fillStyle = "#16240e"; ctx.beginPath(); ctx.ellipse(x, y + 1, 8, 2, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = prevA;
+  // legs + boots
+  px(x - 4, y - 12, 3, 12 + step, "#3a4658"); px(x + 1, y - 12, 3, 12 - step, "#323c4e");
+  px(x - 5, y - 1, 4, 3, "#3a2a1a"); px(x + 1, y - 1, 4, 3, "#3a2a1a");
+  // navy jacket torso (broader + taller than the old family figure)
+  px(x - 7, y - 27, 15, 16, "#2f4a6a"); px(x - 7, y - 27, 15, 2, "#3d5d82");
+  px(x - 1, y - 25, 2, 13, "#24405e");                                       // zipper
+  // head + red beanie
+  const hx = x, hy = y - 31;
+  px(hx - 4, hy - 3, 9, 8, "#e3b58c"); px(hx - 4, hy + 4, 9, 2, "#caa07a");
+  px(hx - 5, hy - 6, 11, 4, "#c0392b"); px(hx - 5, hy - 3, 11, 1, "#8c2a20"); px(hx, hy - 8, 2, 2, "#e05a4a"); // beanie + pom
+  px(hx - 1, hy + 1, 1, 1, "#2a1f18"); px(hx + 3, hy + 1, 1, 1, "#2a1f18");  // eyes
+  if (bottle) {
+    // raising the dram toward you
+    px(x + 5, y - 25, 4, 8, "#2f4a6a"); px(x + 7, y - 30, 4, 5, "#e3b58c");
+    px(x + 7, y - 36, 3, 7, "#9a7a3a"); px(x + 7, y - 37, 3, 2, "#caa84a");  // bottle
+    if (Math.sin(t * 8) > 0) { ctx.fillStyle = "#ffe6a0"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText("skaal!", x + 2, y - 40); ctx.textAlign = "left"; }
+  } else if (fish) {
+    // holding a flapping fish triumphantly overhead
+    px(x + 4, y - 29, 4, 8, "#2f4a6a"); px(x + 6, y - 35, 4, 5, "#e3b58c");
+    const flop = Math.sin(t * 12) * 2;
+    px(x + 5, y - 43 + flop, 9, 4, "#9fb8c8"); px(x + 5, y - 43 + flop, 9, 1, "#c0d8e8");
+    px(x + 13, y - 44 + flop, 3, 6, "#7fa0b0");                              // tail
+    px(x + 6, y - 42 + flop, 1, 1, "#24343f");                              // eye
+  } else {
+    px(x + 5, y - 24, 5, 8, "#2f4a6a"); px(x + 7, y - 17, 3, 3, "#e3b58c");
+  }
+  // submerged: a water line cuts across the lower body + splash droplets
+  if (sub > 0) {
+    const wl = y - 5 - sub * 5;
+    ctx.globalAlpha = prevA * 0.55; ctx.fillStyle = "#2a5a5a"; ctx.fillRect(x - 9, wl, 18, (y + 2) - wl); ctx.globalAlpha = prevA;
+    for (let i = 0; i < 5; i++) { const a2 = -1 + i * 0.4; px(x + Math.cos(a2) * 9, wl - Math.abs(Math.sin(a2)) * 7 * sub, 2, 2, "#bfe0e0"); }
+  }
+  ctx.restore();
+}
 function sparkle(x, y, ph) {
   const s = 0.5 + 0.5 * Math.sin(ph * 3), prev = ctx.globalAlpha;
   ctx.globalAlpha = prev * (0.4 + s * 0.6);
@@ -3320,18 +3407,26 @@ function catHiss() {
   // a startled hiss when you shoo it off
   blip(820, 0.07, "sawtooth", 0.05); setTimeout(() => blip(300, 0.12, "sawtooth", 0.045), 80);
 }
+function catYowl() {
+  // an aggressive, indignant meow when shooed off the fish
+  catHiss();
+  setTimeout(() => blip(640, 0.13, "sawtooth", 0.06), 60);
+  setTimeout(() => blip(360, 0.22, "square", 0.05), 220);
+}
 function startCatSteal() {
   cat.mission = "steal"; cat.state = "arrive"; cat.x = -16; cat.target = 44 + Math.random() * 8; cat.t = 0;
-  catMeow();
+  cat.fishKey = null; catMeow();
 }
-function eatSmallestFish() {
+function eatStolenFish() {
   if (!save.basket.length) return;
   let mi = 0;
   for (let i = 1; i < save.basket.length; i++) if (save.basket[i].weight < save.basket[mi].weight) mi = i;
+  // prefer the exact fish it grabbed, if it's still in the basket
+  if (cat.fishKey) { const idx = save.basket.findIndex((b) => b.key === cat.fishKey); if (idx >= 0) mi = idx; }
   const taken = save.basket.splice(mi, 1)[0];
   persist(); buildBasket(); refreshHUD();
   const f = FISH_BY_KEY[taken.key];
-  showCatEvent("Katten snappet " + (f ? f.name : "fisken") + "!", "Pus stakk av med den minste fangsten din.");
+  showCatEvent("Katten stakk av med " + (f ? f.name : "fisken") + "!", "Du var for treig — pus forsynte seg.");
 }
 function showCatEvent(title, line) {
   gameEvent = { active: true, t: 0, dur: 4.5, title, line, color: "#ffd27a", sprite: "_cat", dir: 1, seed: Math.random() };
@@ -3353,15 +3448,26 @@ function updateCat(dt) {
     case "arrive":
       cat.x = lerp(cat.x, cat.target, dt * 1.8);
       if (cat.x > cat.target - 2) {
-        if (cat.mission === "steal") { cat.state = "eat"; cat.eat = 5.5; cat.munch = 0; cat.action = "eat"; catMeow(); }
+        if (cat.mission === "steal") { cat.state = "grab"; cat.grab = 0.7; cat.action = "grab"; catMeow(); }
         else { cat.state = "settle"; pickCatAction(); if (Math.random() < 0.4) catMeow(); }
       }
       break;
-    case "eat":
-      cat.eat -= dt; cat.munch += dt;
-      if (cat.munch > 0.45 && Math.random() < dt * 3) { blip(170 + Math.random() * 60, 0.05, "square", 0.04); cat.munch = 0; }
+    case "grab":
+      cat.grab -= dt;
       if (!save.basket.length) { cat.state = "leave"; cat.mission = null; cat.t = 0; }
-      else if (cat.eat <= 0) { eatSmallestFish(); cat.state = "leave"; cat.mission = null; cat.t = 0; catMeow(); }
+      else if (cat.grab <= 0) {
+        // pick (and remember) the smallest fish to carry off
+        let mi = 0; for (let i = 1; i < save.basket.length; i++) if (save.basket[i].weight < save.basket[mi].weight) mi = i;
+        cat.fishKey = save.basket[mi].key; cat.state = "carry"; cat.t = 0;
+      }
+      break;
+    case "carry":
+      cat.x -= dt * 14;                 // slinks off slowly so you still have time to react
+      if (cat.x < -16) { eatStolenFish(); cat.state = "away"; cat.timer = 26 + Math.random() * 40; cat.mission = null; cat.fishKey = null; }
+      break;
+    case "flee":
+      cat.x -= dt * 42;                 // bolts off after being shooed
+      if (cat.x < -16) { cat.state = "away"; cat.timer = 26 + Math.random() * 44; cat.fishKey = null; }
       break;
     case "settle":
       cat.timer -= dt;
@@ -3384,17 +3490,22 @@ function updateCat(dt) {
 }
 function drawCat() {
   if (cat.state === "away") return;
-  const walking = cat.state === "arrive" || cat.state === "leave";
+  const walking = cat.state === "arrive" || cat.state === "leave" || cat.state === "carry" || cat.state === "flee";
   const napping = !walking && cat.action === "nap";
   const sitting = !walking && !napping && cat.action !== "chase";
   const gait = walking ? Math.sin(t * 13) * 1.4 : (cat.action === "chase" ? Math.sin(t * 10) * 1.2 : 0);
   let y = cat.y;
   if (cat.action === "bat" && sitting) y += Math.abs(Math.sin(t * 7)) * 1.2; // little pounce bob
   // padding off to the left → face left (flip); otherwise face right toward the water
-  const faceLeft = cat.state === "leave";
+  const faceLeft = cat.state === "leave" || cat.state === "carry" || cat.state === "flee";
   if (faceLeft) {
     ctx.save(); ctx.translate(cat.x * 2, 0); ctx.scale(-1, 1);
     drawCatSprite(cat.x, y, walking, "#d9863a", "#b8662a", gait, false);
+    if (cat.state === "carry") {
+      // a small fish clamped in its jaws (drawn in flipped space so it sits at the muzzle)
+      const mx = cat.x + 8, my = y - 7;
+      px(mx, my, 6, 3, "#9fb8c8"); px(mx, my, 6, 1, "#c0d8e8"); px(mx + 5, my, 2, 3, "#7fa0b0"); px(mx + 1, my + 1, 1, 1, "#24343f");
+    }
     ctx.restore();
   } else {
     drawCatSprite(cat.x, y, walking, "#d9863a", "#b8662a", gait, sitting && !napping);
@@ -3417,16 +3528,11 @@ function drawCat() {
     const fx = cat.x + 10 + Math.sin(t * 3) * 3, fy = y - 12 + Math.cos(t * 4) * 3;
     ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 9); px(fx, fy, 1, 1, "#fff2a0"); ctx.globalAlpha = 1;
   }
-  if (cat.state === "eat") {
-    // the pilfered fish lying on the bank, getting chomped
-    const fx = cat.x + 10, fy = y - 1;
-    px(fx, fy, 6, 3, "#9fb8c8"); px(fx + 5, fy, 2, 3, "#7fa0b0"); px(fx, fy, 6, 1, "#c0d8e8");
-    px(fx + 1, fy + 1, 1, 1, "#24343f");
-    if (Math.sin(t * 9) > 0) px(fx + 2, fy, 2, 2, "rgba(0,0,0,0.28)"); // bite flicker
-    // pulsing warning so you have time to react and shoo it
+  if (cat.state === "carry") {
+    // pulsing red warning above the cat as it slinks off with your fish
     const a = 0.55 + 0.45 * Math.sin(t * 6);
-    ctx.globalAlpha = a; ctx.font = "9px monospace"; ctx.textAlign = "center"; ctx.fillStyle = "#ffd27a";
-    ctx.fillText("!", cat.x + 2, y - 18); ctx.globalAlpha = 1; ctx.textAlign = "left";
+    ctx.globalAlpha = a; ctx.font = "9px monospace"; ctx.textAlign = "center"; ctx.fillStyle = "#ff5a4a";
+    ctx.fillText("!", cat.x - 4, y - 18); ctx.globalAlpha = 1; ctx.textAlign = "left";
   }
 }
 function drawFarmer(tt) {
@@ -3605,7 +3711,7 @@ for (let i = 0; i <= save.rodLevel; i++) if (!save.owned.includes(i)) save.owned
 if (!save.owned.includes(0)) save.owned.push(0);
 if (!save.stock || typeof save.stock !== "object") save.stock = { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 };
 for (const k of ["beer", "snus", "cigar", "akevitt", "snabel"]) if (save.stock[k] == null) save.stock[k] = 0;
-if (typeof save.license !== "number") save.license = 0;
+if (!save.licenses || typeof save.licenses !== "object") save.licenses = {};
 persist();
 setLocation(save.location || "skogstjern");
 refreshHUD();

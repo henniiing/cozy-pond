@@ -547,6 +547,33 @@ canvas {
   font-size: clamp(14px, 2vw, 18px);
   color: #e6c98a;
 }
+.shop-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.shop-tab {
+  flex: 1;
+  padding: 6px 8px;
+  font-family: monospace;
+  font-size: clamp(11px, 1.6vw, 13px);
+  color: #b7a98a;
+  background: rgba(40, 32, 24, 0.6);
+  border: 1px solid rgba(150, 140, 90, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.shop-tab:hover {
+  color: #e6c98a;
+  border-color: rgba(202, 164, 106, 0.6);
+}
+.shop-tab.active {
+  color: #1a140c;
+  background: #caa46a;
+  border-color: #caa46a;
+  font-weight: bold;
+}
 .basket-list {
   display: flex;
   flex-direction: column;
