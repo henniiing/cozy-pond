@@ -500,6 +500,9 @@ canvas {
 .cas-col.black {
   border-color: #888;
 }
+.cas-col.green {
+  border-color: #2faa5a;
+}
 .cas-col.active {
   box-shadow: 0 0 0 2px #ffd65a inset;
   border-color: #ffd65a;

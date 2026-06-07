@@ -75,11 +75,11 @@ const JUNK = [
 
 const RODS = [
   { name: "Pinnestang",            reel: 1.0,  tens: 0.9,  rare: 0.0,  window: 1.0,  cost: 0,    color: "#7a5a36", grip: "#3b2b1f", tip: "#caa97a" },
-  { name: "Glassfiberstang",       reel: 1.1,  tens: 0.85, rare: 0.15, window: 1.06, cost: 180,  color: "#3f7d8c", grip: "#23404a", tip: "#bfe6ef" },
-  { name: "Karbonstang",           reel: 1.2,  tens: 0.8,  rare: 0.32, window: 1.12, cost: 700,  color: "#2c2c34", grip: "#7a1f1f", tip: "#d24a3a" },
-  { name: "Proffstang",            reel: 1.3,  tens: 0.74, rare: 0.5,  window: 1.18, cost: 2200, color: "#caa23a", grip: "#5a3aa0", tip: "#fff2a0" },
-  { name: "Splittbambusstang",     reel: 1.4,  tens: 0.7,  rare: 0.64, window: 1.24, cost: 4500, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
-  { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.8,  window: 1.3,  cost: 9000, color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
+  { name: "Glassfiberstang",       reel: 1.1,  tens: 0.85, rare: 0.1,  window: 1.06, cost: 180,  color: "#3f7d8c", grip: "#23404a", tip: "#bfe6ef" },
+  { name: "Karbonstang",           reel: 1.2,  tens: 0.8,  rare: 0.2,  window: 1.12, cost: 700,  color: "#2c2c34", grip: "#7a1f1f", tip: "#d24a3a" },
+  { name: "Proffstang",            reel: 1.3,  tens: 0.74, rare: 0.32, window: 1.18, cost: 2200, color: "#caa23a", grip: "#5a3aa0", tip: "#fff2a0" },
+  { name: "Splittbambusstang",     reel: 1.4,  tens: 0.7,  rare: 0.42, window: 1.24, cost: 4500, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
+  { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.55, window: 1.3,  cost: 9000, color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
 ];
 const rod = () => RODS[save.rodLevel] || RODS[0];
 
@@ -151,12 +151,12 @@ function pickFish() {
   const r = rod().rare;
   const luck = buff.t > 0 ? buff.luck : 0;
   // legendary catch of this location
-  if (LOC.rare && Math.random() < 0.018 + r * 0.03 + luck * 0.05) return LOC.rare;
+  if (LOC.rare && Math.random() < 0.014 + r * 0.02 + luck * 0.04) return LOC.rare;
   const pool = [];
   for (const f of locFish()) {
     let w = f.weight;
-    if (f.kr >= 90) w *= 1 + r * 1.6 + luck * 1.4;       // valuable fish more likely with good rod / boost
-    if (f.kr <= 30) w *= 1 - r * 0.35 - luck * 0.2;
+    if (f.kr >= 90) w *= 1 + r * 1.0 + luck * 1.1;       // valuable fish more likely with good rod / boost
+    if (f.kr <= 30) w *= 1 - r * 0.28 - luck * 0.18;
     pool.push({ f, w });
   }
   for (const j of JUNK) pool.push({ f: j, w: j.weight * (1 - r * 0.6 - luck * 0.4) * (LOC.junk || 1) });
@@ -1246,11 +1246,15 @@ function buildKiosk() {
   }
 }
 
-/* ---- casino (rouletten — rød eller svart) ---- */
+/* ---- casino (rouletten — rød, svart eller grønn 0) ---- */
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 function rouletteColor(n) { return n === 0 ? "green" : (RED_NUMBERS.has(n) ? "red" : "black"); }
+// real European wheel pocket order (0 first) — used so the ball lands on the right colour
+const WHEEL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 const CASINO_BETS = [50, 100, 250, 500];
-let casino = { color: "red", bet: 100, spinning: false, t: 0, dur: 2.6, result: 0, angle: 0, win: false };
+// payout multiplier on a winning bet (total returned = stake × payout). Green is a long shot.
+const CASINO_PAYOUT = { red: 2, black: 2, green: 14 };
+let casino = { color: "red", bet: 100, spinning: false, t: 0, dur: 3.4, result: 0, angle: -Math.PI / 2 - 0.5 / 37 * Math.PI * 2, startAngle: 0, targetAngle: 0, win: false };
 function casinoColor(c) { if (casino.spinning) return; casino.color = c; sfxClink(); buildCasino(); }
 function casinoBet(amt) { if (casino.spinning) return; casino.bet = parseInt(amt, 10); sfxClink(); buildCasino(); }
 function casinoSpin() {
@@ -1258,6 +1262,13 @@ function casinoSpin() {
   if (save.money < casino.bet) { speak("casinoSpeech", "No cash, no spin, my friend. Come back with some green."); sfxMiss(); return; }
   save.money -= casino.bet; persist(); refreshHUD();
   casino.spinning = true; casino.t = 0; casino.result = Math.floor(Math.random() * 37); casino.win = false;
+  // spin the wheel so the winning pocket comes to rest under the top pointer
+  const ri = WHEEL_ORDER.indexOf(casino.result);
+  const pocketCenter = (ri + 0.5) / 37 * Math.PI * 2;       // angle of that pocket in the wheel
+  const want = -Math.PI / 2 - pocketCenter;                 // bring it to the top (−90°)
+  casino.startAngle = casino.angle;
+  let delta = (want - casino.angle) % (Math.PI * 2); if (delta < 0) delta += Math.PI * 2;
+  casino.targetAngle = casino.angle + Math.PI * 2 * 5 + delta; // 5 full turns then settle
   casinoSpinNode = playSample("casinoSpin", { vol: 0.6 });
   speak("casinoSpeech", "Round and round she goes… hold on tight now!");
   const r = $("casinoResult"); if (r) { r.textContent = ""; r.className = "casino-result"; }
@@ -1265,20 +1276,25 @@ function casinoSpin() {
 }
 function settleRoulette() {
   casino.spinning = false;
+  casino.angle = casino.targetAngle;
   if (casinoSpinNode) { stopSample(casinoSpinNode); casinoSpinNode = null; }
   const col = rouletteColor(casino.result);
   casino.win = col === casino.color;
+  const colName = col === "red" ? "rød" : col === "black" ? "svart" : "grønn";
   if (casino.win) {
-    save.money += casino.bet * 2; persist(); sfxCoin();
-    speak("casinoSpeech", `${casino.result} ${col === "red" ? "rød" : "svart"} — winner winner! Well played, brother. 🎉`);
+    const payout = CASINO_PAYOUT[col] || 2;
+    save.money += casino.bet * payout; persist(); sfxCoin();
+    const bonus = col === "green" ? " GRØNN JACKPOT! 🍀" : "";
+    speak("casinoSpeech", `${casino.result} ${colName} — winner winner!${bonus} Well played, brother. 🎉`);
+    const r = $("casinoResult");
+    if (r) { r.textContent = `+${fmt(casino.bet * payout)} kr`; r.className = "casino-result win"; }
   } else {
     sfxMiss();
-    const m = col === "green" ? `${casino.result} grønn — huset tar den. Tough luck, friend.` : `${casino.result} ${col === "red" ? "rød" : "svart"} — not your color this time. Chin up!`;
-    speak("casinoSpeech", m);
+    speak("casinoSpeech", `${casino.result} ${colName} — not your colour this time. Chin up, friend!`);
+    const r = $("casinoResult");
+    if (r) { r.textContent = `−${fmt(casino.bet)} kr`; r.className = "casino-result lose"; }
   }
   refreshHUD(); buildCasino();
-  const r = $("casinoResult");
-  if (r) { r.textContent = casino.win ? `+${fmt(casino.bet * 2)} kr` : `−${fmt(casino.bet)} kr`; r.className = "casino-result " + (casino.win ? "win" : "lose"); }
 }
 function buildCasino() {
   document.querySelectorAll("#shopCasino .cas-col").forEach((b) => b.classList.toggle("active", b.dataset.color === casino.color));
@@ -1478,8 +1494,10 @@ function update(dt) {
   }
   if (screen === "shopCasino" && casino.spinning) {
     casino.t += dt;
-    const frac = casino.t / casino.dur;
-    casino.angle += dt * (12 * (1 - frac) + 0.6);
+    const frac = clamp(casino.t / casino.dur, 0, 1);
+    // ease-out: wheel decelerates smoothly to the exact pocket so the ball lands on the result
+    const ease = 1 - Math.pow(1 - frac, 3);
+    casino.angle = casino.startAngle + (casino.targetAngle - casino.startAngle) * ease;
     if (casino.t >= casino.dur) settleRoulette();
   }
   if (rodHop > 0) rodHop = Math.max(0, rodHop - dt * 2.2);
@@ -2178,14 +2196,14 @@ function drawPriceBoard() {
   const rows = [];
   for (const f of FISH) { const r = save.record[f.key]; if (r && r.count > 0) rows.push({ name: f.name, kr: f.kr, trophy: false }); }
   for (const f of RARES) { const r = save.record[f.key]; if (r && r.count > 0) rows.push({ name: f.name, kr: f.kr, trophy: true }); }
-  const x = 12, y = 18, rowH = 9, colW = 112, headH = 16;
-  const firstRowY = y + headH + 8;            // baseline of the first price row
-  const wallBottom = 142;                     // keep the whole board above the ice tray / counter
+  const x = 12, y = 18, rowH = 8, colW = 90, headH = 13;
+  const firstRowY = y + headH + 6;            // baseline of the first price row
+  const wallBottom = 138;                     // keep the whole board above the ice tray / counter
   const rowsPerCol = Math.max(1, Math.floor((wallBottom - firstRowY) / rowH) + 1);
   const ncol = rows.length ? Math.ceil(rows.length / rowsPerCol) : 1;
   const tallest = rows.length ? Math.min(rowsPerCol, rows.length) : 2;
   const w = ncol * colW;
-  const h = headH + 8 + tallest * rowH;
+  const h = headH + 6 + tallest * rowH;
   // hanging strings to the nail rail
   ctx.strokeStyle = "#6a563a"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x + 10, y - 4); ctx.lineTo(x + 3, y - 13); ctx.moveTo(x + w - 10, y - 4); ctx.lineTo(x + w - 3, y - 13); ctx.stroke();
@@ -2196,15 +2214,15 @@ function drawPriceBoard() {
   px(x, y, w, 2, "#28392f");
   px(x, y + h - 2, w, 2, "#10180f");
   // title
-  ctx.fillStyle = "#ffe6a0"; ctx.font = "bold 8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("KILOPRIS", x + w / 2, y + 9);
-  px(x + 8, y + 15, w - 16, 1, "#3a5a4a");
+  ctx.fillStyle = "#ffe6a0"; ctx.font = "bold 7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("KILOPRIS", x + w / 2, y + 8);
+  px(x + 8, y + 13, w - 16, 1, "#3a5a4a");
   if (!rows.length) {
-    ctx.fillStyle = "#8aa89a"; ctx.font = "7px monospace";
-    ctx.fillText("fang fisk for", x + w / 2, y + 28);
-    ctx.fillText("\u00e5 se prisen", x + w / 2, y + 37);
+    ctx.fillStyle = "#8aa89a"; ctx.font = "6px monospace";
+    ctx.fillText("fang fisk for", x + w / 2, y + 25);
+    ctx.fillText("\u00e5 se prisen", x + w / 2, y + 33);
   } else {
-    ctx.font = "7px monospace"; ctx.textBaseline = "middle";
+    ctx.font = "6px monospace"; ctx.textBaseline = "middle";
     rows.forEach((rw, i) => {
       const col = Math.floor(i / rowsPerCol), idx = i % rowsPerCol;
       const cx = x + col * colW, ry = firstRowY + idx * rowH;
@@ -2302,22 +2320,32 @@ function drawShopKioskBg() {
   drawVignette();
 }
 function drawRouletteWheel(cx, cy, rad) {
-  const N = 12;
+  const N = 37;
   for (let i = 0; i < N; i++) {
+    const n = WHEEL_ORDER[i];
     const a0 = casino.angle + i / N * Math.PI * 2, a1 = casino.angle + (i + 1) / N * Math.PI * 2;
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, rad, a0, a1); ctx.closePath();
-    ctx.fillStyle = i % 2 ? "#1a1a1a" : "#b22a2a"; ctx.fill();
+    const col = rouletteColor(n);
+    ctx.fillStyle = col === "green" ? "#1f9a4a" : col === "red" ? "#b22a2a" : "#1a1a1a"; ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 0.5; ctx.stroke();
   }
-  // rim
+  // golden rim + hub
   ctx.strokeStyle = "#caa23a"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 6.28); ctx.stroke();
-  ctx.fillStyle = "#3a2a16"; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 6.28); ctx.fill();
-  // ball: rolls fast while spinning, then rests
-  const ballA = casino.spinning ? -casino.angle * 1.7 : -casino.angle * 1.7;
-  const br = rad - 6;
-  const bx = cx + Math.cos(ballA) * br, by = cy + Math.sin(ballA) * br;
-  px(bx - 1, by - 1, 3, 3, "#f4f4f4");
-  // pointer
-  ctx.fillStyle = "#ffe6a0"; ctx.beginPath(); ctx.moveTo(cx, cy - rad - 2); ctx.lineTo(cx - 4, cy - rad - 9); ctx.lineTo(cx + 4, cy - rad - 9); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#3a2a16"; ctx.beginPath(); ctx.arc(cx, cy, 7, 0, 6.28); ctx.fill();
+  ctx.strokeStyle = "#caa23a"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, 7, 0, 6.28); ctx.stroke();
+  // the result number sits in the hub once the wheel rests
+  if (!casino.spinning) {
+    const col = rouletteColor(casino.result);
+    ctx.fillStyle = col === "green" ? "#7dffb0" : col === "red" ? "#ff9a8a" : "#e0e0e0";
+    ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(String(casino.result), cx, cy + 1); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  }
+  // the ball rests at the top pointer (the winning pocket rotates to meet it)
+  const br = rad - 5;
+  const bx = cx, by = cy - br;
+  ctx.fillStyle = "#f4f4f4"; ctx.beginPath(); ctx.arc(bx, by, 2, 0, 6.28); ctx.fill();
+  // top pointer
+  ctx.fillStyle = "#ffe6a0"; ctx.beginPath(); ctx.moveTo(cx, cy - rad - 1); ctx.lineTo(cx - 4, cy - rad - 9); ctx.lineTo(cx + 4, cy - rad - 9); ctx.closePath(); ctx.fill();
 }
 function drawCroupier(x, y) {
   // old-school, kind-faced gentleman in a sharp red suit
@@ -2363,13 +2391,17 @@ function drawShopCasinoBg() {
   drawCroupier(250, 74);
   // green felt table
   px(40, 92, 400, 70, "#1f5a36"); px(40, 92, 400, 4, "#2f7a4a");
-  // red/black bet spots on the felt
-  px(120, 138, 36, 18, "#b22a2a"); px(300, 138, 36, 18, "#1a1a1a");
+  // red / green / black bet spots on the felt
+  px(96, 138, 34, 18, "#b22a2a"); px(224, 138, 34, 18, "#1f9a4a"); px(352, 138, 34, 18, "#1a1a1a");
   ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("RØD", 138, 147); ctx.fillText("SVART", 318, 147);
+  ctx.fillText("RØD 2×", 113, 147); ctx.fillText("0  14×", 241, 147); ctx.fillText("SVART 2×", 369, 147);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  // highlight the spot you've bet on
+  const betSpot = casino.color === "red" ? 96 : casino.color === "green" ? 224 : 352;
+  ctx.globalAlpha = 0.5 + 0.4 * Math.sin(t * 4); ctx.strokeStyle = "#ffe6a0"; ctx.lineWidth = 1.5;
+  ctx.strokeRect(betSpot - 1, 137, 36, 20); ctx.globalAlpha = 1;
   // the wheel he spins for you
-  drawRouletteWheel(170, 116, 24);
+  drawRouletteWheel(170, 112, 28);
   drawVignette();
 }
 function drawGrumpyMan(x, y) {
