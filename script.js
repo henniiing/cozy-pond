@@ -328,6 +328,8 @@ let buffWasOn = false, drunkWasOn = false;
 // per-session weather — picked fresh every time you arrive at a water, for a bit of life
 let weather = { type: "clear", t: 0, flash: 0 };
 const rainDrops = [];
+// gentle drifting snow — only on the wintry waters (Fjellvatnet, Nordlysvatnet)
+const snowFlakes = Array.from({ length: 40 }, () => ({ x: Math.random() * W, y: Math.random() * WATER_Y, sp: 8 + Math.random() * 14, r: 1 + Math.random() * 1.4, ph: Math.random() * 6.28, drift: 0.5 + Math.random() * 0.8 }));
 const WEATHER_HINT = { clear: "Klar og stille kveld \u2014 fint fiskev\u00e6r.", overcast: "Gr\u00e5tt og overskyet i kveld.", rain: "Lett regn pisler i vannet \u2014 fisken er p\u00e5hugget!", mist: "T\u00e5ka ligger t\u00e9tt over vannet i kveld." };
 const smoke = [];
 let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, funnPanel = false, kioskIdleTimer = 5, partyNode = null;
@@ -2223,6 +2225,15 @@ function update(dt) {
       if (weather.flash > 0) weather.flash = Math.max(0, weather.flash - dt * 3);
       else if (Math.random() < dt * 0.04) weather.flash = 1;
     }
+    // soft snowfall on the wintry waters — flakes sway as they fall, then loop back to the top
+    if (LOC.snow) {
+      for (const s of snowFlakes) {
+        s.ph += dt * s.drift;
+        s.y += s.sp * dt; s.x += Math.sin(s.ph) * s.drift * 6 * dt;
+        if (s.y > WATER_Y + 4) { s.y = -3; s.x = Math.random() * W; }
+        else if (s.x < -4) s.x = W + 4; else if (s.x > W + 4) s.x = -4;
+      }
+    }
   }
   // idle sips (visual only) when relaxed and not in a drink sequence
   sipAnim = Math.max(0, sipAnim - dt);
@@ -2866,10 +2877,21 @@ function drawReedsFront() {
   for (let i = 0; i < 3; i++) reed(150 + i * 9, 30 + i * 6, i + 2);
 }
 function drawFireflies() {
+  if (LOC.snow) return;   // no summer fireflies over the frozen waters — they get snow instead
   for (const ff of fireflies) {
     const glow = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(ff.ph));
     ctx.globalAlpha = glow * 0.8; ctx.fillStyle = "#fff2a0"; ctx.beginPath(); ctx.arc(ff.x, ff.y, 2.2, 0, 6.28); ctx.fill();
     ctx.globalAlpha = glow; px(ff.x, ff.y, 1, 1, "#fffbe0");
+  }
+  ctx.globalAlpha = 1;
+}
+// gentle snowfall drifting over the wintry waters (Fjellvatnet, Nordlysvatnet)
+function drawSnow() {
+  if (!LOC.snow) return;
+  ctx.fillStyle = "#eef4ff";
+  for (const s of snowFlakes) {
+    ctx.globalAlpha = 0.55 + 0.35 * Math.sin(s.ph);
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.28); ctx.fill();
   }
   ctx.globalAlpha = 1;
 }
@@ -5238,7 +5260,7 @@ function render() {
   switch (screen) {
     case "game":
       drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore(); drawRiseSpot();
-      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawHatSeller(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawHatPanel(); drawHatShop(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
+      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawHatSeller(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawHatPanel(); drawHatShop(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies(); drawSnow();
       drawRevealFish(); drawFog(); drawWeather(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette(); drawHangover(); drawKnockout();
       break;
     case "menu": drawMenuBg(); break;
