@@ -734,11 +734,12 @@ function canvasPress(p) {
 canvas.addEventListener("mousedown", (e) => { e.preventDefault(); canvasPress(toCanvas(e)); });
 canvas.addEventListener("mouseup", () => (holding = false));
 canvas.addEventListener("mouseleave", () => { holding = false; hover.on = false; hoverProp = null; canvas.style.cursor = "default"; });
-canvas.addEventListener("touchstart", (e) => { e.preventDefault(); canvasPress(toCanvas(e)); }, { passive: false });
+canvas.addEventListener("touchstart", (e) => { touchMode = true; e.preventDefault(); canvasPress(toCanvas(e)); }, { passive: false });
 canvas.addEventListener("touchend", (e) => { e.preventDefault(); holding = false; }, { passive: false });
 
 // hover feedback: a pointer cursor (and an in-scene highlight) over anything clickable
 let hover = { x: -1, y: -1, on: false };
+let touchMode = false;       // set on first touch — drives always-on labels for phones
 let hoverProp = null;        // "truck" | "sekk" | "radio" — highlighted in the fishing scene
 function interactiveAt(p) {
   if (screen === "intro") return "play";
@@ -801,6 +802,23 @@ function drawHoverHighlight() {
     ctx.fillStyle = "#ffe6a0"; ctx.fillText(label, lx, ly);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   }
+}
+
+// touch devices have no hover, so always label the three tappable props while you're idle
+function drawTouchHints() {
+  if (!touchMode || screen !== "game" || fishState !== "ready") return;
+  if (truckMenu || coolerMenu || godsakerPanel || rodPanel || bagPanel || recordsPanel) return;
+  const pulse = 0.55 + 0.45 * Math.sin(t * 3);
+  ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const [r, label] of [[TRUCK, "Reise"], [SEKK, "Sekk"], [RADIO, "Radio"]]) {
+    const lx = r.x + r.w / 2, ly = r.y - 6;
+    const lw = ctx.measureText(label).width + 6;
+    ctx.globalAlpha = 0.8;
+    px(Math.round(lx - lw / 2), Math.round(ly - 5), Math.round(lw), 10, "rgba(14,12,22,0.7)");
+    ctx.globalAlpha = 0.7 + 0.3 * pulse;
+    ctx.fillStyle = "#ffe6a0"; ctx.fillText(label, lx, ly);
+  }
+  ctx.globalAlpha = 1; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 
 window.addEventListener("keydown", (e) => {
@@ -3910,7 +3928,7 @@ function render() {
     case "game":
       drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore();
       drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies();
-      drawRevealFish(); drawFog(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawVignette();
+      drawRevealFish(); drawFog(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette();
       break;
     case "menu": drawMenuBg(); break;
     case "market": drawMarketBg(); break;

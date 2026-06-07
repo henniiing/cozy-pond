@@ -6,6 +6,7 @@ html,
 body {
   margin: 0;
   height: 100%;
+  overscroll-behavior: none;
 }
 
 body {
@@ -18,13 +19,19 @@ body {
   justify-content: center;
   gap: 12px;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 16px;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .frame {
   position: relative;
   width: min(96vw, calc(92vh * 16 / 9));
+  width: min(96vw, calc(92dvh * 16 / 9));
   aspect-ratio: 16 / 9;
   border-radius: 10px;
   overflow: hidden;
@@ -48,6 +55,7 @@ canvas {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  touch-action: none;
 }
 
 .frame:fullscreen canvas {
@@ -732,4 +740,84 @@ canvas {
 }
 .mini-sell:hover {
   filter: brightness(1.12);
+}
+
+/* =========================================================================
+   Touch / mobile adaptations
+   ========================================================================= */
+/* on touch devices there's no hover, so make the volume slider always usable */
+@media (hover: none) {
+  .vol-slider {
+    position: static;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    width: 92px;
+    padding: 4px 6px;
+    background: rgba(14, 12, 22, 0.9);
+  }
+  .vol-control {
+    align-items: center;
+    gap: 4px;
+  }
+  /* hover-only lift effects do nothing useful on touch */
+  .stall:hover {
+    transform: none;
+  }
+}
+
+/* phones / small screens: roomier tap targets, tighter chrome */
+@media (max-width: 760px), (pointer: coarse) {
+  body {
+    padding: 0;
+    gap: 0;
+  }
+  .frame {
+    width: 100vw;
+    width: 100dvw;
+    border-radius: 0;
+  }
+  .icon-btn,
+  .ico-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 19px;
+  }
+  .ui-btn {
+    padding: 9px 13px;
+    font-size: 15px;
+  }
+  .hud {
+    padding: 8px 9px;
+  }
+  .hud-right {
+    gap: 5px;
+  }
+  .big-btn {
+    padding: 15px 28px;
+    min-width: 220px;
+  }
+  .buy-btn,
+  .mini-sell,
+  .cas-col,
+  .cas-bet {
+    padding: 11px 15px;
+  }
+  .stall {
+    padding: 18px 14px;
+  }
+  .vol-slider {
+    height: 30px;
+  }
+}
+
+/* very short / landscape phones: keep the play field from being squeezed */
+@media (max-height: 460px) and (orientation: landscape) {
+  body {
+    padding: 0;
+  }
+  .frame {
+    width: min(100vw, calc(100dvh * 16 / 9));
+    border-radius: 0;
+  }
 }
