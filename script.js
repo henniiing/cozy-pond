@@ -2980,6 +2980,8 @@ function drawBackArrow(panelX, panelW, top) {
   ctx.fillText("\u2039", x + 6, y + 6);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
+// in-scene side panels are right-aligned to this edge so they never cover the fisherman on the left
+const PANEL_R = 472;
 const COOLER_MENU = [
   { key: "_godsaker", name: "Godsaker", action: true },
   { key: "_rods", name: "Bytt stang", action: true },
@@ -2995,18 +2997,19 @@ const CONSUMABLES = [
   { key: "snabel", name: "Snabelstoff" },
 ];
 function coolerItemRects() {
-  const w = 122, h = 17, x = 12;
+  const w = 122, h = 17, x = PANEL_R - 126;
   return COOLER_MENU.map((it, i) => ({ ...it, x, y: 170 - i * 21, w, h }));
 }
 function drawCoolerMenu() {
   if (!coolerMenu) return;
   const rects = coolerItemRects();
   const top = rects[rects.length - 1].y - 15, bot = rects[0].y + 17 + 4;
-  px(8, top, 130, bot - top, "rgba(14,12,22,0.94)");
-  px(8, top, 130, 3, "#caa46a");
+  const x0 = rects[0].x - 4, pw = 130;
+  px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
+  px(x0, top, pw, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("SEKKEN", 8 + 65, top + 8);
-  drawBackArrow(8, 130, top);
+  ctx.fillText("SEKKEN", x0 + pw / 2, top + 8);
+  drawBackArrow(x0, pw, top);
   for (const it of rects) {
     px(it.x, it.y, it.w, it.h, "#2a2440");
     px(it.x, it.y, it.w, 1, "#3a2e4a");
@@ -3020,18 +3023,19 @@ function drawCoolerMenu() {
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 function godsakerRects() {
-  const w = 122, h = 17, x = 12;
+  const w = 122, h = 17, x = PANEL_R - 126;
   return CONSUMABLES.map((it, i) => ({ ...it, x, y: 170 - i * 21, w, h }));
 }
 function drawGodsakerPanel() {
   if (!godsakerPanel) return;
   const rects = godsakerRects();
   const top = rects[rects.length - 1].y - 15, bot = rects[0].y + 17 + 4;
-  px(8, top, 130, bot - top, "rgba(14,12,22,0.94)");
-  px(8, top, 130, 3, "#caa46a");
+  const x0 = rects[0].x - 4, pw = 130;
+  px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
+  px(x0, top, pw, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("GODSAKER", 8 + 65, top + 8);
-  drawBackArrow(8, 130, top);
+  ctx.fillText("GODSAKER", x0 + pw / 2, top + 8);
+  drawBackArrow(x0, pw, top);
   for (const it of rects) {
     px(it.x, it.y, it.w, it.h, "#241c30");
     px(it.x, it.y, it.w, 1, "#3a2e4a");
@@ -3048,18 +3052,19 @@ function drawGodsakerPanel() {
 /* in-scene rod picker (replaces the old inventory overlay for "Bytt stang") */
 function rodPanelRects() {
   const owned = save.owned.slice().sort((a, b) => a - b);
-  const w = 132, h = 20, x = 12;
+  const w = 132, h = 20, x = PANEL_R - 136;
   return owned.map((level, i) => ({ level, x, y: 150 - i * 22, w, h }));
 }
 function drawRodPanel() {
   if (!rodPanel) return;
   const rects = rodPanelRects();
   const top = rects[rects.length - 1].y - 16, bot = rects[0].y + 20 + 5;
-  px(8, top, 140, bot - top, "rgba(14,12,22,0.94)");
-  px(8, top, 140, 3, "#caa46a");
+  const x0 = rects[0].x - 4, pw = 140;
+  px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
+  px(x0, top, pw, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("BYTT STANG", 8 + 70, top + 8);
-  drawBackArrow(8, 140, top);
+  ctx.fillText("BYTT STANG", x0 + pw / 2, top + 8);
+  drawBackArrow(x0, pw, top);
   for (const it of rects) {
     const equipped = it.level === save.rodLevel;
     px(it.x, it.y, it.w, it.h, equipped ? "#2e3a26" : "#241c30");
@@ -3083,7 +3088,7 @@ function drawBagPanel() {
   for (const b of save.basket) { groups[b.key] = groups[b.key] || { count: 0, value: 0 }; groups[b.key].count++; groups[b.key].value += b.value; }
   const keys = Object.keys(groups);
   const rows = Math.max(1, keys.length);
-  const x = 12, w = 168, rh = 14, top = 40, headH = 22;
+  const w = 168, x = PANEL_R - w, rh = 14, top = 40, headH = 22;
   const h = headH + rows * rh + 18;
   px(x, top, w, h, "rgba(14,12,22,0.95)");
   px(x, top, w, 3, "#caa46a");
@@ -3117,7 +3122,7 @@ function drawFunnPanel() {
   if (!funnPanel) return;
   let found = 0;
   for (const j of JUNK) if ((save.junk || {})[j.key] > 0) found++;
-  const x = 8, w = 200, rh = 16, top = 30, headH = 26;
+  const w = 200, x = PANEL_R - w, rh = 16, top = 30, headH = 26;
   const h = headH + JUNK.length * rh + 18;
   px(x, top, w, h, "rgba(14,12,22,0.96)");
   px(x, top, w, 3, "#caa46a");
@@ -3148,7 +3153,7 @@ function drawRecordsPanel() {
   for (const f of FISH) { const r = save.record[f.key]; if (r && r.count > 0) caught++; }
   let trophies = 0;
   for (const f of RARES) { const r = save.record[f.key]; if (r && r.count > 0) trophies++; }
-  const x = 8, w = 196, rh = 12, top = 18, headH = 24;
+  const w = 196, x = PANEL_R - w, rh = 12, top = 18, headH = 24;
   const h = headH + FISH.length * rh + 16 + RARES.length * rh + 12;
   px(x, top, w, h, "rgba(14,12,22,0.96)");
   px(x, top, w, 3, "#caa46a");
