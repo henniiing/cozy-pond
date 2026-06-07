@@ -4144,11 +4144,11 @@ function drawEventActor() {
       break;
     }
     case "bubble": {
-      // a fat marsh-gas bubble rising and popping at the surface
-      const rise = clamp(p / 0.7, 0, 1), x = clamp(bobber.x, 140, W - 40), y = lerp(WATER_Y + 22, WATER_Y + 2, rise), r = 3 + rise * 4;
+      // a fat marsh-gas bubble rising and popping at the surface near where you're fishing
+      const rise = clamp(p / 0.7, 0, 1), x = clamp(bobber.x, 140, W - 40), y = lerp(bobber.y + 16, bobber.y - 2, rise), r = 3 + rise * 4;
       if (p < 0.72) { ctx.globalAlpha = ea * 0.7; ctx.fillStyle = "#9abf6a"; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill(); ctx.globalAlpha = ea * 0.9; px(x - 1, y - 1, 1, 1, "#d8f0a0"); }
       else { for (let i = 0; i < 6; i++) { const a2 = i / 6 * 6.28; ctx.globalAlpha = ea * (1 - (p - 0.72) / 0.28); px(x + Math.cos(a2) * (r + (p - 0.72) * 40), y + Math.sin(a2) * (r + (p - 0.72) * 30), 2, 2, "#c8e89a"); } }
-      ctx.globalAlpha = ea; addRippleMaybe(x, WATER_Y + 2);
+      ctx.globalAlpha = ea; addRippleMaybe(x, bobber.y - 2);
       break;
     }
     case "coins": {
@@ -4207,7 +4207,7 @@ function drawEventActor() {
     }
     case "lure": {
       // a fancy spinner glinting on the surface near the float
-      const x = clamp(bobber.x - 16, 130, W - 30), y = WATER_Y + 6 + Math.sin(t * 2) * 1;
+      const x = clamp(bobber.x - 16, 130, W - 30), y = bobber.y - 6 + Math.sin(t * 2) * 1;
       px(x - 2, y - 2, 4, 5, "#caa23a"); px(x - 1, y - 2, 1, 5, "#ffe6a0");    // body
       px(x - 1, y + 3, 2, 2, "#d24a3a");                                       // hook feather
       sparkle(x, y - 2, t * 2.2);
@@ -5412,7 +5412,7 @@ function render() {
   switch (screen) {
     case "game":
       drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore(); drawRiseSpot();
-      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawHatSeller(); drawInspector(); drawCoolerMenu(); drawGodsakerPanel(); drawHatPanel(); drawHatShop(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawReedsFront(); drawFireflies(); drawSnow();
+      drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawHatSeller(); drawInspector(); drawReedsFront(); drawCoolerMenu(); drawGodsakerPanel(); drawHatPanel(); drawHatShop(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawFireflies(); drawSnow();
       drawRevealFish(); drawFog(); drawWeather(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette(); drawHangover(); drawKnockout();
       break;
     case "menu": drawMenuBg(); break;
