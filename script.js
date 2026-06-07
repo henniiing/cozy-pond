@@ -1411,7 +1411,7 @@ function openScores() {
   const my = $("myScore");
   if (my) my.textContent = sc.score > 0
     ? `Din poengsum: ${fmt(sc.score)} p · ${sc.species} arter · ${sc.trophies} troféer` + (sc.biggestName ? ` · største ${sc.biggestName} ${sc.biggestKg.toFixed(2)} kg` : "")
-    : "Fang noen fisk først, så får du en poengsum å sende inn!";
+    : "Fang noen fisk først, så havner du på topplista!";
   const st = $("scoreStatus"); if (st) st.textContent = "";
   loadScores();
 }

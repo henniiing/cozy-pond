@@ -774,6 +774,12 @@ canvas {
   margin: 10px 0 2px;
   min-height: 18px;
 }
+.score-auto {
+  text-align: center;
+  color: #9aa4c8;
+  font-size: clamp(11px, 1.5vw, 13px);
+  margin: 2px 0 6px;
+}
 .score-status {
   text-align: center;
   color: #ffd27a;
