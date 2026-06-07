@@ -1081,6 +1081,21 @@ canvas {
   #shopFish .shop-body .speech {
     align-self: flex-start;
   }
+  /* let the pixel-art scene + the person behind the counter glow through the
+     menu, so the shop still feels alive instead of being a flat wall of buttons */
+  .basket-panel,
+  .rod-panel,
+  .casino-controls {
+    background: rgba(12, 10, 20, 0.74);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+  .speech {
+    background: rgba(253, 246, 227, 0.92);
+  }
+  .speech.grumpy {
+    background: rgba(239, 230, 210, 0.92);
+  }
 }
 
 /* ===== New game (name entry) ===== */
