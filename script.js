@@ -1651,7 +1651,7 @@ function drinkBeer() {
   sfxCanOpen();
   setTimeout(() => { if (screen === "game") sfxGulp(); }, 700); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1100); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1500);
   setTimeout(() => { if (screen !== "game") return; playSample("burp", { vol: 0.8 }); if (Math.random() < 0.45) setTimeout(() => { if (screen === "game") playSample("fart", { vol: 0.6 }); }, 500); }, 2150);
-  applyBuff("Ølmodig", 0.2, 0.12, 22, "#ffcf5a");
+  applyBuff("Ølmodig", 0.2, 0.12, 48, "#ffcf5a");
   drunk = Math.min(DRUNK_MAX, drunk + 0.30);
 }
 function drinkAkevitt() {
@@ -1659,7 +1659,7 @@ function drinkAkevitt() {
   sfxCanOpen();
   setTimeout(() => { if (screen === "game") sfxGulp(); }, 600); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1000); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1400);
   setTimeout(() => { if (screen !== "game") return; playSample("burp", { vol: 0.85 }); setTimeout(() => { if (screen === "game") playSample("fart", { vol: 0.7 }); }, 600); }, 2100);
-  applyBuff("Brennevin", 0.55, 0.3, 45, "#ffe08a");
+  applyBuff("Brennevin", 0.55, 0.3, 90, "#ffe08a");
   drunk = Math.min(DRUNK_MAX, drunk + 0.55);
 }
 function drinkSnabel() {
@@ -1667,19 +1667,19 @@ function drinkSnabel() {
   sfxCanOpen();
   setTimeout(() => { if (screen === "game") sfxGulp(); }, 600); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1050); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1500); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1900);
   setTimeout(() => { if (screen !== "game") return; playSample("burp", { vol: 0.85 }); setTimeout(() => { if (screen === "game") playSample("fart", { vol: 0.85 }); }, 650); }, 2300);
-  applyBuff("Snabelstoff", 0.8, 0.42, 60, "#d8e0c0");
+  applyBuff("Snabelstoff", 0.8, 0.42, 120, "#d8e0c0");
   drunk = Math.min(DRUNK_MAX, drunk + 0.78);
 }
 function takeSnus() {
   snusing = 1.4;
   blip(520, 0.05, "square", 0.08); setTimeout(() => blip(300, 0.08, "sine", 0.07), 120);
-  applyBuff("Snusrus", 0.12, 0.06, 12, "#5fbf5f");
+  applyBuff("Snusrus", 0.12, 0.06, 28, "#5fbf5f");
   drunk = Math.min(DRUNK_MAX, drunk + 0.12);          // a light nicotine buzz feeds the RUS-meter too
 }
 function smokeCigar() {
   smoking = 6.5;
   playSample("cigar", { vol: 0.8 });
-  applyBuff("Røykpause", 0.3, 0.15, 30, "#caa46a");
+  applyBuff("Røykpause", 0.3, 0.15, 65, "#caa46a");
   drunk = Math.min(DRUNK_MAX, drunk + 0.16);          // a mellow tobacco haze adds a little RUS
 }
 function useConsumable(kind) {
@@ -1838,7 +1838,7 @@ function triggerGameEvent() {
   } else if (ev.k === "buddy") {
     // a buddy shares a strong dram — same flaks-kick as a Blænnvin. It nudges you tipsy,
     // but an *event* you didn't choose should never be the thing that knocks you out.
-    applyBuff("Blænnvin", 0.55, 0.3, 45, "#caa84a");
+    applyBuff("Blænnvin", 0.55, 0.3, 90, "#caa84a");
     drunk = Math.min(drunk + 0.4, Math.max(drunk, 1.2));
     setTimeout(() => { try { sfxGulp(); } catch (e) {} }, 900);
     setTimeout(() => { try { playSample("burp", { vol: 0.9 }); } catch (e) {} }, 1700);
@@ -1857,11 +1857,11 @@ function triggerGameEvent() {
 
 /* ---- kiosk (alcohol / snus / cigars) ---- */
 const KIOSK_GOODS = {
-  beer: { name: "Trygdepatron", per: 6, cost: 36, blurb: "Sekspakning på billigtilbud — grei flaks i god tid (~22 s). Den naturlige favoritten!", color: "#caa23a" },
-  snus: { name: "Snus", per: 20, cost: 50, blurb: "Boks med 20 prilla under leppa — billig, men bare et lite napp i kort tid (~12 s). Øl varer lenger.", color: "#3a7a3a" },
-  cigar: { name: "Sigarillo", per: 12, cost: 80, blurb: "Pakke med 12 — røykpause med roligere hånd, god flaks (~30 s).", color: "#7a5a2a" },
-  akevitt: { name: "Blænnvin", per: 1, cost: 110, blurb: "Hjemmekjært brennevin! Stor flaks, lang tid (~45 s) — men du vingler.", color: "#caa84a" },
-  snabel: { name: "Snabelstoff", per: 1, cost: 250, blurb: "Hjemmebrentdunk på topphylla! Vill flaks, lengst tid (~60 s) — du sjangler skikkelig.", color: "#d8d2c0" },
+  beer: { name: "Trygdepatron", per: 6, cost: 36, blurb: "Sekspakning på billigtilbud — grei flaks i god tid (~48 s). Den naturlige favoritten!", color: "#caa23a" },
+  snus: { name: "Snus", per: 20, cost: 50, blurb: "Boks med 20 prilla under leppa — billig, lite napp men varer en god stund (~28 s).", color: "#3a7a3a" },
+  cigar: { name: "Sigarillo", per: 12, cost: 80, blurb: "Pakke med 12 — røykpause med roligere hånd, god flaks lenge (~65 s).", color: "#7a5a2a" },
+  akevitt: { name: "Blænnvin", per: 1, cost: 110, blurb: "Hjemmekjært brennevin! Stor flaks, lang tid (~90 s) — men du vingler.", color: "#caa84a" },
+  snabel: { name: "Snabelstoff", per: 1, cost: 250, blurb: "Hjemmebrentdunk på topphylla! Vill flaks, lengst tid (~120 s) — du sjangler skikkelig.", color: "#d8d2c0" },
 };
 function buyConsumable(kind) {
   const g = KIOSK_GOODS[kind]; if (!g) return;
