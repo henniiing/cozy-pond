@@ -903,7 +903,9 @@ function drawMarketLabel(r, label, alpha) {
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 function drawMarketHover() {
-  if (touchMode) { for (const [r, label] of MARKET_TARGETS()) drawMarketLabel(r, label, 0.7); return; }
+  // on touch there's no hover — the wooden signs already name every booth, so skip the
+  // always-on label spam that used to clutter the scene and hide where you are
+  if (touchMode) return;
   if (!marketHover) return;
   const r = marketHover.rect, pulse = 0.5 + 0.5 * Math.sin(t * 5);
   ctx.globalAlpha = 0.45 + 0.45 * pulse; ctx.strokeStyle = "#ffe6a0"; ctx.lineWidth = 1;
@@ -4187,6 +4189,15 @@ function drawCat() {
     const a = 0.55 + 0.45 * Math.sin(t * 6);
     ctx.globalAlpha = a; ctx.font = "9px monospace"; ctx.textAlign = "center"; ctx.fillStyle = "#ff5a4a";
     ctx.fillText("!", cat.x - 4, y - 18); ctx.globalAlpha = 1; ctx.textAlign = "left";
+  } else if (cat.mission === "steal" && (cat.state === "arrive" || cat.state === "grab")) {
+    // EARLY heads-up while the cat sneaks in and reaches for your catch — tap it in time!
+    const a = 0.55 + 0.45 * Math.sin(t * 7), bx = cat.x, by = y - 26;
+    // little speech bubble
+    ctx.globalAlpha = 0.85; px(bx - 14, by - 1, 30, 12, "rgba(14,12,22,0.85)"); px(bx - 2, by + 11, 3, 3, "rgba(14,12,22,0.85)");
+    ctx.globalAlpha = a; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillStyle = "#ffd27a";
+    ctx.fillText("Trykk!", bx, by + 8);
+    ctx.font = "9px monospace"; ctx.fillStyle = "#ff5a4a"; ctx.fillText("!", bx + 12, by + 8);
+    ctx.globalAlpha = 1; ctx.textAlign = "left";
   }
 }
 function drawAngryWife(tt) {

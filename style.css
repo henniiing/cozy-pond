@@ -764,6 +764,14 @@ canvas {
   .stall:hover {
     transform: none;
   }
+  /* on phones the in-game HUD keeps only the ☰ menu button — sound, help and the
+     (non-working on iOS) fullscreen toggle all live inside that menu instead */
+  .hud-right [data-action="openHelp"],
+  .hud-right .vol-control,
+  .hud-right [data-action="toggleFullscreen"],
+  .corner-tools [data-action="toggleFullscreen"] {
+    display: none;
+  }
 }
 
 /* phones / small screens: roomier tap targets, tighter chrome */
