@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cozy Pond</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="frame" id="frame">
+    <canvas id="game" width="480" height="270"></canvas>
+
+    <!-- ===== In-game HUD (only on fishing screen) ===== -->
+    <div id="hud" class="hud hidden">
+      <div class="hud-left">
+        <div class="coin"><span id="money">0</span> kr</div>
+        <div class="sub">Kurv: <span id="basketCount">0</span></div>
+        <div class="sub">Stang: <span id="rodName">Pinnestang</span></div>
+      </div>
+      <div class="hud-right">
+        <button class="icon-btn" data-action="openMenu" title="Meny" aria-label="Meny">☰</button>
+        <button class="icon-btn" data-action="openHelp" title="Hvordan spille" aria-label="Hjelp">?</button>
+        <div class="vol-control">
+          <button class="icon-btn mute-btn" data-action="toggleMute" title="Lyd" aria-label="Lyd">🔊</button>
+          <input type="range" class="vol-slider" min="0" max="100" value="70" aria-label="Volum" title="Volum" />
+        </div>
+        <button class="icon-btn" data-action="toggleFullscreen" title="Fullskjerm" aria-label="Fullskjerm">⛶</button>
+      </div>
+    </div>
+
+    <!-- Hint text -->
+    <div id="hint" class="hint hidden">Klikk for å kaste ut</div>
+
+    <!-- Reel HUD -->
+    <div id="reel" class="reel hidden">
+      <div class="bar">
+        <label>Innhaling</label>
+        <div class="track"><div id="progress" class="fill progress"></div></div>
+      </div>
+      <div class="bar">
+        <label>Linestramming</label>
+        <div class="track"><div id="tension" class="fill tension"></div></div>
+      </div>
+    </div>
+
+    <!-- Catch reveal text (fish drawn on canvas) -->
+    <div id="catch" class="catch hidden">
+      <div class="catch-name" id="catchName">Abbor</div>
+      <div class="catch-info" id="catchInfo">0.8 kg · 32 kr</div>
+      <div class="catch-tag" id="catchTag"></div>
+      <div class="catch-cont">Klikk for å fortsette</div>
+    </div>
+
+    <!-- ===== Start menu ===== -->
+    <div id="menu" class="overlay active">
+      <div class="corner-tools">
+        <div class="vol-control">
+          <button class="icon-btn mute-btn" data-action="toggleMute" title="Lyd" aria-label="Lyd">🔊</button>
+          <input type="range" class="vol-slider" min="0" max="100" value="70" aria-label="Volum" title="Volum" />
+        </div>
+        <button class="icon-btn" data-action="toggleFullscreen" title="Fullskjerm" aria-label="Fullskjerm">⛶</button>
+      </div>
+      <div class="panel center">
+        <h1 class="title">Cozy&nbsp;Pond</h1>
+        <div class="menu-buttons">
+          <button class="big-btn" id="startBtn" data-action="startGame">Start spill</button>
+          <button class="big-btn ghost" data-action="openHelp">Hvordan spille</button>
+        </div>
+        <button class="link-btn" data-action="watchIntro">Se introen igjen</button>
+        <button class="link-btn" data-action="resetSave">Nullstill spill</button>
+      </div>
+    </div>
+
+    <!-- ===== Market hub ===== -->
+    <div id="market" class="overlay market-overlay">
+      <div class="topbar">
+        <div class="coin"><span class="moneyMirror">0</span> kr</div>
+      </div>
+      <div class="market-hint">Klikk på en bod for å gå inn — eller bilen for å kjøre til vannet</div>
+    </div>
+
+    <!-- ===== Map ===== -->
+    <div id="map" class="overlay market-overlay">
+      <div class="topbar">
+        <button class="ui-btn" data-action="backToGame">← Tilbake</button>
+        <div class="coin"><span class="moneyMirror">0</span> kr</div>
+      </div>
+      <div class="market-hint">Klikk på et fiskevann for å reise dit</div>
+    </div>
+
+    <!-- ===== Help ===== -->
+    <div id="help" class="overlay">
+      <div class="topbar">
+        <button class="ui-btn" data-action="backFromHelp">← Tilbake</button>
+      </div>
+      <div class="help-body">
+        <h2>Hvordan spille</h2>
+        <p>Klikk i vannet der du vil at duppen skal lande, eller trykk mellomrom.</p>
+        <p>Følg med på duppen mens du venter. Små napp prøver å lure deg — vent til den dras skikkelig under vann.</p>
+        <p>Klikk i det øyeblikket duppen forsvinner under for å kroke fisken.</p>
+        <p>Hold inne for å sveive fisken nærmere, men slipp når den rykker hardt — ellers ryker lina.</p>
+        <p>Kjør pickupen som står på land til venstre bak deg for å reise til markedet eller andre fiskevann. Hvert vann har sine egne arter — du starter på Skogstjernet, og låser opp nye vann med penger du tjener (Trollmyra, Stryket og til slutt det dyre Fjellvatnet med ørret og røye). Hvert vann skjuler også en svær troféfisk.</p>
+        <p>På markedet selger du fangsten hos dama, kjøper stenger og fiskekort hos gubben i fiskeutstyret, og tar trygdepatron, snus, sigarillo, blænnvin og snabelstoff i kiosken. Du kan også prøve lykken på rød eller svart i kasinoet.</p>
+        <p>Hos stang-gubben kjøper du også fiskekort. Av og til kommer fiskeoppsynet innom mens du fisker — har du ikke gyldig kort, ryker 25 % av pengene dine i bot (minst 50 kr). Jo mer du har, jo dyrere blir det å fuske!</p>
+        <p>Den brune sekken ved siden av deg har en «Godsaker»-fane med alt du har kjøpt i kiosken — de gir midlertidig fiskeflaks, og jo dyrere varen er, jo mer flaks og lengre virketid. Herfra bytter du også stang og ser fangsten og rekordene dine.</p>
+        <p>Radioen spiller country mens du fisker. Har du fanget mye, legger noen fisk seg på bakken ved siden av deg.</p>
+      </div>
+    </div>
+
+    <!-- ===== Fish shop (the lady) ===== -->
+    <div id="shopFish" class="overlay shop-overlay">
+      <div class="topbar">
+        <button class="ui-btn" data-action="openMarket">← Marked</button>
+        <div class="coin"><span class="moneyMirror">0</span> kr</div>
+      </div>
+      <div class="shop-body">
+        <div class="speech" id="ladySpeech">Hei, kjekken… har du noe fint til meg i dag?</div>
+        <div class="basket-panel">
+          <h2>Kurven din</h2>
+          <div id="basketList" class="basket-list"></div>
+          <div class="basket-total">Totalt: <span id="basketTotal">0</span> kr</div>
+          <button class="big-btn" id="sellAllBtn" data-action="sellAll">Selg alt</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Rod shop (grumpy man) ===== -->
+    <div id="shopRod" class="overlay shop-overlay">
+      <div class="topbar">
+        <button class="ui-btn" data-action="openMarket">← Marked</button>
+        <div class="coin"><span class="moneyMirror">0</span> kr</div>
+      </div>
+      <div class="shop-body">
+        <div class="speech grumpy" id="rodSpeech">Hmf. Skal du kjøpe noe, eller bare glo?</div>
+        <div class="rod-panel">
+          <h2>Fiskeutstyr</h2>
+          <div id="rodList" class="rod-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Kiosk (alcohol / snus / cigars) ===== -->
+    <div id="shopKiosk" class="overlay shop-overlay">
+      <div class="topbar">
+        <button class="ui-btn" data-action="openMarket">← Marked</button>
+        <div class="coin"><span class="moneyMirror">0</span> kr</div>
+      </div>
+      <div class="shop-body">
+        <div class="speech" id="kioskSpeech">Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske.</div>
+        <div class="rod-panel">
+          <h2>Kiosken</h2>
+          <div id="kioskList" class="rod-list"></div>
+          <p class="inv-sub">Bruk varene fra sekken mens du fisker — de gir midlertidig fiskeflaks.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Casino (roulette) ===== -->
+    <div id="shopCasino" class="overlay shop-overlay">
+      <div class="topbar">
+        <button class="ui-btn" data-action="openMarket">← Marked</button>
+        <div class="coin"><span class="moneyMirror">0</span> kr</div>
+      </div>
+      <div class="casino-body">
+        <div class="speech" id="casinoSpeech">Welcome, my friend! Sett på rød eller svart.</div>
+        <div class="casino-controls">
+          <div class="cas-row">
+            <button class="cas-col red active" data-action="casinoColor" data-color="red">Rød</button>
+            <button class="cas-col black" data-action="casinoColor" data-color="black">Svart</button>
+          </div>
+          <div class="cas-hint">Hjulet har 0–36. Treffer kula din farge får du dobbelt. Lander den på <b>grønn 0</b> tar huset alt.</div>
+          <div class="cas-row" id="casBets">
+            <button class="cas-bet" data-action="casinoBet" data-amt="50">50</button>
+            <button class="cas-bet active" data-action="casinoBet" data-amt="100">100</button>
+            <button class="cas-bet" data-action="casinoBet" data-amt="250">250</button>
+            <button class="cas-bet" data-action="casinoBet" data-amt="500">500</button>
+          </div>
+          <button class="big-btn" id="casinoSpin" data-action="casinoSpin">Spinn 100 kr</button>
+          <div class="casino-result" id="casinoResult"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
