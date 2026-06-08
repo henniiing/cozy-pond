@@ -2376,7 +2376,7 @@ function update(dt) {
       // a small fish is a quick reel-in, a heavy trophy is a real battle
       // …it tires a LITTLE over time so the runs ease off a touch — but a true giant never
       // just gives up: you have to play it, time your releases and earn the landing.
-      const fatigue = clamp((stateTime - 6) / 22, 0, 0.4);
+      const fatigue = clamp((stateTime - 6) / 22, 0, 0.5);
       if (fatigue > 0.22 && !bigFishTired && currentWeight >= 3) { bigFishTired = true; setHint("Den drar fortsatt hardt — sveiv jevnt, slipp på rykkene!"); }
       const fishFight = (currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.17, 0.4, 3.1)) * (1 - fatigue) * (LOC.fightMul || 1);
       pullTimer -= dt;
@@ -2384,16 +2384,17 @@ function update(dt) {
         pulling -= dt;
         if (pulling <= 0) setHint("Sveiv inn! 🎣");
       } else if (pullTimer <= 0) {
-        // a run — heavier fish bolt more often and for longer
-        pulling = 0.3 + Math.random() * 0.4 + fishFight * 0.25;
-        pullTimer = Math.max(0.5, 1.8 - fishFight * 0.45) + Math.random() * 0.9;
+        // a run — heavier fish bolt more often and a bit longer, but the calm gap between runs
+        // is ALWAYS longer than the run itself, so there's always a window to reel in
+        pulling = 0.4 + Math.random() * 0.3 + fishFight * 0.15;
+        pullTimer = 0.85 + Math.random() * 0.8 + fishFight * 0.12;
         if (fishFight > 0.9) { setHint("SLIPP! Den rykker! ⚠️"); blip(150, 0.12, "sawtooth", 0.05); }
       }
       const rb = buff.t > 0 ? buff.reel : 0;        // booze eases the fight a little
       if (holding) {
         if (pulling > 0) {
           // hauling against a run loads the line fast (worse the bigger the fish), little progress
-          tension += dt * (10 + 30 * fishFight) * r.tens * (1 - rb * 0.35);
+          tension += dt * (10 + 24 * fishFight) * r.tens * (1 - rb * 0.35);
           progress += dt * 5 * r.reel;
         } else {
           // calm reeling: quick progress, only light strain
