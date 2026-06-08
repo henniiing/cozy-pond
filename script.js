@@ -986,7 +986,7 @@ function drawTutCard(title, lines, opts) {
   lines.forEach((ln, i) => ctx.fillText(ln, x + 8, y + 26 + i * 10));
   const by = y + h - 5;
   ctx.font = "7px monospace"; ctx.fillStyle = "#9aa6d0";
-  const sk = "Hopp over guide";
+  const sk = T("Hopp over guide");
   ctx.fillText(sk, x + 8, by);
   tutSkipRect = { x: x + 6, y: by - 9, w: ctx.measureText(sk).width + 4, h: 12 };
   if (opts.next) {
@@ -1003,42 +1003,42 @@ function drawTutorial() {
   if (screen === "game") {
     if (save.tut === TUT_CAST) {
       // hold kortet unna mens fisken avsl\u00f8res, ellers blir det rotete oppe i hj\u00f8rnet
-      if (fishState !== "reveal") drawTutCard("Kast ut", tutWrap("Klikk i vannet for \u00e5 kaste ut. Vent p\u00e5 napp og klikk igjen for \u00e5 kroke fisken.", 284));
+      if (fishState !== "reveal") drawTutCard(T("Kast ut"), tutWrap(T("Klikk i vannet for \u00e5 kaste ut. Vent p\u00e5 napp og klikk igjen for \u00e5 kroke fisken."), 284));
     } else if (save.tut === TUT_BAG && coolerMenu) {
-      drawTutCard("Sekken din", [
-        "Godsaker   \u2013 \u00f8l, snus og r\u00f8yk som gir fiskeflaks.",
-        "Bytt stang \u2013 velg hvilken fiskestang du bruker.",
-        "Hatter     \u2013 bytt mellom luene du eier.",
-        "Se fangst  \u2013 fisken du har i sekken n\u00e5.",
-        "Rekorder   \u2013 dine st\u00f8rste fangster per art.",
-        "Skrotsamling \u2013 rare ting du har fisket opp.",
-      ], { next: "Neste \u203a" });
+      drawTutCard(T("Sekken din"), [
+        T("Godsaker   \u2013 \u00f8l, snus og r\u00f8yk som gir fiskeflaks."),
+        T("Bytt stang \u2013 velg hvilken fiskestang du bruker."),
+        T("Hatter     \u2013 bytt mellom luene du eier."),
+        T("Se fangst  \u2013 fisken du har i sekken n\u00e5."),
+        T("Rekorder   \u2013 dine st\u00f8rste fangster per art."),
+        T("Skrotsamling \u2013 rare ting du har fisket opp."),
+      ], { next: T("Neste \u203a") });
     } else if (fishState === "ready" && !coolerMenu && !godsakerPanel && !rodPanel && !hatPanel && !bagPanel && !recordsPanel && !funnPanel && !truckMenu && !hatShop) {
       // resten av steg-hintene venter til lina er inne og ingen undermeny er \u00e5pen
       if (save.tut === TUT_BAG) {
         tutRingRect(SEKK, 4);
-        drawTutCard("Sekken din", tutWrap("Trykk p\u00e5 sekken ved foten din for \u00e5 \u00e5pne den.", 284));
+        drawTutCard(T("Sekken din"), tutWrap(T("Trykk p\u00e5 sekken ved foten din for \u00e5 \u00e5pne den."), 284));
       } else if (save.tut === TUT_RADIO) {
         tutRingRect(RADIO, 4);
-        drawTutCard("Radioen", tutWrap("Skru p\u00e5 radioen for litt koselig country mens du fisker.", 284));
+        drawTutCard(T("Radioen"), tutWrap(T("Skru p\u00e5 radioen for litt koselig country mens du fisker."), 284));
       } else if (save.tut === TUT_TRAVEL) {
         tutRingRect(TRUCK, 4);
-        drawTutCard("Reis til markedet", tutWrap("Kj\u00f8r pickupen for \u00e5 \u00e5pne kartet, og velg Markedet for \u00e5 selge fisk og handle.", 284));
+        drawTutCard(T("Reis til markedet"), tutWrap(T("Kj\u00f8r pickupen for \u00e5 \u00e5pne kartet, og velg Markedet for \u00e5 selge fisk og handle."), 284));
       }
     }
   } else if (screen === "map") {
     if (save.tut === TUT_MAP) {
       const sp = MAP_SPOTS[0]; tutRingCircle(sp.x, sp.y - 12, 16);
-      drawTutCard("Kartet ditt", tutWrap("Herfra reiser du mellom fiskevann og markedet. Trykk p\u00e5 Skogstjern for \u00e5 begynne.", 284));
+      drawTutCard(T("Kartet ditt"), tutWrap(T("Herfra reiser du mellom fiskevann og markedet. Trykk p\u00e5 Skogstjern for \u00e5 begynne."), 284));
     } else if (save.tut === TUT_TRAVEL) {
       tutRingCircle(MAP_MARKET.x, MAP_MARKET.y - 12, 18);
-      drawTutCard("Til markedet", tutWrap("Velg Markedet for \u00e5 reise dit og selge fangsten.", 284));
+      drawTutCard(T("Til markedet"), tutWrap(T("Velg Markedet for \u00e5 reise dit og selge fangsten."), 284));
     }
   } else if (screen === "market" && save.tut === TUT_MARKET) {
     const b = TUT_TASKS[tutBooth] || TUT_TASKS[0];
     px(0, 0, W, H, "rgba(6,6,12,0.28)");
     tutRingRect(b.r, 3);
-    drawTutCard(b.name + "  (" + (tutBooth + 1) + "/" + TUT_TASKS.length + ")", tutWrap(b.go, 284));
+    drawTutCard(T(b.name) + "  (" + (tutBooth + 1) + "/" + TUT_TASKS.length + ")", tutWrap(T(b.go), 284));
   }
 }
 // liten varsling n\u00e5r du ankommer et vann uten gyldig fiskekort
@@ -1207,7 +1207,7 @@ function canvasPress(p) {
     }
     // a cast that lands on the rising fish gets a luck + quick-bite bonus
     castOnRise = riseSpot.active && Math.hypot(castTarget.x - riseSpot.x, castTarget.y - riseSpot.y) < 32;
-    if (castOnRise) { riseSpot.active = false; sfxCoin(); setHint("Rett p\u00e5 vaket! Her napper det godt \uD83C\uDFAF"); }
+    if (castOnRise) { riseSpot.active = false; sfxCoin(); setHint(T("Rett p\u00e5 vaket! Her napper det godt \uD83C\uDFAF")); }
     startCast(); return;
   }
   // a click while the line is just out (casting/waiting) reels it back in — a clean cancel
@@ -1859,18 +1859,18 @@ function setScreen(name) {
   if (name !== "market") { fenceShop = false; }
   if (name === "market" && from !== "market") { fence = { state: "away", t: 0, timer: 6 + Math.random() * 12, psst: 0 }; fenceShop = false; }
   // rod seller: hooooo on entry (sour until purchase), fart on the way out
-  if (name === "shopRod" && from !== "shopRod") { speak("rodSpeech", "Hmf. Skal du kjøpe noe, eller bare glo?"); playSample("hoo", { vol: 0.45 }); rodGrumpyBuy = false; rodHop = 0; }
+  if (name === "shopRod" && from !== "shopRod") { speak("rodSpeech", T("Hmf. Skal du kjøpe noe, eller bare glo?")); playSample("hoo", { vol: 0.45 }); rodGrumpyBuy = false; rodHop = 0; }
   if (from === "shopRod" && name !== "shopRod") playSample("fart", { vol: 0.7 });
   // fish lady: a spoken welcome when you walk in to sell
-  if (name === "shopFish" && from !== "shopFish") { speak("ladySpeech", "Hei, kjekken… har du noe fint til meg i dag?"); playSample("ladyWelcome", { vol: 0.8 }); playSample("sellFishBg", { vol: 0.28 }); }
+  if (name === "shopFish" && from !== "shopFish") { speak("ladySpeech", T("Hei, kjekken… har du noe fint til meg i dag?")); playSample("ladyWelcome", { vol: 0.8 }); playSample("sellFishBg", { vol: 0.28 }); }
   // casino croupier greeting
   if (name === "shopCasino" && from !== "shopCasino") playSample("ohbro", { vol: 0.7 });
   // fishing warden: a sinister cackle as you leave after actually buying a permit
   if (name === "shopLicense" && from !== "shopLicense") licenseBoughtThisVisit = false;
   if (from === "shopLicense" && name !== "shopLicense" && licenseBoughtThisVisit) { playSample("sinister", { vol: 0.7 }); licenseBoughtThisVisit = false; }
   // fishing warden: a polite greeting + paper shuffle when you visit the permit booth
-  if (name === "shopLicense" && from !== "shopLicense") { speak("licenseSpeech", "God dag! Skal det være et gyldig fiskekort? Husk — fiskeoppsynet er ute og går."); blip(520, 0.05, "square", 0.04); setTimeout(() => blip(440, 0.05, "square", 0.035), 90); }  // kiosk: muffled party music on loop while inside + a greeting
-  if (name === "shopKiosk" && from !== "shopKiosk") { speak("kioskSpeech", "Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske."); playSample("eyybro", { vol: 0.7 }); kioskWave = 1.4; }
+  if (name === "shopLicense" && from !== "shopLicense") { speak("licenseSpeech", T("God dag! Skal det være et gyldig fiskekort? Husk — fiskeoppsynet er ute og går.")); blip(520, 0.05, "square", 0.04); setTimeout(() => blip(440, 0.05, "square", 0.035), 90); }  // kiosk: muffled party music on loop while inside + a greeting
+  if (name === "shopKiosk" && from !== "shopKiosk") { speak("kioskSpeech", T("Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske.")); playSample("eyybro", { vol: 0.7 }); kioskWave = 1.4; }
   // looping ambience per screen — always clear it first so nothing bleeds between screens
   if (partyNode) { stopSample(partyNode); partyNode = null; }
   if (marketNode) { stopSample(marketNode); marketNode = null; }
@@ -1889,7 +1889,7 @@ function setScreen(name) {
   OVERLAYS.forEach((o) => $(o).classList.toggle("active", o === name));
   hudEl.classList.toggle("hidden", name !== "game");
   if (name !== "game") { reelEl.classList.add("hidden"); catchEl.classList.add("hidden"); hintEl.classList.add("hidden"); }
-  if (name === "game") { resetFishing(); setHint("Klikk for å kaste ut"); if (radio.on && !radioNode) { radioIdx = Math.floor(Math.random() * RADIO_SONGS.length); playRadioSong(); } }
+  if (name === "game") { resetFishing(); setHint(T("Klikk for å kaste ut")); if (radio.on && !radioNode) { radioIdx = Math.floor(Math.random() * RADIO_SONGS.length); playRadioSong(); } }
   if (name === "game" && save.tut === TUT_MAP) advanceTut(TUT_MAP);
   if (name === "market" && save.tut === TUT_TRAVEL) { tutBooth = 0; advanceTut(TUT_TRAVEL); }
   if (name === "shopFish") buildBasket();
@@ -1901,7 +1901,7 @@ function setScreen(name) {
       persist();
       // gjor overrekkelsen tydelig: gubben spretter til, en glad lyd, og stanga dukker opp i lista hans
       rodHop = 1; rodGrumpyBuy = true; sfxCoin(); playSample("buying", { vol: 0.6 });
-      speak("rodSpeech", "Her — min egen gamle lykkestang! Den fås ikke kjøpt. Du ser den nederst her og i sekken din. Bruk den med stolthet, og trykk ← Marked.");
+      speak("rodSpeech", T("Her — min egen gamle lykkestang! Den fås ikke kjøpt. Du ser den nederst her og i sekken din. Bruk den med stolthet, og trykk ← Marked."));
       buildRods(); refreshHUD();
       tutCompleteBooth(2);
     }
@@ -1914,22 +1914,22 @@ function setScreen(name) {
       persist();
       wardenStamp = 1; wardenScheme = 2.2; setTimeout(wardenStampSfx, 120);   // han stempler kortet og rekker det over
       sfxCoin(); playSample("buying", { vol: 0.6 });
-      speak("licenseSpeech", `Her — et gratis startkort som dekker dine ${LICENSE_FREE_GRANT} første fangster. Da slipper du bot fra oppsynet. Trykk ← Marked.`);
+      speak("licenseSpeech", T("Her — et gratis startkort som dekker dine {n} første fangster. Da slipper du bot fra oppsynet. Trykk ← Marked.", { n: LICENSE_FREE_GRANT }));
       buildLicenses(); refreshHUD();
       tutCompleteBooth(3);
     }
   }
   if (name === "shopKiosk") buildKiosk();
   if (name === "slots") buildSlots();
-  if (name === "shopCasino") { speak("casinoSpeech", "Welcome, my friend! Velg rød eller svart, sett innsatsen og spinn. Treffer fargen vinner du dobbelt — men pass deg for grønn null! 🎩"); buildCasino(); }
+  if (name === "shopCasino") { speak("casinoSpeech", T("Welcome, my friend! Velg rød eller svart, sett innsatsen og spinn. Treffer fargen vinner du dobbelt — men pass deg for grønn null! 🎩")); buildCasino(); }
   // opplaering: vis hva spilleren skal gjore i hver bod
   if (tutMarketStep() >= 0) {
     const tk = TUT_TASKS[tutBooth];
     if (tk && name === tk.screen) {
-      if (name === "shopFish") speak("ladySpeech", tk.todo);
-      else if (name === "shopKiosk") speak("kioskSpeech", tk.todo);
-      else if (name === "shopCasino") speak("casinoSpeech", tk.todo);
-      else if (name === "shopLicense") speak("licenseSpeech", tk.todo);
+      if (name === "shopFish") speak("ladySpeech", T(tk.todo));
+      else if (name === "shopKiosk") speak("kioskSpeech", T(tk.todo));
+      else if (name === "shopCasino") speak("casinoSpeech", T(tk.todo));
+      else if (name === "shopLicense") speak("licenseSpeech", T(tk.todo));
     }
   }
   refreshHUD();
@@ -1967,14 +1967,14 @@ function resetFishing() {
 function cancelFishing() {
   resetFishing();
   sfxPlop();
-  setHint("Du sveiver inn igjen — klikk for å kaste ut");
+  setHint(T("Du sveiver inn igjen — klikk for å kaste ut"));
 }
 // ---- drunk blackout (cartoon iris-out) ----
 function startKnockout() {
   knockout.active = true; knockout.t = 0; knockout.phase = "wooze";
   holding = false; if (fishState !== "ready") resetFishing();
   // a clear, readable lead-in so the blackout never feels like it jumped out of nowhere
-  setHint("Uff… hodet snurrer. Du klarer ikke holde deg våken…");
+  setHint(T("Uff… hodet snurrer. Du klarer ikke holde deg våken…"));
   blip(220, 0.4, "sine", 0.06); blip(150, 0.7, "sine", 0.05, 0.18);
   setTimeout(() => { try { playSample("burp", { vol: 0.9 }); } catch (e) {} }, 260);
 }
@@ -1995,7 +1995,7 @@ function updateKnockout(dt) {
     knockout.active = false; drunk = 0;
     buff.t = 0; buff.luck = 0; buff.reel = 0;
     staggerWarned = false; hangover = 5;
-    setHint("Tømmermenn… du våkner på bredden. Klikk for å kaste ut.");
+    setHint(T("Tømmermenn… du våkner på bredden. Klikk for å kaste ut."));
   }
 }
 function setMiss(reason) {
@@ -2009,12 +2009,12 @@ function beginWaiting() {
   addRipple(bobber.x, bobber.y, 18); sfxPlop();
   biteTimer = (castOnRise ? 1.4 + Math.random() * 2 : 4 + Math.random() * 7) * weatherBiteMul();
   nibbleTimer = 1.5 + Math.random() * 2.5;
-  setHint("Vent til duppen går under…");
+  setHint(T("Vent til duppen går under…"));
 }
 function triggerBite() {
   setFish("bite"); biteWindow = rod().window; bobber.sink = 0;
   addRipple(bobber.x, bobber.y, 22); sfxBite();
-  setHint("NÅ! Klikk!");
+  setHint(T("NÅ! Klikk!"));
 }
 function hookFish() {
   currentFish = pickFish();
@@ -2065,7 +2065,7 @@ function catchFish() {
   if (c.junk) sfxMiss(); else sfxCatch();
   refreshHUD();
 }
-function closeReveal() { catchEl.classList.add("hidden"); setFish("ready"); setHint("Klikk for å kaste ut"); }
+function closeReveal() { catchEl.classList.add("hidden"); setFish("ready"); setHint(T("Klikk for å kaste ut")); }
 
 /* ---- consumables / boosts ---- */
 function applyBuff(label, luck, reel, dur, color) {
@@ -2121,7 +2121,7 @@ function smokeCigar() {
 }
 function useConsumable(kind) {
   const names = { beer: "trygdepatron", snus: "snus", cigar: "sigarillo", akevitt: "blænnvin", snabel: "snabelstoff" };
-  if ((save.stock[kind] || 0) <= 0) { setHint(`Tom for ${names[kind]} — kjøp i kiosken`); sfxMiss(); return; }
+  if ((save.stock[kind] || 0) <= 0) { setHint(T("Tom for {name} — kjøp i kiosken", { name: T(names[kind]) })); sfxMiss(); return; }
   save.stock[kind]--; persist();
   if (kind === "beer") drinkBeer();
   else if (kind === "snus") takeSnus();
@@ -2143,14 +2143,14 @@ function throwBottle() {
    Market actions
    ========================================================================= */
 function sellAll() {
-  if (!save.basket.length) { speak("ladySpeech", "Tom fangst? Kom tilbake når du har fanget noe, da."); return; }
+  if (!save.basket.length) { speak("ladySpeech", T("Tom fangst? Kom tilbake når du har fanget noe, da.")); return; }
   const total = save.basket.reduce((s, b) => s + b.value, 0);
   const n = save.basket.length;
   save.money += total; save.basket = []; persist();
   sfxCoin(); playSample("buying", { vol: 0.6 }); playSample("moan", { vol: 0.6 });
-  speak("ladySpeech", `Mmm, ${n} fisk for ${fmt(total)} kr. Takk skal du ha, kjekken 😘`);
+  speak("ladySpeech", T("Mmm, {n} fisk for {kr} kr. Takk skal du ha, kjekken 😘", { n, kr: fmt(total) }));
   buildBasket(); refreshHUD();
-  if (tutMarketStep() === 0) { tutCompleteBooth(0); speak("ladySpeech", "Nydelig handel! Trykk ← Marked for å fortsette."); }
+  if (tutMarketStep() === 0) { tutCompleteBooth(0); speak("ladySpeech", T("Nydelig handel! Trykk ← Marked for å fortsette.")); }
 }
 function sellSpecies(key) {
   const sold = save.basket.filter((b) => b.key === key);
@@ -2160,22 +2160,22 @@ function sellSpecies(key) {
   save.money += total; persist();
   sfxCoin(); playSample("buying", { vol: 0.6 }); playSample("moan", { vol: 0.6 });
   const f = FISH_BY_KEY[key];
-  speak("ladySpeech", `${sold.length}× ${f.name} for ${fmt(total)} kr — godt valg 😘`);
+  speak("ladySpeech", T("{n}× {name} for {kr} kr — godt valg 😘", { n: sold.length, name: T(f.name), kr: fmt(total) }));
   buildBasket(); refreshHUD();
-  if (tutMarketStep() === 0 && !save.basket.length) { tutCompleteBooth(0); speak("ladySpeech", "Da var sekken tom! Trykk ← Marked for å fortsette."); }
+  if (tutMarketStep() === 0 && !save.basket.length) { tutCompleteBooth(0); speak("ladySpeech", T("Da var sekken tom! Trykk ← Marked for å fortsette.")); }
 }
 function buyRod(level) {
   const r = RODS[level];
   if (!r) return;
   if (save.owned.includes(level)) { equipRod(level); return; }
-  if (save.money < r.cost) { speak("rodSpeech", "Du har ikke råd. Kom igjen når du har penger. Hmf."); rodGrumpyBuy = false; sfxMiss(); return; }
+  if (save.money < r.cost) { speak("rodSpeech", T("Du har ikke råd. Kom igjen når du har penger. Hmf.")); rodGrumpyBuy = false; sfxMiss(); return; }
   save.money -= r.cost; save.owned.push(level); save.rodLevel = level;
   // easter egg: ved din aller forste handel stikker fiksemannen deg ogsa sin gamle lykkestang
   let gotReward = false;
   if (REWARD_ROD_LEVEL >= 0 && !save.owned.includes(REWARD_ROD_LEVEL)) { save.owned.push(REWARD_ROD_LEVEL); gotReward = true; }
   persist();
   sfxCoin(); playSample("buying", { vol: 0.6 }); rodGrumpyBuy = true; rodHop = 1;
-  speak("rodSpeech", gotReward ? `«${r.name}»! Og siden det var din første handel — ta min gamle lykkestang på kjøpet. Den finner du i sekken. Ikke si det til noen.` : `«${r.name}». Endelig litt handel. Ikke knekk den, da.`);
+  speak("rodSpeech", gotReward ? T("«{name}»! Og siden det var din første handel — ta min gamle lykkestang på kjøpet. Den finner du i sekken. Ikke si det til noen.", { name: T(r.name) }) : T("«{name}». Endelig litt handel. Ikke knekk den, da.", { name: T(r.name) }));
   buildRods(); refreshHUD();
 }
 function equipRod(level) {
@@ -2214,16 +2214,16 @@ function triggerInspector() {
 }
 function resolveInspector() {
   if (currentLicense() > 0) {
-    inspector.line = "Fiskekortet i orden. God fangst!";
+    inspector.line = T("Fiskekortet i orden. God fangst!");
     sfxClink();
   } else if (save.money >= LICENSE_FINE) {
     // the fine scales with your wealth — 25 % of what you've got (min 50 kr), so it stings when you're rich
     const fine = Math.max(LICENSE_FINE, Math.round(save.money * LICENSE_FINE_PCT));
     save.money -= fine; persist(); refreshHUD(); inspector.fined = true;
-    inspector.line = `Intet fiskekort? ${fmt(fine)} kr i bot!`;
+    inspector.line = T("Intet fiskekort? {kr} kr i bot!", { kr: fmt(fine) });
     sfxMiss();
   } else {
-    inspector.line = "Mangler kort... advarsel denne gang.";
+    inspector.line = T("Mangler kort... advarsel denne gang.");
   }
 }
 
@@ -2279,7 +2279,7 @@ function triggerGameEvent() {
   const list = LOCATION_EVENTS[save.location];
   if (!list || !list.length) return;
   const ev = list[Math.floor(Math.random() * list.length)];
-  let line = ev.l;
+  let line = T(ev.l);
   if (ev.amt) {
     const amount = Math.round(ev.amt[0] + Math.random() * (ev.amt[1] - ev.amt[0]));
     if (ev.k === "money") { save.money += amount; persist(); refreshHUD(); sfxCoin(); line = line.replace("{n}", fmt(amount)); if (ev.s === "gems") { [1318, 1568, 1976, 2637].forEach((f, i) => blip(f, 0.22, "sine", 0.06, i * 0.08)); } }
@@ -2308,7 +2308,7 @@ function triggerGameEvent() {
     if (ev.s === "beaver") { setTimeout(() => { try { noise(0.22, 320, 0.12, "lowpass"); sfxSplash(); } catch (e) {} }, 3200); }
     // moose: a long wet slurp as it hoovers up the bait
     if (ev.s === "moose") { setTimeout(() => { try { noise(0.5, 600, 0.06, "bandpass"); blip(160, 0.18, "sawtooth", 0.05); } catch (e) {} }, 1400); }
-    if (fishState === "waiting" || fishState === "bite") { setFish("waiting"); biteTimer = 5 + Math.random() * 7; addRipple(bobber.x, bobber.y, 20); setHint("Fisken ble skremt \u2014 vent litt..."); }
+    if (fishState === "waiting" || fishState === "bite") { setFish("waiting"); biteTimer = 5 + Math.random() * 7; addRipple(bobber.x, bobber.y, 20); setHint(T("Fisken ble skremt \u2014 vent litt...")); }
     sfxMiss();
   } else {
     blip(440, 0.06, "triangle", 0.04);
@@ -2542,7 +2542,7 @@ function update(dt) {
       if (travel.key === "market") { resetFishing(); setScreen("market"); }
       else {
         setLocation(travel.key); resetFishing(); rollWeather(); setScreen("game");
-        setHint(WEATHER_HINT[weather.type] || "");
+        setHint(T(WEATHER_HINT[weather.type] || ""));
         if (currentLicense() === 0 && !tutActive()) licenseWarn = 3;   // minner deg paa manglende fiskekort (ikke midt i opplaeringen)
       }
     }
@@ -2674,7 +2674,7 @@ function update(dt) {
         wardenStamp = 1; wardenStampSfx();
       } else {                               // drop a sly line + chuckle to himself
         wardenLine = (wardenLine + 1 + Math.floor(Math.random() * (WARDEN_LINES.length - 1))) % WARDEN_LINES.length;
-        speak("licenseSpeech", WARDEN_LINES[wardenLine]);
+        speak("licenseSpeech", T(WARDEN_LINES[wardenLine]));
         wardenChuckle(); wardenScheme = 1.4;
       }
     }
@@ -2745,7 +2745,7 @@ function update(dt) {
   if (screen === "game" && !knockout.active) {
     if (drunk > DRUNK_KO * 0.8 && drunk <= DRUNK_KO && !staggerWarned) {
       staggerWarned = true;
-      setHint("Oi… nå vingler du skikkelig. Én tår til og du sovner!");
+      setHint(T("Oi… nå vingler du skikkelig. Én tår til og du sovner!"));
     }
   }
   if (smoking > 0) {
@@ -2817,19 +2817,19 @@ function update(dt) {
       // …it tires a LITTLE over time so the runs ease off a touch — but a true giant never
       // just gives up: you have to play it, time your releases and earn the landing.
       const fatigue = clamp((stateTime - 6) / 22, 0, 0.5);
-      if (fatigue > 0.22 && !bigFishTired && currentWeight >= 3) { bigFishTired = true; setHint("Den drar fortsatt hardt — sveiv jevnt, slipp på rykkene!"); }
+      if (fatigue > 0.22 && !bigFishTired && currentWeight >= 3) { bigFishTired = true; setHint(T("Den drar fortsatt hardt — sveiv jevnt, slipp på rykkene!")); }
       const fishFight = (currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.17, 0.4, 3.1)) * (1 - fatigue) * (LOC.fightMul || 1);
       pullTimer -= dt;
       if (pulling > 0) {
         pulling -= dt;
-        if (pulling <= 0) setHint("Sveiv inn! 🎣");
+        if (pulling <= 0) setHint(T("Sveiv inn! 🎣"));
       } else if (pullTimer <= 0) {
         // a run — heavier fish bolt more often and a bit longer, but the calm gap between runs
         // is ALWAYS longer than the run itself, so there's always a window to reel in
         pulling = 0.4 + Math.random() * 0.3 + fishFight * 0.15;
         pullTimer = 0.85 + Math.random() * 0.8 + fishFight * 0.12;
-        if (fishFight > 0.9) { setHint("SLIPP! Den rykker! ⚠️"); blip(150, 0.12, "sawtooth", 0.05); }
-        else { setHint("Den napper — slipp litt! 🎣"); blip(220, 0.08, "sawtooth", 0.04); }
+        if (fishFight > 0.9) { setHint(T("SLIPP! Den rykker! ⚠️")); blip(150, 0.12, "sawtooth", 0.05); }
+        else { setHint(T("Den napper — slipp litt! 🎣")); blip(220, 0.08, "sawtooth", 0.04); }
       }
       const rb = buff.t > 0 ? buff.reel : 0;        // booze eases the fight a little
       if (holding) {
@@ -2864,7 +2864,7 @@ function update(dt) {
       break;
     case "missed":
       setHint(missReason);
-      if (stateTime > 1.6) { setFish("ready"); setHint("Klikk for å kaste ut"); }
+      if (stateTime > 1.6) { setFish("ready"); setHint(T("Klikk for å kaste ut")); }
       break;
   }
 }
@@ -3639,7 +3639,7 @@ function updateFence(dt) {
 function openFenceShop() {
   fenceShop = true; fence.state = "here"; fence.t = 0;
   sfxClink();
-  setHint("\u201cPssst\u2026 vis mæ skrotet ditt.\u201d");
+  setHint(T("\u201cPssst\u2026 vis mæ skrotet ditt.\u201d"));
 }
 function sellJunkToFence(key) {
   const j = JUNK.find((q) => q.key === key); if (!j) return;
@@ -3649,7 +3649,7 @@ function sellJunkToFence(key) {
   save.junk[key] = 0;
   save.money += gain;
   persist(); refreshHUD();
-  sfxCoin(); setHint("Solgte " + n + "\u00d7 " + j.name + " for " + fmt(gain) + " kr! \ud83e\udd2b");
+  sfxCoin(); setHint(T("Solgte {n}\u00d7 {name} for {kr} kr! \ud83e\udd2b", { n, name: T(j.name), kr: fmt(gain) }));
 }
 function drawFence() {
   if (screen !== "market" || fence.state === "away") return;
@@ -3706,15 +3706,15 @@ function drawFenceShop() {
   px(x, top, w, h, "rgba(12,10,18,0.97)");
   px(x, top, w, 3, "#6a9a5a");
   ctx.fillStyle = "#bfe6a0"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("\u2026SKRAPHANDEL", x + w / 2, top + 10);
+  ctx.fillText(T("\u2026SKRAPHANDEL"), x + w / 2, top + 10);
   drawBackArrow(x, w, top);
   ctx.font = "7px monospace"; ctx.fillStyle = "#9aa6d0"; ctx.textAlign = "center";
-  ctx.fillText("Godt betalt. Ingen sp\u00f8rsm\u00e5l.", x + w / 2, top + 21);
+  ctx.fillText(T("Godt betalt. Ingen sp\u00f8rsm\u00e5l."), x + w / 2, top + 21);
   fenceRowRects = [];
   ctx.textBaseline = "middle";
   if (!sellable.length) {
     ctx.fillStyle = "#8a849a"; ctx.font = "8px monospace"; ctx.textAlign = "center";
-    ctx.fillText("Du har ikke noe skrot \u00e5 selge n\u00e5.", x + w / 2, top + headH + 8);
+    ctx.fillText(T("Du har ikke noe skrot \u00e5 selge n\u00e5."), x + w / 2, top + headH + 8);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; return;
   }
   sellable.forEach((j, i) => {
@@ -3726,7 +3726,7 @@ function drawFenceShop() {
     const cy = rr.y + rr.h / 2;
     drawJunkSprite(ctx, rr.x + 12, cy + 1, 1.3, j.kind);
     ctx.font = "8px monospace"; ctx.textAlign = "left"; ctx.fillStyle = "#f0e6d0";
-    ctx.fillText(j.name + " \u00d7" + n, rr.x + 24, cy + 1);
+    ctx.fillText(T(j.name) + " \u00d7" + n, rr.x + 24, cy + 1);
     ctx.textAlign = "right"; ctx.fillStyle = "#9affc0";
     ctx.fillText(fmt(j.kr * n) + " kr \u203a", rr.x + rr.w - 6, cy + 1);
   });
@@ -3789,7 +3789,7 @@ function drawMarketGag() {
       const px0 = lerp(dir > 0 ? -24 : W + 24, gx - face * 20, k);
       drawStreetGuy(gx, 196 - run, face, false, true);          // fleeing drunk
       drawPolice(px0, 196 - run, face);                          // hot pursuit
-      if (Math.sin(t * 16) > 0) { ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText("HEI!", px0 - face * 6, 174); ctx.textAlign = "left"; }
+      if (Math.sin(t * 16) > 0) { ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText(T("HEI!"), px0 - face * 6, 174); ctx.textAlign = "left"; }
     }
   } else if (g.kind === "hat") {
     // a gust whips a fellow's hat off and he chases it across the cobbles
@@ -3801,7 +3801,7 @@ function drawMarketGag() {
     ctx.save(); ctx.translate(hatX, hatY); ctx.rotate(t * 6 * face);
     px(-4, 0, 8, 2, "#3a2c1e"); px(-2, -3, 4, 3, "#4a3724");
     ctx.restore();
-    if (Math.sin(t * 14) > 0.4) { ctx.fillStyle = "#fff"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText("hatten min!", guyX, 176); ctx.textAlign = "left"; }
+    if (Math.sin(t * 14) > 0.4) { ctx.fillStyle = "#fff"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText(T("hatten min!"), guyX, 176); ctx.textAlign = "left"; }
   } else if (g.kind === "trip") {
     // someone stumbles on a loose cobblestone, flails, then carries on like nothing happened
     const face = dir > 0 ? 1 : -1, x = cross;
@@ -3809,7 +3809,7 @@ function drawMarketGag() {
       drawStreetGuy(x, 200, face, true, false);
       px(x - 8, 209, 4, 2, "#5a3a5a"); px(x + 5, 209, 4, 2, "#5a3a5a");   // flailing arms
       px(x + face * 9, 210, 4, 3, "#6a6256");                            // the loose stone
-      ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText("OISANN!", x, 178); ctx.textAlign = "left";
+      ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText(T("OISANN!"), x, 178); ctx.textAlign = "left";
     } else {
       drawStreetGuy(x, 196, face, false, true);
     }
@@ -3842,7 +3842,7 @@ function drawMarketGag() {
       px(walkX + (face > 0 ? 4 : -5), 188, 2, 3, "#5a3a5a");            // raised fist
       const gp = (p - 0.6) / 0.4, gx = walkX + face * (10 + gp * 130), gy = lerp(186, 28, gp);
       drawGull(gx, gy, t); px(gx + face * 4, gy + 1, 4, 3, "#b5532a");  // loot in beak
-      if (Math.sin(t * 14) > 0.3) { ctx.fillStyle = "#fff"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText("tjuv!", walkX, 176); ctx.textAlign = "left"; }
+      if (Math.sin(t * 14) > 0.3) { ctx.fillStyle = "#fff"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText(T("tjuv!"), walkX, 176); ctx.textAlign = "left"; }
     }
   } else if (g.kind === "couple") {
     // two neighbours meet in the middle, have a good old natter, then part ways
@@ -3971,12 +3971,12 @@ function drawPriceBoard() {
   px(x, y + h - 2, w, 2, "#10180f");
   // title
   ctx.fillStyle = "#ffe6a0"; ctx.font = "bold 7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("KILOPRIS", x + w / 2, y + 8);
+  ctx.fillText(T("KILOPRIS"), x + w / 2, y + 8);
   px(x + 8, y + 13, w - 16, 1, "#3a5a4a");
   if (!rows.length) {
     ctx.fillStyle = "#8aa89a"; ctx.font = "6px monospace";
-    ctx.fillText("fang fisk for", x + w / 2, y + 25);
-    ctx.fillText("\u00e5 se prisen", x + w / 2, y + 33);
+    ctx.fillText(T("fang fisk for"), x + w / 2, y + 25);
+    ctx.fillText(T("\u00e5 se prisen"), x + w / 2, y + 33);
   } else {
     ctx.font = "6px monospace"; ctx.textBaseline = "middle";
     rows.forEach((rw, i) => {
@@ -3984,7 +3984,7 @@ function drawPriceBoard() {
       const cx = x + col * colW, ry = firstRowY + idx * rowH;
       if (col > 0 && idx === 0) px(cx, y + 4, 1, h - 8, "#10180f"); // column divider
       ctx.textAlign = "left"; ctx.fillStyle = rw.trophy ? "#ffd65a" : "#dfeee6";
-      ctx.fillText((rw.trophy ? "\u2605" : "") + rw.name, cx + 6, ry);
+      ctx.fillText((rw.trophy ? "\u2605" : "") + T(rw.name), cx + 6, ry);
       ctx.textAlign = "right"; ctx.fillStyle = rw.trophy ? "#ffd65a" : "#9dffb8";
       ctx.fillText(fmt(rw.kr) + "/kg", cx + colW - 6, ry);
     });
@@ -4092,7 +4092,7 @@ function drawShopKioskBg() {
   // neon "ÅPENT" sign
   const on = 0.6 + 0.4 * Math.sin(t * 4);
   ctx.globalAlpha = on; ctx.fillStyle = "#ff6abf"; ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("ÅPENT", 380, 56); ctx.globalAlpha = 1; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(T("ÅPENT"), 380, 56); ctx.globalAlpha = 1; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   // festive flashing party lights strung across the top
   const cols = ["#ff5a5a", "#ffd65a", "#5affa0", "#5ab0ff", "#c45aff"];
   for (let i = 0; i < 11; i++) {
@@ -4183,7 +4183,7 @@ function drawShopCasinoBg() {
   // red / green / black bet spots on the felt
   px(96, 138, 34, 18, "#b22a2a"); px(224, 138, 34, 18, "#1f9a4a"); px(352, 138, 34, 18, "#1a1a1a");
   ctx.fillStyle = "#fff"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("RØD 2×", 113, 147); ctx.fillText("0  14×", 241, 147); ctx.fillText("SVART 2×", 369, 147);
+  ctx.fillText(T("RØD 2×"), 113, 147); ctx.fillText("0  14×", 241, 147); ctx.fillText(T("SVART 2×"), 369, 147);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   // highlight the spot you've bet on
   const betSpot = casino.color === "red" ? 96 : casino.color === "green" ? 224 : 352;
@@ -4288,7 +4288,7 @@ function drawLicenseBooth() {
   // sign plank
   px(cx - 28, y + 38, 56, 9, "#6a4a2a"); px(cx - 28, y + 38, 56, 2, "#7e5a36");
   ctx.fillStyle = "#ffe6a0"; ctx.font = "bold 7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("FISKEKORT", cx, y + 43);
+  ctx.fillText(T("FISKEKORT"), cx, y + 43);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   // pulsing «click me» outline
   const pulse = 0.5 + 0.5 * Math.sin(t * 3);
@@ -4304,9 +4304,9 @@ function drawShopLicenseBg() {
   // a framed "FISKEKORT KREVES" notice
   px(40, 36, 96, 60, "#3a2c1e"); px(44, 40, 88, 52, "#e8e0cc");
   ctx.fillStyle = "#3a4a30"; ctx.font = "bold 8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("FISKEKORT", 88, 52); ctx.fillText("KREVES", 88, 62);
+  ctx.fillText(T("FISKEKORT"), 88, 52); ctx.fillText(T("KREVES"), 88, 62);
   ctx.strokeStyle = "#7a8a5a"; ctx.lineWidth = 1; ctx.strokeRect(56, 70, 64, 14);
-  ctx.fillStyle = "#6a7a4a"; ctx.font = "6px monospace"; ctx.fillText("av alle som fisker", 88, 77);
+  ctx.fillStyle = "#6a7a4a"; ctx.font = "6px monospace"; ctx.fillText(T("av alle som fisker"), 88, 77);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   // pinned permit cards on the wall
   const cols = ["#ffe6a0", "#bfe6ef", "#f0c0d0", "#c8f0c0"];
@@ -4399,7 +4399,7 @@ function drawCoolerMenu() {
   px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
   px(x0, top, pw, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("SEKKEN", x0 + pw / 2, top + 8);
+  ctx.fillText(T("SEKKEN"), x0 + pw / 2, top + 8);
   drawBackArrow(x0, pw, top);
   for (const it of rects) {
     px(it.x, it.y, it.w, it.h, "#2a2440");
@@ -4408,7 +4408,7 @@ function drawCoolerMenu() {
     const ic = it.key === "_godsaker" ? "🍬" : it.key === "_rods" ? "🎣" : it.key === "_hats" ? "🎩" : it.key === "_bag" ? "🎒" : it.key === "_funn" ? "📦" : "🏆";
     ctx.fillStyle = "#bfc8ff"; ctx.font = "8px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.fillText(ic, it.x + 5, cy);
-    ctx.fillStyle = "#dfe6ff"; ctx.font = "9px monospace"; ctx.fillText(it.name, it.x + 20, cy + 1);
+    ctx.fillStyle = "#dfe6ff"; ctx.font = "9px monospace"; ctx.fillText(T(it.name), it.x + 20, cy + 1);
     ctx.fillStyle = "#9aa6d0"; ctx.textAlign = "right"; ctx.fillText("›", it.x + it.w - 6, cy);
   }
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
@@ -4425,7 +4425,7 @@ function drawGodsakerPanel() {
   px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
   px(x0, top, pw, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("GODSAKER", x0 + pw / 2, top + 8);
+  ctx.fillText(T("GODSAKER"), x0 + pw / 2, top + 8);
   drawBackArrow(x0, pw, top);
   for (const it of rects) {
     px(it.x, it.y, it.w, it.h, "#241c30");
@@ -4434,12 +4434,12 @@ function drawGodsakerPanel() {
     drawConsumableIcon(it.key, it.x + 10, it.y + it.h / 2);
     // line 1: name (left) + stock (right)
     ctx.fillStyle = stock > 0 ? "#f0e6d0" : "#7a6a72"; ctx.font = "9px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(it.name, it.x + 22, it.y + 7);
+    ctx.fillText(T(it.name), it.x + 22, it.y + 7);
     ctx.fillStyle = stock > 0 ? "#ffe6a0" : "#a06a6a"; ctx.textAlign = "right";
-    ctx.fillText(stock + " stk", it.x + it.w - 5, it.y + 7);
+    ctx.fillText(stock + " " + T("stk"), it.x + it.w - 5, it.y + 7);
     // line 2: the boost it grants, so you can see it without going to the kiosk
     ctx.fillStyle = stock > 0 ? "#8ad0a0" : "#6a7a70"; ctx.font = "7px monospace"; ctx.textAlign = "left";
-    ctx.fillText(`+${it.flaks}% flaks i ${it.dur}s`, it.x + 22, it.y + 16);
+    ctx.fillText(T("+{n}% flaks i {s}s", { n: it.flaks, s: it.dur }), it.x + 22, it.y + 16);
   }
   // live RUS gauge so you can see how close you are to blacking out before you keel over
   const gy = rects[0].y + 21 + 8, gx = x0 + 8, gw = pw - 16, gh = 7;
@@ -4447,10 +4447,10 @@ function drawGodsakerPanel() {
   const near = dfrac >= 0.82;
   const col = dfrac < 0.5 ? "#8ad0ff" : dfrac < 0.82 ? "#ffb04a" : "#ff5a4a";
   ctx.font = "bold 7px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  ctx.fillStyle = "#cbb9c6"; ctx.fillText("RUS", gx, gy - 4);
+  ctx.fillStyle = "#cbb9c6"; ctx.fillText(T("RUS"), gx, gy - 4);
   if (near) {
     ctx.textAlign = "right"; ctx.fillStyle = (Math.sin(t * 8) > 0) ? "#ff7a6a" : "#ffd27a";
-    ctx.fillText(dfrac >= 1 ? "BLACKOUT!" : "STOPP!", gx + gw, gy - 4);
+    ctx.fillText(dfrac >= 1 ? T("BLACKOUT!") : T("STOPP!"), gx + gw, gy - 4);
   }
   px(gx, gy, gw, gh, "#241c30"); px(gx, gy, gw, 1, "#3a2e4a");
   px(gx + 1, gy + 1, Math.max(1, Math.round((gw - 2) * dfrac)), gh - 2, col);
@@ -4479,7 +4479,7 @@ function drawRodPanel() {
   px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
   px(x0, top, pw, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("BYTT STANG", x0 + pw / 2, top + 8);
+  ctx.fillText(T("BYTT STANG"), x0 + pw / 2, top + 8);
   drawBackArrow(x0, pw, top);
   for (const it of rects) {
     const equipped = it.level === save.rodLevel;
@@ -4492,12 +4492,12 @@ function drawRodPanel() {
     px(it.x + 13, it.y + 7, 2, 2, r.tip);
     // line 1: name (left) + status (right)
     ctx.fillStyle = equipped ? "#bfe6a0" : "#f0e6d0"; ctx.font = "9px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(r.name, it.x + 20, it.y + 9);
+    ctx.fillText(T(r.name), it.x + 20, it.y + 9);
     ctx.fillStyle = equipped ? "#9affc0" : "#9aa6d0"; ctx.textAlign = "right"; ctx.font = "8px monospace";
-    ctx.fillText(equipped ? "i bruk" : "velg \u203a", it.x + it.w - 6, it.y + 9);
+    ctx.fillText(equipped ? T("i bruk") : T("velg \u203a"), it.x + it.w - 6, it.y + 9);
     // line 2: the boost stats, so the overview lives right here in the menu
     ctx.fillStyle = "#8a93b8"; ctx.font = "7px monospace"; ctx.textAlign = "left";
-    ctx.fillText(`Innhaling +${Math.round((r.reel - 1) * 100)}%  Drag +${Math.round((1 - r.tens) * 100)}%  Flaks +${Math.round(r.rare * 100)}%`, it.x + 6, it.y + 20);
+    ctx.fillText(T("Innhaling +{reel}%  Drag +{drag}%  Flaks +{rare}%", { reel: Math.round((r.reel - 1) * 100), drag: Math.round((1 - r.tens) * 100), rare: Math.round(r.rare * 100) }), it.x + 6, it.y + 20);
   }
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
@@ -4513,12 +4513,12 @@ function drawBagPanel() {
   px(x, top, w, h, "rgba(14,12,22,0.95)");
   px(x, top, w, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("FANGSTEN DIN", x + w / 2, top + 11);
+  ctx.fillText(T("FANGSTEN DIN"), x + w / 2, top + 11);
   drawBackArrow(x, w, top);
   ctx.font = "9px monospace"; ctx.textBaseline = "middle";
   if (!keys.length) {
     ctx.fillStyle = "#9aa6d0"; ctx.textAlign = "center";
-    ctx.fillText("Kurven er tom — gå og fisk!", x + w / 2, top + headH + 6);
+    ctx.fillText(T("Kurven er tom — gå og fisk!"), x + w / 2, top + headH + 6);
   } else {
     let total = 0;
     keys.forEach((k, i) => {
@@ -4526,15 +4526,15 @@ function drawBagPanel() {
       const f = FISH_BY_KEY[k];
       const y = top + headH + i * rh + 7;
       ctx.fillStyle = "#f0e6d0"; ctx.textAlign = "left";
-      ctx.fillText(`${f.name} ×${g.count}`, x + 8, y);
+      ctx.fillText(`${T(f.name)} ×${g.count}`, x + 8, y);
       ctx.fillStyle = "#ffe6a0"; ctx.textAlign = "right";
       ctx.fillText(fmt(g.value) + " kr", x + w - 8, y);
     });
     ctx.fillStyle = "#9affc0"; ctx.textAlign = "left";
-    ctx.fillText("Verdi: " + fmt(total) + " kr", x + 8, top + headH + rows * rh + 7);
+    ctx.fillText(T("Verdi: {kr} kr", { kr: fmt(total) }), x + 8, top + headH + rows * rh + 7);
   }
   ctx.fillStyle = "#8a93b8"; ctx.font = "7px monospace"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
-  ctx.fillText("klikk for å lukke", x + w - 6, top + h - 7);
+  ctx.fillText(T("klikk for å lukke"), x + w - 6, top + h - 7);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 /* the silly collectibles you fish up — a little side-quest to complete the set */
@@ -4548,10 +4548,10 @@ function drawFunnPanel() {
   px(x, top, w, h, "rgba(14,12,22,0.96)");
   px(x, top, w, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("SKROTSAMLING", x + w / 2, top + 10);
+  ctx.fillText(T("SKROTSAMLING"), x + w / 2, top + 10);
   drawBackArrow(x, w, top);
   ctx.font = "7px monospace"; ctx.fillStyle = found === JUNK.length ? "#9affc0" : "#9aa6d0";
-  ctx.fillText(found === JUNK.length ? "Komplett! Du har funnet alt rart." : "Funn: " + found + "/" + JUNK.length + " typer", x + w / 2, top + 19);
+  ctx.fillText(found === JUNK.length ? T("Komplett! Du har funnet alt rart.") : T("Funn: {n}/{total} typer", { n: found, total: JUNK.length }), x + w / 2, top + 19);
   ctx.textBaseline = "middle";
   JUNK.forEach((j, i) => {
     const found = (save.junkFound || {})[j.key] || 0;
@@ -4560,10 +4560,10 @@ function drawFunnPanel() {
     if (has) drawJunkSprite(ctx, x + 14, y, 1.4, j.kind);
     ctx.textAlign = "left"; ctx.font = "8px monospace";
     ctx.fillStyle = has ? "#f0e6d0" : "#6a6472";
-    ctx.fillText(has ? j.name : "???", x + 28, y);
+    ctx.fillText(has ? T(j.name) : "???", x + 28, y);
     ctx.textAlign = "right";
     ctx.fillStyle = has ? "#ffe6a0" : "#6a6472";
-    ctx.fillText(has ? "×" + Math.max(1, found) : "ikke funnet", x + w - 8, y);
+    ctx.fillText(has ? "×" + Math.max(1, found) : T("ikke funnet"), x + w - 8, y);
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
@@ -4584,17 +4584,17 @@ function drawRecordsPanel() {
   // a faint centre crease so it reads like an open book
   px(x + w / 2, top + headH - 2, 1, fishRows * rh + 4, "rgba(202,164,106,0.18)");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("REKORDBOKA", x + w / 2, top + 10);
+  ctx.fillText(T("REKORDBOKA"), x + w / 2, top + 10);
   drawBackArrow(x, w, top);
   ctx.font = "7px monospace"; ctx.fillStyle = "#9aa6d0";
-  ctx.fillText(`Arter: ${caught}/${FISH.length}   Troféer: ${trophies}/${RARES.length}`, x + w / 2, top + 19);
+  ctx.fillText(T("Arter: {a}/{b}   Troféer: {c}/{d}", { a: caught, b: FISH.length, c: trophies, d: RARES.length }), x + w / 2, top + 19);
   ctx.textBaseline = "middle";
   FISH.forEach((f, i) => {
     const r = save.record[f.key];
     const has = r && r.count > 0;
     const cx = colX[i % 2], y = top + headH + Math.floor(i / 2) * rh + 6;
     ctx.font = "8px monospace"; ctx.textAlign = "left"; ctx.fillStyle = has ? "#f0e6d0" : "#6a6472";
-    ctx.fillText(has ? f.name : "???", cx, y);
+    ctx.fillText(has ? T(f.name) : "???", cx, y);
     ctx.textAlign = "right"; ctx.font = "7px monospace";
     if (has) { ctx.fillStyle = "#ffe6a0"; ctx.fillText(`${r.best.toFixed(1)}kg ×${r.count}`, cx + colW - 6, y); }
     else { ctx.fillStyle = "#6a6472"; ctx.fillText("—", cx + colW - 6, y); }
@@ -4602,16 +4602,16 @@ function drawRecordsPanel() {
   // trophy fish section
   const ty = top + headH + fishRows * rh + 9;
   ctx.textAlign = "center"; ctx.fillStyle = "#ffd877"; ctx.font = "bold 8px monospace";
-  ctx.fillText("— TROFÉFISK —", x + w / 2, ty);
+  ctx.fillText(T("— TROFÉFISK —"), x + w / 2, ty);
   RARES.forEach((f, i) => {
     const r = save.record[f.key];
     const has = r && r.count > 0;
     const cx = colX[i % 2], y = ty + 9 + Math.floor(i / 2) * rh;
     ctx.font = "8px monospace"; ctx.textAlign = "left"; ctx.fillStyle = has ? "#ffe6a0" : "#6a6472";
-    ctx.fillText(has ? "🏆 " + f.name : "🔒 ???", cx, y);
+    ctx.fillText(has ? "🏆 " + T(f.name) : "🔒 ???", cx, y);
     ctx.textAlign = "right"; ctx.font = "7px monospace";
     if (has) { ctx.fillStyle = "#ffd877"; ctx.fillText(`${r.best.toFixed(1)}kg`, cx + colW - 6, y); }
-    else { ctx.fillStyle = "#6a6472"; ctx.fillText(f.locName, cx + colW - 6, y); }
+    else { ctx.fillStyle = "#6a6472"; ctx.fillText(T(f.locName), cx + colW - 6, y); }
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
@@ -4702,7 +4702,7 @@ function drawInspector() {
     px(bx, by, bw, 18, "rgba(14,12,22,0.95)");
     px(bx, by, bw, 2, inspector.fined ? "#d24a3a" : "#7dffb0");
     ctx.font = "7px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillStyle = "#9aa6d0"; ctx.fillText("Fiskeoppsynet:", bx + 4, by + 6);
+    ctx.fillStyle = "#9aa6d0"; ctx.fillText(T("Fiskeoppsynet:"), bx + 4, by + 6);
     ctx.fillStyle = inspector.fined ? "#ffb0a0" : "#dfe6ff"; ctx.fillText(inspector.line, bx + 4, by + 13);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   }
@@ -5112,7 +5112,7 @@ function drawBuddy(x, y, face, walk, bottle, fish, sub, ea) {
     // raising the dram toward you
     px(x + 5, y - 25, 4, 8, "#2f4a6a"); px(x + 7, y - 30, 4, 5, "#e3b58c");
     px(x + 7, y - 36, 3, 7, "#9a7a3a"); px(x + 7, y - 37, 3, 2, "#caa84a");  // bottle
-    if (Math.sin(t * 8) > 0) { ctx.fillStyle = "#ffe6a0"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText("skaal!", x + 2, y - 40); ctx.textAlign = "left"; }
+    if (Math.sin(t * 8) > 0) { ctx.fillStyle = "#ffe6a0"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillText(T("skaal!"), x + 2, y - 40); ctx.textAlign = "left"; }
   } else if (fish) {
     // holding a flapping fish triumphantly overhead
     px(x + 4, y - 29, 4, 8, "#2f4a6a"); px(x + 6, y - 35, 4, 5, "#e3b58c");
@@ -5195,7 +5195,7 @@ function drawGameEvent() {
   ctx.globalAlpha = a;
   px(x, y, w, 24, "rgba(14,12,22,0.9)"); px(x, y, w, 2, gameEvent.color); px(x, y, 3, 24, gameEvent.color);
   ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  ctx.fillStyle = gameEvent.color; ctx.font = "8px monospace"; ctx.fillText(gameEvent.title, x + 9, y + 8);
+  ctx.fillStyle = gameEvent.color; ctx.font = "8px monospace"; ctx.fillText(T(gameEvent.title), x + 9, y + 8);
   ctx.fillStyle = "#dfe6ff"; ctx.font = "7px monospace"; ctx.fillText(gameEvent.line, x + 9, y + 17);
   ctx.globalAlpha = 1; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
@@ -5253,7 +5253,7 @@ function drawBuffHud() {
   let ry = y + 3;
   // FLAKS row: bonus % up top, a single time-remaining bar that drains cleanly
   if (showBuff) {
-    ctx.textAlign = "left"; ctx.fillStyle = "#f0e6d0"; ctx.fillText("FLAKS", x + 4, ry);
+    ctx.textAlign = "left"; ctx.fillStyle = "#f0e6d0"; ctx.fillText(T("FLAKS"), x + 4, ry);
     ctx.textAlign = "right"; ctx.fillStyle = buffCol; ctx.fillText("+" + Math.round(buff.luck * 100) + "%", x + w - 4, ry);
     const frac = clamp(buff.t / buff.dur, 0, 1);
     px(barX, ry + 7, barW, 2, "rgba(255,255,255,0.10)");
@@ -5264,8 +5264,8 @@ function drawBuffHud() {
   if (showDrunk) {
     const pulse = near ? 0.45 + 0.55 * Math.abs(Math.sin(t * 8)) : 1;
     ctx.globalAlpha = pulse;
-    ctx.textAlign = "left"; ctx.fillStyle = "#cfe0ff"; ctx.fillText("RUS", x + 4, ry);
-    ctx.textAlign = "right"; ctx.fillStyle = drunkCol; ctx.fillText(near ? "vingler!" : Math.round(dfrac * 100) + "%", x + w - 4, ry);
+    ctx.textAlign = "left"; ctx.fillStyle = "#cfe0ff"; ctx.fillText(T("RUS"), x + 4, ry);
+    ctx.textAlign = "right"; ctx.fillStyle = drunkCol; ctx.fillText(near ? T("vingler!") : Math.round(dfrac * 100) + "%", x + w - 4, ry);
     px(barX, ry + 7, barW, 2, "rgba(255,255,255,0.10)");
     px(barX, ry + 7, barW * dfrac, 2, drunkCol);
     ctx.globalAlpha = 1;
@@ -5333,7 +5333,7 @@ function drawMapTerrain() {
   ctx.strokeStyle = "#7a5a38"; ctx.lineWidth = 1; ctx.strokeRect(tx, ty, tw, 15);
   px(tx - 3, ty + 3, 3, 9, "rgba(140,112,70,0.6)"); px(tx + tw, ty + 3, 3, 9, "rgba(140,112,70,0.6)"); // scroll ends
   ctx.fillStyle = "#4a2f15"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("FISKEKARTET", W / 2, ty + 8);
+  ctx.fillText(T("FISKEKARTET"), W / 2, ty + 8);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   ctx.restore();
 }
@@ -5782,7 +5782,7 @@ function drawHatList(title, listKeys, isShop) {
   px(x, top, w, h, "rgba(14,12,22,0.96)");
   px(x, top, w, 3, "#ff8ad0");
   ctx.fillStyle = "#ffd0ec"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(title, x + w / 2, top + 11);
+  ctx.fillText(T(title), x + w / 2, top + 11);
   drawBackArrow(x, w, top);
   hatRowRects = [];
   ctx.textBaseline = "middle";
@@ -5799,15 +5799,15 @@ function drawHatList(title, listKeys, isShop) {
     // line 1: name (left) + status/price (right)
     ctx.font = "9px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = owned ? "#f0e6d0" : "#d4bcc8";
-    ctx.fillText(hat.name, rr.x + 26, rr.y + 8);
+    ctx.fillText(T(hat.name), rr.x + 26, rr.y + 8);
     ctx.textAlign = "right"; ctx.font = "8px monospace";
-    if (equipped) { ctx.fillStyle = "#9affc0"; ctx.fillText("i bruk", rr.x + rr.w - 6, rr.y + 8); }
-    else if (owned) { ctx.fillStyle = "#9aa6d0"; ctx.fillText("bruk \u203a", rr.x + rr.w - 6, rr.y + 8); }
+    if (equipped) { ctx.fillStyle = "#9affc0"; ctx.fillText(T("i bruk"), rr.x + rr.w - 6, rr.y + 8); }
+    else if (owned) { ctx.fillStyle = "#9aa6d0"; ctx.fillText(T("bruk \u203a"), rr.x + rr.w - 6, rr.y + 8); }
     else { ctx.fillStyle = save.money >= hat.cost ? "#ffe6a0" : "#a06a6a"; ctx.fillText(fmt(hat.cost) + " kr", rr.x + rr.w - 6, rr.y + 8); }
     // line 2: the little flaks bonus the hat carries (mostly cosmetic)
     ctx.textAlign = "left"; ctx.font = "7px monospace";
     ctx.fillStyle = hat.luck > 0 ? "#8ad0a0" : "#7a7a86";
-    ctx.fillText(hat.luck > 0 ? `+${Math.round(hat.luck * 100)}% flaks` : "ingen bonus \u2014 ren pynt", rr.x + 26, rr.y + 18);
+    ctx.fillText(hat.luck > 0 ? T("+{n}% flaks", { n: Math.round(hat.luck * 100) }) : T("ingen bonus \u2014 ren pynt"), rr.x + 26, rr.y + 18);
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
@@ -5818,12 +5818,12 @@ function buyOrEquipHat(hk) {
   const hat = HAT_BY_KEY[hk]; if (!hat) return;
   if ((save.hats || []).includes(hk)) {
     if (save.hat === hk) { sfxClink(); return; }
-    save.hat = hk; persist(); sfxClink(); setHint("Du tok p\u00e5 " + hat.name + "!");
+    save.hat = hk; persist(); sfxClink(); setHint(T("Du tok p\u00e5 {name}!", { name: T(hat.name) }));
     return;
   }
-  if (save.money < hat.cost) { sfxMiss(); setHint("Ikke nok penger til " + hat.name + " (" + fmt(hat.cost) + " kr)"); return; }
+  if (save.money < hat.cost) { sfxMiss(); setHint(T("Ikke nok penger til {name} ({kr} kr)", { name: T(hat.name), kr: fmt(hat.cost) })); return; }
   save.money -= hat.cost; save.hats.push(hk); save.hat = hk; persist(); refreshHUD();
-  sfxCoin(); playSample("buying", { vol: 0.6 }); setHint("Kj\u00f8pte og tok p\u00e5 " + hat.name + "! \ud83c\udfa9");
+  sfxCoin(); playSample("buying", { vol: 0.6 }); setHint(T("Kj\u00f8pte og tok p\u00e5 {name}! \ud83c\udfa9", { name: T(hat.name) }));
 }
 // open the seller's stall (also nudges her into the waiting pose so she sticks around)
 function openHatShop() {
@@ -6086,7 +6086,7 @@ function drawCat() {
     // little speech bubble
     ctx.globalAlpha = 0.85; px(bx - 14, by - 1, 30, 12, "rgba(14,12,22,0.85)"); px(bx - 2, by + 11, 3, 3, "rgba(14,12,22,0.85)");
     ctx.globalAlpha = a; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.fillStyle = "#ffd27a";
-    ctx.fillText("Trykk!", bx, by + 8);
+    ctx.fillText(T("Trykk!"), bx, by + 8);
     ctx.font = "9px monospace"; ctx.fillStyle = "#ff5a4a"; ctx.fillText("!", bx + 12, by + 8);
     ctx.globalAlpha = 1; ctx.textAlign = "left";
   }
@@ -6315,19 +6315,19 @@ function drawIntroBg() {
   drawIntroCat(tt);
   // dialogue arc: she steps out and asks where he's off to, he cheerfully says fishing, and THEN she blows up
   if (tt > IN.wifeAsk && tt < IN.manReply) {
-    drawIntroBubble(116, 150, ["Hvor skal du?"], "#ffd0a0");
+    drawIntroBubble(116, 150, [T("Hvor skal du?")], "#ffd0a0");
   } else if (tt >= IN.wifeThrowR && tt < IN.wifeThrowR + 2.4) {
-    const wifeLines = (Math.floor((tt - IN.wifeThrowR) / 1.0) % 2 === 0) ? ["FISKETUR?!", "IKKE TALE OM!"] : ["KOM DEG HJEM,", "DIN LATSABB!"];
+    const wifeLines = (Math.floor((tt - IN.wifeThrowR) / 1.0) % 2 === 0) ? [T("FISKETUR?!"), T("IKKE TALE OM!")] : [T("KOM DEG HJEM,"), T("DIN LATSABB!")];
     drawIntroBubble(116, 150, wifeLines, "#ff7a6a");
   }
   if (tt > IN.manReply && tt < IN.wifeThrowR + 0.4) {
     const fgx = clamp(lerp(96, 322, (tt - IN.walkStart) / (IN.walkEnd - IN.walkStart)), 104, 372);
-    drawIntroBubble(fgx, 170, ["P\u00e5 fisketur! \ud83c\udfa3"], "#9ad0ff");
+    drawIntroBubble(fgx, 170, [T("P\u00e5 fisketur! \ud83c\udfa3")], "#9ad0ff");
   }
   // oblivious to the chaos, he calls back a cheery goodbye as the truck rolls away
   if (tt >= IN.driveS + 0.3 && tt < IN.driveS + 2.8) {
     const bx = clamp(introTruckX(tt) - 14, 60, 300);
-    drawIntroBubble(bx, 150, ["Hjem til middag,", "skatt! \ud83c\udfa3"], "#9ad0ff");
+    drawIntroBubble(bx, 150, [T("Hjem til middag,"), T("skatt! \ud83c\udfa3")], "#9ad0ff");
   }
   // closing title once the truck has rolled off
   const titleA = clamp((tt - 16) / 1.6, 0, 1);
@@ -6341,10 +6341,10 @@ function drawIntroBg() {
     const pa = 0.6 + 0.4 * Math.sin(t * 3);
     px(W / 2 - 96, 124, 192, 26, "rgba(14,12,22,0.72)");
     ctx.globalAlpha = pa; ctx.fillStyle = "#ffe6a0"; ctx.font = "9px monospace";
-    ctx.fillText("Klikk for \u00e5 begynne \u2666", W / 2, 137); ctx.globalAlpha = 1;
+    ctx.fillText(T("Klikk for \u00e5 begynne \u2666"), W / 2, 137); ctx.globalAlpha = 1;
   } else if (titleA < 1) {
     ctx.fillStyle = "rgba(230,224,180,0.6)"; ctx.font = "7px monospace";
-    ctx.fillText("klikk for \u00e5 hoppe over \u203a", W / 2, H - 10);
+    ctx.fillText(T("klikk for \u00e5 hoppe over \u203a"), W / 2, H - 10);
   }
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   drawVignette();
