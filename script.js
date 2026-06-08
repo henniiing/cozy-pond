@@ -1358,6 +1358,8 @@ const newGameNameEl = $("newGameName");
 if (newGameNameEl) {
   newGameNameEl.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); confirmNewGame(); } });
 }
+const scoreSearchEl = $("scoreSearch");
+if (scoreSearchEl) scoreSearchEl.addEventListener("input", applyScoreFilter);
 syncVolUI();
 
 /* =========================================================================
@@ -1416,8 +1418,14 @@ function playSlot(slot) {
 function deleteSlot(slot) {
   slot = parseInt(slot, 10);
   if (!(slot >= 0 && slot < SLOT_COUNT)) return;
-  if (!confirm(`Slette spillet i Plass ${slot + 1}? Dette kan ikke angres.`)) return;
+  const sum = slotSummary(slot);
+  const nm = sum && sum.name ? cleanName(sum.name) : "";
+  const warn = `Slette spillet i Plass ${slot + 1}?`
+    + (nm ? ` ${nm} fjernes også fra den globale topplista.` : "")
+    + ` Dette kan ikke angres.`;
+  if (!confirm(warn)) return;
   try { localStorage.removeItem(slotKey(slot)); } catch (e) {}
+  if (nm) removeFromLeaderboard(nm);            // pull the player off the global board too
   if (slot === currentSlot) {                    // wipe the live game back to a fresh start
     save = loadSave(slot);
     persist();
@@ -1459,10 +1467,18 @@ function promptNewGame(slot) {
   const input = $("newGameName");
   if (input) { input.value = ""; setTimeout(() => { try { input.focus(); } catch (e) {} }, 60); }
 }
-function confirmNewGame() {
+async function confirmNewGame() {
   const input = $("newGameName");
   const name = cleanName(input ? input.value : "");
-  if (!name) { if (input) { try { input.focus(); } catch (e) {} } return; }
+  const st = $("newGameStatus");
+  if (!name) { if (st) st.textContent = "Skriv inn et navn først."; if (input) { try { input.focus(); } catch (e) {} } return; }
+  if (st) st.textContent = "Sjekker navnet …";
+  if (await nameTaken(name)) {                  // best-effort: don't let two fishers share a name
+    if (st) st.textContent = "Navnet er allerede tatt — velg et annet.";
+    if (input) { try { input.focus(); } catch (e) {} }
+    return;
+  }
+  if (st) st.textContent = "";
   const slot = pendingNewSlot >= 0 ? pendingNewSlot : currentSlot;
   if (slot !== currentSlot) {                    // switch into a different fresh slot
     persist();
@@ -1587,6 +1603,7 @@ const SCORE_PROXIES = [
   { url: (u) => "https://thingproxy.freeboard.io/fetch/" + u, unwrap: (t) => t },
 ];
 let scoresBusy = false;
+let scoreData = { mastery: [], biggest: [] };   // full fetched boards, kept for scroll + search
 
 // turn the local save into the two board values + a human summary line
 function computeScore() {
@@ -1634,16 +1651,50 @@ function parseDreamlo(txt) {
   return arr.filter((e) => e && typeof e === "object");   // never let null/blank rows through to render
 }
 
-function renderScoreList(elId, entries, valFn) {
+function renderScoreList(elId, entries, valFn, filter) {
   const el = $(elId); if (!el) return;
-  const me = cleanName(save.playerName);
+  const me = cleanName(save.playerName).toLowerCase();
   if (!entries.length) { el.innerHTML = '<li class="score-empty">Ingen poeng ennå — bli den første!</li>'; return; }
-  el.innerHTML = entries.slice(0, 15).map((e) => {
+  let rows = entries.map((e, i) => ({ e, rank: i + 1 }));   // rank = position in the full sorted board
+  if (filter) rows = rows.filter(({ e }) => (e.name || "").toString().toLowerCase().includes(filter));
+  else rows = rows.slice(0, 100);                            // show the top 100; search reaches the rest
+  if (!rows.length) { el.innerHTML = '<li class="score-empty">Ingen treff.</li>'; return; }
+  el.innerHTML = rows.map(({ e, rank }) => {
     const name = (e.name || "").toString();
-    const mine = me && name.toLowerCase() === me.toLowerCase();
+    const mine = me && name.toLowerCase() === me;
     const sub = (e.text || "").toString();
-    return `<li class="score-row${mine ? " me" : ""}"><span class="s-name" title="${escapeHtml(sub)}">${escapeHtml(name)}</span><span class="s-val">${valFn(e)}</span></li>`;
+    return `<li class="score-row${mine ? " me" : ""}"><span class="s-rank">${rank}</span><span class="s-name" title="${escapeHtml(sub)}">${escapeHtml(name)}</span><span class="s-val">${valFn(e)}</span></li>`;
   }).join("");
+}
+
+// re-render both boards from the cached data, honouring the search box
+function applyScoreFilter() {
+  const q = (($("scoreSearch") && $("scoreSearch").value) || "").trim().toLowerCase();
+  renderScoreList("listMastery", scoreData.mastery, (e) => fmt(parseInt(e.score, 10) || 0) + " p", q);
+  renderScoreList("listBiggest", scoreData.biggest, (e) => ((parseInt(e.seconds, 10) || 0) / 1000).toFixed(2) + " kg", q);
+}
+
+// where does the current player sit on a board? 0 = not on it
+function findRank(entries) {
+  const me = cleanName(save.playerName).toLowerCase();
+  if (!me) return 0;
+  const i = entries.findIndex((e) => (e.name || "").toString().toLowerCase() === me);
+  return i >= 0 ? i + 1 : 0;
+}
+
+// the personal summary line at the top of the score screen, incl. live ranking
+function renderMyScore() {
+  const my = $("myScore"); if (!my) return;
+  const sc = computeScore();
+  if (sc.score <= 0) { my.textContent = "Fang noen fisk først, så havner du på topplista!"; return; }
+  let line = `Din poengsum: ${fmt(sc.score)} p · ${sc.species} arter · ${sc.trophies} troféer`;
+  if (sc.biggestName) line += ` · største ${sc.biggestName} ${sc.biggestKg.toFixed(2)} kg`;
+  const r1 = findRank(scoreData.mastery), r2 = findRank(scoreData.biggest);
+  const ranks = [];
+  if (r1) ranks.push(`#${r1} Storfiskeren`);
+  if (r2) ranks.push(`#${r2} Største fangst`);
+  if (ranks.length) line += ` — du er ${ranks.join(" og ")}`;
+  my.textContent = line;
 }
 
 function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -1654,11 +1705,13 @@ async function loadScores() {
   if (byBig) byBig.innerHTML = '<li class="score-empty">Laster …</li>';
   try {
     const [a, b] = await Promise.all([
-      proxyGet(DREAMLO_BASE + DREAMLO_PUBLIC + "/json/0/15"),
-      proxyGet(DREAMLO_BASE + DREAMLO_PUBLIC + "/json-seconds/0/15"),
+      proxyGet(DREAMLO_BASE + DREAMLO_PUBLIC + "/json/0/500"),
+      proxyGet(DREAMLO_BASE + DREAMLO_PUBLIC + "/json-seconds/0/500"),
     ]);
-    renderScoreList("listMastery", parseDreamlo(a), (e) => fmt(parseInt(e.score, 10) || 0) + " p");
-    renderScoreList("listBiggest", parseDreamlo(b), (e) => ((parseInt(e.seconds, 10) || 0) / 1000).toFixed(2) + " kg");
+    scoreData.mastery = parseDreamlo(a);
+    scoreData.biggest = parseDreamlo(b);
+    applyScoreFilter();
+    renderMyScore();
   } catch (e) {
     const msg = '<li class="score-empty">Kunne ikke laste topplista.</li>';
     if (byScore) byScore.innerHTML = msg;
@@ -1670,11 +1723,8 @@ function openScores() {
   setScreen("scores");
   const input = $("playerName");
   if (input) input.value = save.playerName || "";
-  const sc = computeScore();
-  const my = $("myScore");
-  if (my) my.textContent = sc.score > 0
-    ? `Din poengsum: ${fmt(sc.score)} p · ${sc.species} arter · ${sc.trophies} troféer` + (sc.biggestName ? ` · største ${sc.biggestName} ${sc.biggestKg.toFixed(2)} kg` : "")
-    : "Fang noen fisk først, så havner du på topplista!";
+  const search = $("scoreSearch"); if (search) search.value = "";
+  renderMyScore();
   const st = $("scoreStatus"); if (st) st.textContent = "";
   loadScores();
 }
@@ -1711,6 +1761,23 @@ async function autoSubmitScore() {
   if (sc.score <= 0) return;
   const url = DREAMLO_BASE + DREAMLO_PRIVATE + "/add/" + encodeURIComponent(name) + "/" + sc.score + "/" + sc.biggestG + "/" + encodeURIComponent(sc.text);
   try { await proxyGet(url); } catch (e) {}
+}
+
+// best-effort uniqueness: is this name already on the global board? a network failure counts as free
+async function nameTaken(name) {
+  const target = cleanName(name).toLowerCase();
+  if (!target) return false;
+  try {
+    const entries = parseDreamlo(await proxyGet(DREAMLO_BASE + DREAMLO_PUBLIC + "/json/0/500"));
+    return entries.some((e) => (e.name || "").toString().toLowerCase() === target);
+  } catch (e) { return false; }
+}
+
+// wipe a name off the global board (fired when a save slot is deleted)
+async function removeFromLeaderboard(name) {
+  const nm = cleanName(name);
+  if (!nm) return;
+  try { await proxyGet(DREAMLO_BASE + DREAMLO_PRIVATE + "/delete/" + encodeURIComponent(nm)); } catch (e) {}
 }
 
 /* =========================================================================

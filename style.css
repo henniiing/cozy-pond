@@ -787,6 +787,24 @@ canvas {
   min-height: 16px;
   margin-bottom: 6px;
 }
+.score-search {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto 10px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(120, 130, 200, 0.35);
+  background: rgba(14, 16, 30, 0.6);
+  color: #eef2ff;
+  font-size: clamp(12px, 1.6vw, 14px);
+  text-align: center;
+}
+.score-search:focus {
+  outline: none;
+  border-color: #ffd65a;
+}
+.score-search::placeholder { color: #8089ab; }
 .score-lists {
   display: flex;
   gap: 16px;
@@ -816,7 +834,8 @@ canvas {
   list-style: none;
   margin: 0;
   padding: 0;
-  counter-reset: rank;
+  max-height: 44vh;
+  overflow-y: auto;
 }
 .score-list li {
   display: flex;
@@ -826,13 +845,12 @@ canvas {
   border-bottom: 1px solid rgba(120, 130, 200, 0.14);
   font-size: clamp(12px, 1.6vw, 14px);
 }
-.score-list li.score-row::before {
-  counter-increment: rank;
-  content: counter(rank);
+.score-list li.score-row .s-rank {
   color: #8089ab;
   font-weight: 700;
-  min-width: 18px;
+  min-width: 24px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .score-list li.me {
   background: rgba(95, 214, 144, 0.14);
