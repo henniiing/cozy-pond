@@ -4952,7 +4952,7 @@ function startIntroMusic() {
   intro.nextYell = 1e9;         // no repeated shrieks any more — her recorded yell plays once, naturally
   intro.threw = false;
   // the furious wife's shriek from the doorway — played a single time and left to ring out
-  setTimeout(() => { if (intro.running && !muted) introMusicNode = playSample("scream", { vol: 1.0 }); }, 500);
+  setTimeout(() => { if (intro.running && !muted) introMusicNode = playSample("scream", { vol: 0.5 }); }, 500);
 }
 function stopIntroMusic() {
   if (introMusicNode) { stopSample(introMusicNode); introMusicNode = null; }
@@ -4965,7 +4965,7 @@ function introSting() {
 function womanYell() {
   // the furious wife in the doorway: her recorded scream plus a sharp sting
   if (introMusicNode) { stopSample(introMusicNode); introMusicNode = null; }
-  introMusicNode = playSample("scream", { vol: 1.0 });
+  introMusicNode = playSample("scream", { vol: 0.5 });
   blip(880, 0.09, "square", 0.05); blip(660, 0.12, "square", 0.04, 0.05);
 }
 function introTruckX(tt) { if (tt < IN.driveS) return 372; const dx = tt - IN.driveS; return 372 + 10 * dx * dx; }
