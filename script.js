@@ -97,6 +97,7 @@ function loadSave(slot) {
       if (!merged.hats.includes("straw")) merged.hats.unshift("straw");
       if (!merged.hats.includes(merged.hat)) merged.hat = "straw";
       // the Skrotsamling remembers every junk type you've ever landed, even after you sell it to the fence
+      if (!merged.junk || typeof merged.junk !== "object") merged.junk = {};
       if (!merged.junkSeen || typeof merged.junkSeen !== "object") merged.junkSeen = {};
       for (const k in (merged.junk || {})) if (merged.junk[k] > 0) merged.junkSeen[k] = true;
       // junkFound = how many of each curio you've reeled up in total (kept even after selling)
@@ -133,7 +134,7 @@ function slotSummary(slot) {
     return { money: s.money || 0, species, location: loc, name: s.playerName || "" };
   } catch (e) { return null; }
 }
-const fmt = (n) => Math.round(n).toLocaleString("nb-NO");
+const fmt = (n) => Math.round(Number.isFinite(n) ? n : 0).toLocaleString("nb-NO");
 
 /* =========================================================================
    Fish + rods
@@ -1763,7 +1764,7 @@ function renderMyScore() {
   const sc = computeScore();
   if (sc.score <= 0) { my.textContent = T("Fang noen fisk først, så havner du på topplista!"); return; }
   let line = T("Din poengsum: {p} p · {species} arter · {trophies} troféer", { p: fmt(sc.score), species: sc.species, trophies: sc.trophies });
-  if (sc.biggestName) line += T(" · største {name} {kg} kg", { name: sc.biggestName, kg: sc.biggestKg.toFixed(2) });
+  if (sc.biggestName) line += T(" · største {name} {kg} kg", { name: T(sc.biggestName), kg: sc.biggestKg.toFixed(2) });
   const r1 = findRank(scoreData.mastery), r2 = findRank(scoreData.biggest);
   const ranks = [];
   if (r1) ranks.push(T("#{r} Storfiskeren", { r: r1 }));
@@ -6477,6 +6478,10 @@ if (!save.gated) {
 }
 if (!save.unlocked.includes("skogstjern")) save.unlocked.unshift("skogstjern");
 if (!Array.isArray(save.owned)) save.owned = [0];
+// keep rod data sane even if a save was hand-edited / from a future build: drop any owned index
+// that isn't a real rod, and snap an out-of-range equipped level back to a rod you actually own
+if (!Number.isInteger(save.rodLevel) || save.rodLevel < 0 || save.rodLevel >= RODS.length) save.rodLevel = 0;
+save.owned = save.owned.filter((i) => Number.isInteger(i) && i >= 0 && i < RODS.length);
 // legacy backfill: old saves only stored rodLevel, so grant ownership of the buyable ladder
 // up to it. The reward rod sits at a HIGH index but is NOT part of that ladder — equipping it
 // must never hand you every rod below it for free, so skip the backfill when it's equipped.
@@ -6484,6 +6489,7 @@ if (save.rodLevel !== REWARD_ROD_LEVEL) {
   for (let i = 0; i <= save.rodLevel; i++) if (!save.owned.includes(i)) save.owned.push(i);
 }
 if (!save.owned.includes(0)) save.owned.push(0);
+if (!save.owned.includes(save.rodLevel)) save.rodLevel = 0;
 if (!save.stock || typeof save.stock !== "object") save.stock = { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 };
 for (const k of ["beer", "snus", "cigar", "akevitt", "snabel"]) if (save.stock[k] == null) save.stock[k] = 0;
 if (!save.licenses || typeof save.licenses !== "object") save.licenses = {};
