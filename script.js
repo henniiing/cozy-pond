@@ -4388,27 +4388,38 @@ function drawEventActor() {
       break;
     }
     case "log": {
-      // a big log drifting across the open water, pushing a wake (kept well off the far grass edge)
-      const x = cross, y = WATER_Y + 32 + Math.sin(t * 2) * 1.5;
+      // a big log drifting across the OPEN water only — kept to the right of the seated angler so
+      // it never slides over him / the grassy foreground (which looked like it floated on land)
+      const LE = 150, RE = W + 28, span = RE - LE;
+      const x = dir > 0 ? LE + p * span : RE - p * span;
+      const edgeFade = clamp((x - LE) / 30, 0, 1);   // dip away softly before reaching the shore
+      ctx.globalAlpha = ea * edgeFade;
+      const y = WATER_Y + 30 + Math.sin(t * 2) * 1.5;
       ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
       px(x - 20, y - 3, 40, 7, "#6a4628"); px(x - 20, y - 3, 40, 2, "#7d5736");
       px(x - 20, y - 3, 4, 7, "#4a2e18"); px(x + 16, y - 3, 4, 7, "#8a6a45"); // dark / cut end
       px(x + 17, y - 2, 2, 2, "#a8855a"); px(x + 17, y, 2, 1, "#7d5736");      // end rings
       ctx.restore();
-      for (let i = 0; i < 3; i++) { ctx.globalAlpha = ea * 0.4; ctx.strokeStyle = "#b9c8ff"; ctx.beginPath(); ctx.ellipse(x - dir * 22, y + 3, 10 + i * 5, 3, 0, 0, 6.28); ctx.stroke(); }
+      for (let i = 0; i < 3; i++) { ctx.globalAlpha = ea * edgeFade * 0.4; ctx.strokeStyle = "#b9c8ff"; ctx.beginPath(); ctx.ellipse(x - dir * 22, y + 3, 10 + i * 5, 3, 0, 0, 6.28); ctx.stroke(); }
       ctx.globalAlpha = ea;
       break;
     }
     case "kayak": {
-      // a paddler zipping across the open water, paddle dipping side to side
-      const x = cross, y = WATER_Y + 22 + Math.sin(t * 3) * 1, pad = Math.sin(t * 8);
+      // a paddler on the OPEN water, paddle dipping side to side — same right-of-the-angler path so
+      // he stops gliding straight through where the main character is sitting
+      const LE = 150, RE = W + 28, span = RE - LE;
+      const x = dir > 0 ? LE + p * span : RE - p * span;
+      const edgeFade = clamp((x - LE) / 30, 0, 1);
+      ctx.globalAlpha = ea * edgeFade;
+      const y = WATER_Y + 20 + Math.sin(t * 3) * 1, pad = Math.sin(t * 8);
       ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
       px(x - 12, y, 24, 5, "#d24a3a"); px(x - 12, y, 24, 2, "#e86a54");        // hull
       px(x - 2, y - 7, 5, 7, "#ffd84a"); px(x - 1, y - 11, 3, 4, "#e8c098");   // torso + head
       ctx.strokeStyle = "#caa07a"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 8, y - 8 + pad * 3); ctx.lineTo(x + 8, y - 4 - pad * 3); ctx.stroke();
       px(x - 9, y - 9 + pad * 3, 3, 2, "#3a6a8a"); px(x + 7, y - 5 - pad * 3, 3, 2, "#3a6a8a"); // blades
       ctx.restore();
-      addRippleMaybe(x - dir * 12, y + 3);
+      ctx.globalAlpha = ea;
+      if (edgeFade > 0.5) addRippleMaybe(x - dir * 12, y + 3);
       break;
     }
     case "goldpan": {
