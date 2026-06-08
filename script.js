@@ -39,7 +39,7 @@ const SLOT_COUNT = 3;
 const SLOT_KEY = "cozyPond_slot";      // which slot is currently active (0..2)
 function slotKey(i) { return SAVE_KEY + "_s" + i; }
 function defaultSave() {
-  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "", hats: ["straw"], hat: "straw" };
+  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, junkSeen: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "", hats: ["straw"], hat: "straw" };
 }
 // one-time migration: fold the old single save into slot 0 the first time we boot the slot system
 function migrateSaves() {
@@ -62,6 +62,9 @@ function loadSave(slot) {
       if (!Array.isArray(merged.hats) || !merged.hats.length) merged.hats = ["straw"];
       if (!merged.hats.includes("straw")) merged.hats.unshift("straw");
       if (!merged.hats.includes(merged.hat)) merged.hat = "straw";
+      // the Skrotsamling remembers every junk type you've ever landed, even after you sell it to the fence
+      if (!merged.junkSeen || typeof merged.junkSeen !== "object") merged.junkSeen = {};
+      for (const k in (merged.junk || {})) if (merged.junk[k] > 0) merged.junkSeen[k] = true;
       // migrate the old single global licence count onto whichever water you were last at
       if (typeof s.license === "number" && s.license > 0) merged.licenses[merged.location] = (merged.licenses[merged.location] || 0) + s.license;
       delete merged.license;
@@ -114,12 +117,13 @@ const FISH = [
 ];
 const FISH_BY_KEY = Object.fromEntries(FISH.map((f) => [f.key, f]));
 
+// the shady fence in the market pays surprisingly well for this "worthless" scrap
 const JUNK = [
-  { key: "stovel", name: "Gammel støvel", junk: true, weight: 3, tag: "Passer ikke. Rett i samlingen!", kind: "boot" },
-  { key: "boks",   name: "Blikkboks",     junk: true, weight: 2, tag: "Pant? Niks. Men en kuriositet.", kind: "can" },
-  { key: "truse",  name: "Damestringtruse", junk: true, weight: 1.4, tag: "Øh… best å ikke spørre. Lommeboka gråter, samlingen jubler.", kind: "thong" },
-  { key: "and",    name: "Gummiand",      junk: true, weight: 1.6, tag: "Kvakk! En trofast badevenn.", kind: "duck" },
-  { key: "briller",name: "Gamle briller", junk: true, weight: 1.3, tag: "Noen ser nok dårlig nå. Fint funn!", kind: "glasses" },
+  { key: "stovel", name: "Gammel støvel", junk: true, weight: 3, tag: "Passer ikke. Rett i samlingen!", kind: "boot", kr: 70 },
+  { key: "boks",   name: "Blikkboks",     junk: true, weight: 2, tag: "Pant? Niks. Men en kuriositet.", kind: "can", kr: 55 },
+  { key: "truse",  name: "Damestringtruse", junk: true, weight: 1.4, tag: "Øh… best å ikke spørre. Lommeboka gråter, samlingen jubler.", kind: "thong", kr: 150 },
+  { key: "and",    name: "Gummiand",      junk: true, weight: 1.6, tag: "Kvakk! En trofast badevenn.", kind: "duck", kr: 90 },
+  { key: "briller",name: "Gamle briller", junk: true, weight: 1.3, tag: "Noen ser nok dårlig nå. Fint funn!", kind: "glasses", kr: 75 },
 ];
 
 const RODS = [
@@ -396,6 +400,17 @@ const marketNPCs = Array.from({ length: 4 }, (_, i) => ({
 }));
 const ripples = [];
 function addRipple(x, y, max = 14) { ripples.push({ x, y, r: 1, max, life: 1 }); }
+// the shady fence who lurks in the bottom-right corner of the market and buys your junk
+let fence = { state: "away", t: 0, timer: 8 + Math.random() * 14, psst: 0 };
+let fenceShop = false;            // his buy-menu is open
+let fenceRowRects = [];           // clickable rows in that menu
+const FENCE_X = 446, FENCE_Y = 212;   // his corner spot
+const FENCE_RECT = { x: FENCE_X - 9, y: FENCE_Y - 26, w: 20, h: 34 };
+// a sneaky little whistle to get your attention
+function fencePsst() {
+  noise(0.18, 4200, 0.05, "highpass");
+  setTimeout(() => { blip(880, 0.06, "sine", 0.03); blip(1180, 0.05, "sine", 0.028, 0.07); }, 90);
+}
 // occasional comical street happenings at the market
 let marketGag = { active: false, t: 0, dur: 0, kind: "", dir: 1, seed: 0 };
 let marketGagTimer = 4 + Math.random() * 6;
@@ -410,6 +425,11 @@ function startMarketGag() {
   else if (kind === "trip") setTimeout(() => { noise(0.12, 200, 0.08); blip(180, 0.1, "square", 0.05); }, 60);
   else if (kind === "rat") setTimeout(() => { blip(1900, 0.04, "square", 0.03); blip(2100, 0.03, "square", 0.025, 0.05); }, 150);
   else if (kind === "busker") { const tune = [523, 659, 784, 659, 587, 784]; tune.forEach((f, i) => blip(f, 0.18, "triangle", 0.05, 0.25 + i * 0.28)); }
+  else if (kind === "dog") setTimeout(() => { blip(330, 0.08, "square", 0.05); blip(280, 0.1, "square", 0.045, 0.16); }, 250);   // two gruff barks
+  else if (kind === "cat") setTimeout(() => { blip(620, 0.12, "sine", 0.045); setTimeout(() => blip(470, 0.18, "sine", 0.04), 130); }, 300);  // a lazy meow
+  else if (kind === "barrel") setTimeout(() => noise(0.9, 140, 0.05, "lowpass"), 120);   // a wooden barrel rumbling over cobbles
+  else if (kind === "balloon") setTimeout(() => { blip(900, 0.05, "sine", 0.025); blip(1100, 0.04, "sine", 0.022, 0.06); }, 200);  // a faint rubbery squeak
+  else if (kind === "couple") setTimeout(() => { blip(300, 0.05, "triangle", 0.02); blip(360, 0.05, "triangle", 0.02, 0.18); }, 700);  // distant chit-chat murmur
 }
 
 let wolfTimer = 30 + Math.random() * 50;
@@ -852,6 +872,13 @@ function canvasPress(p) {
   if (knockout.active) return;          // passed out cold — no fishing until he comes to
   if (screen === "intro") { if (!intro.running) startIntroPlayback(); else endIntro(); return; }
   if (screen === "market") {
+    // the shady fence's buy-menu takes priority while it's open
+    if (fenceShop) {
+      if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { fenceShop = false; sfxClink(); return; }
+      for (const rr of fenceRowRects) if (inRect(p.x, p.y, rr)) { sellJunkToFence(rr.key); return; }
+      return;
+    }
+    if (fence.state === "here" && inRect(p.x, p.y, FENCE_RECT)) { openFenceShop(); return; }
     if (inRect(p.x, p.y, MARKET_TRUCK)) { mapReturn = "market"; sfxHorn(); setScreen("map"); return; }
     if (inRect(p.x, p.y, FISH_STALL)) { setScreen("shopFish"); }
     else if (inRect(p.x, p.y, KIOSK_STALL)) { sfxKiosk(); setScreen("shopKiosk"); }
@@ -993,6 +1020,8 @@ function interactiveAt(p) {
   if (screen === "intro") return "play";
   if (screen === "menu") return null; // menu uses real DOM buttons
   if (screen === "market") {
+    if (fenceShop) { if (backBtnRect && inRect(p.x, p.y, backBtnRect)) return "btn"; for (const rr of fenceRowRects) if (inRect(p.x, p.y, rr)) return "btn"; return null; }
+    if (fence.state === "here" && inRect(p.x, p.y, FENCE_RECT)) return "btn";
     if (inRect(p.x, p.y, MARKET_TRUCK) || inRect(p.x, p.y, FISH_STALL) || inRect(p.x, p.y, KIOSK_STALL) || inRect(p.x, p.y, ROD_STALL) || inRect(p.x, p.y, CASINO_STALL) || inRect(p.x, p.y, LICENSE_BOOTH)) return "btn";
     return null;
   }
@@ -1113,7 +1142,7 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyF") toggleFullscreen();
   if (e.code === "Escape") {
     if (screen === "shopFish" || screen === "shopRod" || screen === "shopKiosk" || screen === "shopCasino") setScreen("market");
-    else if (screen === "market") startTravel(save.location);
+    else if (screen === "market") { if (fenceShop) { fenceShop = false; sfxClink(); } else startTravel(save.location); }
     else if (screen === "map") setScreen("game");
     else if (screen === "scores") setScreen(prevScreen === "menu" ? "menu" : "game");
     else if (screen === "slots") setScreen(prevScreen === "menu" ? "menu" : "game");
@@ -1519,6 +1548,9 @@ function setScreen(name) {
   if (name !== from) stopAllVoices();
   coolerMenu = false; truckMenu = false; rodPanel = false; bagPanel = false; recordsPanel = false; godsakerPanel = false; funnPanel = false; hatPanel = false; hatShop = false;
   if (name !== "game") { resetFishing(); stopRadio(); inspector.active = false; hatSeller.state = "away"; }
+  // the shady fence only haunts the market — reset him fresh each time you arrive
+  if (name !== "market") { fenceShop = false; }
+  if (name === "market" && from !== "market") { fence = { state: "away", t: 0, timer: 6 + Math.random() * 12, psst: 0 }; fenceShop = false; }
   // rod seller: hooooo on entry (sour until purchase), fart on the way out
   if (name === "shopRod" && from !== "shopRod") { speak("rodSpeech", "Hmf. Skal du kjøpe noe, eller bare glo?"); playSample("hoo", { vol: 0.45 }); rodGrumpyBuy = false; rodHop = 0; }
   if (from === "shopRod" && name !== "shopRod") playSample("fart", { vol: 0.7 });
@@ -1655,7 +1687,9 @@ function finalizeCatch() {
   const f = currentFish;
   if (f.junk) {
     save.junk = save.junk || {};
+    save.junkSeen = save.junkSeen || {};
     save.junk[f.key] = (save.junk[f.key] || 0) + 1;
+    save.junkSeen[f.key] = true;
     persist();
     currentCatch = { f, junk: true, tag: f.tag };
   } else {
@@ -2287,6 +2321,7 @@ function update(dt) {
     // a little comic relief now and then
     if (marketGag.active) { marketGag.t += dt; if (marketGag.t > marketGag.dur) marketGag.active = false; }
     else { marketGagTimer -= dt; if (marketGagTimer <= 0) { marketGagTimer = 6 + Math.random() * 9; startMarketGag(); } }
+    updateFence(dt);
   }
   if (screen === "shopCasino" && casino.spinning) {
     casino.t += dt;
@@ -3175,9 +3210,11 @@ function drawMarketBg() {
   // people strolling the street — drawn in FRONT of the stalls so they never vanish behind a booth
   for (const n of marketNPCs) drawMarketNPC(n);
   drawMarketGag();
+  drawFence();
   drawMarketTruck();
   drawMarketHover();
   drawFireflies(); drawVignette();
+  drawFenceShop();
 }
 // our own truck parked at the market — click it to drive back to the water
 function drawMarketTruck() {
@@ -3212,6 +3249,118 @@ function drawMarketTruck() {
   }
   ctx.strokeStyle = "#caa97a"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x + w - 6, y + 14); ctx.lineTo(x + w + 4, y - 1); ctx.stroke();
+}
+// ---- the shady fence in the bottom-right corner who buys your junk ----
+function updateFence(dt) {
+  fence.t += dt;
+  if (fence.psst > 0) fence.psst -= dt;
+  switch (fence.state) {
+    case "away":
+      fence.timer -= dt;
+      if (fence.timer <= 0 && !marketGag.active) { fence.state = "here"; fence.t = 0; fence.psst = 2.4; fencePsst(); }
+      break;
+    case "here":
+      if (fenceShop) { fence.t = 0; break; }              // he waits patiently while you browse
+      if (fence.psst <= 0 && Math.random() < dt * 0.22) { fence.psst = 1.8; fencePsst(); }  // a reminder whistle
+      if (fence.t > 16) { fence.state = "away"; fence.timer = 24 + Math.random() * 28; }    // slinks back into the shadows
+      break;
+  }
+}
+function openFenceShop() {
+  fenceShop = true; fence.state = "here"; fence.t = 0;
+  sfxClink();
+  setHint("\u201cPssst\u2026 vis mæ skrotet ditt.\u201d");
+}
+function sellJunkToFence(key) {
+  const j = JUNK.find((q) => q.key === key); if (!j) return;
+  const n = (save.junk || {})[key] || 0;
+  if (n <= 0) { sfxMiss(); return; }
+  const gain = j.kr * n;
+  save.junk[key] = 0;
+  save.money += gain;
+  persist(); refreshHUD();
+  sfxCoin(); setHint("Solgte " + n + "\u00d7 " + j.name + " for " + fmt(gain) + " kr! \ud83e\udd2b");
+}
+function drawFence() {
+  if (screen !== "market" || fence.state === "away") return;
+  const x = FENCE_X, y = FENCE_Y, prevA = ctx.globalAlpha;
+  const breathe = Math.sin(t * 1.5) * 0.5;
+  // shadow
+  ctx.globalAlpha = prevA * 0.32; ctx.fillStyle = "#0b0f1c";
+  ctx.beginPath(); ctx.ellipse(x, y + 7, 10, 3, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = prevA;
+  // legs (dark jeans) + scuffed shoes
+  px(x - 4, y - 1, 3, 8, "#24232f"); px(x + 1, y - 1, 3, 8, "#24232f");
+  px(x - 6, y + 6, 5, 2, "#14121a"); px(x + 1, y + 6, 5, 2, "#14121a");
+  // hoodie body
+  px(x - 6, Math.round(y - 13 + breathe), 12, 14, "#34313e"); px(x - 6, Math.round(y - 13 + breathe), 12, 2, "#3e3b4a");
+  // belly pocket with both hands tucked in
+  px(x - 5, y - 4, 10, 4, "#2a2833"); px(x - 4, y - 3, 3, 2, "#1c1a23"); px(x + 1, y - 3, 3, 2, "#1c1a23");
+  // hood up — face lost in shadow
+  px(x - 5, y - 22, 10, 10, "#34313e"); px(x - 5, y - 22, 10, 2, "#3e3b4a");
+  px(x - 6, y - 20, 1, 6, "#2a2833"); px(x + 5, y - 20, 1, 6, "#2a2833");   // hood sides
+  px(x - 3, y - 19, 6, 6, "#0d0c13");                                       // shadowed face hole
+  // shifty eye glints that flick side to side
+  const look = Math.sin(t * 0.8) > 0 ? 1 : 0;
+  px(x - 2 + look, y - 17, 1, 1, "#cfe0ff"); px(x + 1 + look, y - 17, 1, 1, "#cfe0ff");
+  // drawstrings dangling from the hood
+  px(x - 1, y - 12, 1, 3, "#cfc8b6"); px(x + 1, y - 12, 1, 3, "#cfc8b6");
+  // "pssst…" bubble + tap prompt while he's lurking
+  if (fence.psst > 0) {
+    const txt = "Pssst\u2026 psst\u2026";
+    ctx.font = "bold 7px monospace";
+    const bw = ctx.measureText(txt).width + 8;
+    const bx = clamp(x - bw + 6, 2, W - bw - 2), by = y - 36;
+    ctx.globalAlpha = prevA * clamp(fence.psst, 0, 1);
+    px(bx, by, bw, 11, "rgba(20,26,18,0.95)"); px(bx, by, bw, 2, "#6a9a5a");
+    px(x - 2, by + 11, 3, 3, "rgba(20,26,18,0.95)");
+    ctx.fillStyle = "#bfe6a0"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(txt, bx + bw / 2, by + 6);
+    ctx.globalAlpha = prevA;
+  }
+  if (!fenceShop) {
+    const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+    ctx.globalAlpha = prevA * (0.5 + pulse * 0.5);
+    ctx.fillStyle = "#9affc0"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(touchMode ? "Trykk" : "Klikk", x, y + 13);
+    ctx.globalAlpha = prevA;
+  }
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+// his discreet little buy-menu — same right-aligned format as the sekk + hat seller
+function drawFenceShop() {
+  if (!fenceShop) return;
+  const sellable = JUNK.filter((j) => ((save.junk || {})[j.key] || 0) > 0);
+  const rows = Math.max(1, sellable.length);
+  const w = 196, x = PANEL_R - w, rh = 21, top = 24, headH = 31;
+  const h = headH + rows * rh + 10;
+  px(x, top, w, h, "rgba(12,10,18,0.97)");
+  px(x, top, w, 3, "#6a9a5a");
+  ctx.fillStyle = "#bfe6a0"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("\u2026SKRAPHANDEL", x + w / 2, top + 10);
+  drawBackArrow(x, w, top);
+  ctx.font = "7px monospace"; ctx.fillStyle = "#9aa6d0";
+  ctx.fillText("Godt betalt. Ingen sp\u00f8rsm\u00e5l.", x + w / 2, top + 21);
+  fenceRowRects = [];
+  ctx.textBaseline = "middle";
+  if (!sellable.length) {
+    ctx.fillStyle = "#8a849a"; ctx.font = "8px monospace"; ctx.textAlign = "center";
+    ctx.fillText("Du har ikke noe skrot \u00e5 selge n\u00e5.", x + w / 2, top + headH + 8);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; return;
+  }
+  sellable.forEach((j, i) => {
+    const n = (save.junk || {})[j.key] || 0;
+    const ry = top + headH + i * rh;
+    const rr = { key: j.key, x: x + 4, y: ry, w: w - 8, h: rh - 3 };
+    fenceRowRects.push(rr);
+    px(rr.x, rr.y, rr.w, rr.h, "#1d2218"); px(rr.x, rr.y, rr.w, 1, "#3a4a2e");
+    const cy = rr.y + rr.h / 2;
+    drawJunkSprite(ctx, rr.x + 12, cy + 1, 1.3, j.kind);
+    ctx.font = "8px monospace"; ctx.textAlign = "left"; ctx.fillStyle = "#f0e6d0";
+    ctx.fillText(j.name + " \u00d7" + n, rr.x + 24, cy + 1);
+    ctx.textAlign = "right"; ctx.fillStyle = "#9affc0";
+    ctx.fillText(fmt(j.kr * n) + " kr \u203a", rr.x + rr.w - 6, cy + 1);
+  });
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 function drawMarketGag() {
   if (!marketGag.active) return;
@@ -3955,8 +4104,9 @@ function drawBagPanel() {
 /* the silly collectibles you fish up — a little side-quest to complete the set */
 function drawFunnPanel() {
   if (!funnPanel) return;
+  const seen = save.junkSeen || {};
   let found = 0;
-  for (const j of JUNK) if ((save.junk || {})[j.key] > 0) found++;
+  for (const j of JUNK) if (seen[j.key]) found++;
   const w = 200, x = PANEL_R - w, rh = 16, top = 30, headH = 26;
   const h = headH + JUNK.length * rh + 18;
   px(x, top, w, h, "rgba(14,12,22,0.96)");
@@ -3969,15 +4119,15 @@ function drawFunnPanel() {
   ctx.textBaseline = "middle";
   JUNK.forEach((j, i) => {
     const n = (save.junk || {})[j.key] || 0;
-    const has = n > 0;
+    const has = !!seen[j.key];
     const y = top + headH + i * rh + 8;
     if (has) drawJunkSprite(ctx, x + 14, y, 1.4, j.kind);
     ctx.textAlign = "left"; ctx.font = "8px monospace";
     ctx.fillStyle = has ? "#f0e6d0" : "#6a6472";
     ctx.fillText(has ? j.name : "???", x + 28, y);
     ctx.textAlign = "right";
-    ctx.fillStyle = has ? "#ffe6a0" : "#6a6472";
-    ctx.fillText(has ? "×" + n : "ikke funnet", x + w - 8, y);
+    ctx.fillStyle = has ? (n > 0 ? "#ffe6a0" : "#8a849a") : "#6a6472";
+    ctx.fillText(has ? (n > 0 ? "×" + n : "solgt") : "ikke funnet", x + w - 8, y);
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
