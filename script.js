@@ -32,6 +32,40 @@ const rodNameEl = $("rodName");
 const licenseStateEl = $("licenseState");
 
 /* =========================================================================
+   i18n — Norwegian default, optional English. Strings are keyed by their
+   Norwegian source text; T(s) returns s in Norwegian and the mapped value
+   in English. The English map lives in i18n.js (window.EN).
+   ========================================================================= */
+const LANG_KEY = "cozyPond_lang";
+let lang = localStorage.getItem(LANG_KEY) || "";   // "" = not chosen yet
+const DICT = (typeof window !== "undefined" && window.EN) ? window.EN : {};
+function T(s, vars) {
+  let out = (lang === "en" && DICT[s] != null) ? DICT[s] : s;
+  if (vars) for (const k in vars) out = out.split("{" + k + "}").join(vars[k]);
+  return out;
+}
+function applyLang() {
+  try { document.documentElement.setAttribute("lang", lang === "en" ? "en" : "no"); } catch (e) {}
+  document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = T(el.getAttribute("data-i18n")); });
+  document.querySelectorAll("[data-i18n-html]").forEach((el) => { el.innerHTML = T(el.getAttribute("data-i18n-html")); });
+  document.querySelectorAll("[data-i18n-ph]").forEach((el) => { el.setAttribute("placeholder", T(el.getAttribute("data-i18n-ph"))); });
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => { const v = T(el.getAttribute("data-i18n-title")); el.setAttribute("title", v); el.setAttribute("aria-label", v); });
+  const lt = document.getElementById("langToggle");
+  if (lt) lt.textContent = lang === "en" ? "Norsk" : "English";
+}
+function setLang(l) {
+  lang = (l === "en") ? "en" : "no";
+  try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+  applyLang();
+  // re-render anything that builds its own text from JS
+  try {
+    if (typeof refreshHUD === "function") refreshHUD();
+    if (typeof rebuildOpenShop === "function") rebuildOpenShop();
+    if (typeof syncStartButton === "function") syncStartButton();
+  } catch (e) {}
+}
+
+/* =========================================================================
    Save / economy
    ========================================================================= */
 const SAVE_KEY = "cozyPond_v1";        // legacy single-slot key (migrated to slot 0)
@@ -1546,6 +1580,29 @@ function doAction(a, data) {
     case "cancelNewGame": cancelNewGame(); break;
     case "toggleMute": toggleMute(); break;
     case "toggleFullscreen": toggleFullscreen(); break;
+    case "chooseLang": chooseLang(data.lang); break;
+    case "toggleLang": setLang(lang === "en" ? "no" : "en"); break;
+  }
+}
+
+// First-boot language picker → then continue into intro (new) or menu (returning).
+function chooseLang(l) {
+  setLang(l === "en" ? "en" : "no");
+  $("langSelect").classList.remove("active");
+  if (!save.seenIntro) { startIntro(); startIntroPlayback(); }
+  else setScreen("menu");
+}
+
+// Re-render whichever shop/list is currently open so its JS-built text follows the language.
+function rebuildOpenShop() {
+  switch (screen) {
+    case "shopFish": buildBasket(); break;
+    case "shopRod": buildRods(); break;
+    case "shopLicense": buildLicenses(); break;
+    case "shopKiosk": buildKiosk(); break;
+    case "shopCasino": buildCasino(); break;
+    case "slots": buildSlots(); break;
+    case "scores": try { applyScoreFilter(); } catch (e) {} break;
   }
 }
 
@@ -6381,9 +6438,20 @@ persist();
 setLocation(save.location || "skogstjern");
 refreshHUD();
 // "Fortsett" when there is saved progress, otherwise "Start spill"
-(function () {
+function syncStartButton() {
   const played = save.money > 0 || save.basket.length > 0 || save.rodLevel > 0 || save.location !== "skogstjern" || Object.keys(save.record || {}).length > 0;
-  const b = $("startBtn"); if (b) b.textContent = played ? "Fortsett" : "Start spill";
-})();
-if (!save.seenIntro) startIntro(); else setScreen("menu");
+  const b = $("startBtn"); if (b) b.textContent = played ? T("Fortsett") : T("Start spill");
+}
+syncStartButton();
+applyLang();
+const langToggleEl = $("langToggle");
+if (langToggleEl) langToggleEl.textContent = lang === "en" ? "Norsk" : "English";
+if (!lang) {
+  // first ever boot: pick a language before anything else
+  $("langSelect").classList.add("active");
+} else if (!save.seenIntro) {
+  startIntro();
+} else {
+  setScreen("menu");
+}
 requestAnimationFrame(loop);

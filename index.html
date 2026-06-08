@@ -14,13 +14,25 @@
   <div class="frame" id="frame">
     <canvas id="game" width="480" height="270"></canvas>
 
+    <!-- ===== Language select (first boot) ===== -->
+    <div id="langSelect" class="overlay">
+      <div class="panel center">
+        <h1 class="title">Cozy&nbsp;Pond</h1>
+        <p class="newgame-sub" data-i18n="Velg språk">Velg språk</p>
+        <div class="menu-buttons">
+          <button class="big-btn" data-action="chooseLang" data-lang="no">Norsk</button>
+          <button class="big-btn ghost" data-action="chooseLang" data-lang="en">English</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== In-game HUD (only on fishing screen) ===== -->
     <div id="hud" class="hud hidden">
       <div class="hud-left">
         <div class="coin"><span id="money">0</span> kr</div>
-        <div class="sub">Fangst: <span id="basketCount">0</span></div>
-        <div class="sub">Stang: <span id="rodName">Pinnestang</span></div>
-        <div class="sub" id="licenseHud">Fiskekort: <span id="licenseState">✓</span></div>
+        <div class="sub"><span data-i18n="Fangst:">Fangst:</span> <span id="basketCount">0</span></div>
+        <div class="sub"><span data-i18n="Stang:">Stang:</span> <span id="rodName">Pinnestang</span></div>
+        <div class="sub" id="licenseHud"><span data-i18n="Fiskekort:">Fiskekort:</span> <span id="licenseState">✓</span></div>
       </div>
       <div class="hud-right">
         <button class="icon-btn" data-action="openMenu" title="Meny" aria-label="Meny">☰</button>
@@ -39,11 +51,11 @@
     <!-- Reel HUD -->
     <div id="reel" class="reel hidden">
       <div class="bar">
-        <label>Innhaling</label>
+        <label data-i18n="Innhaling">Innhaling</label>
         <div class="track"><div id="progress" class="fill progress"></div></div>
       </div>
       <div class="bar">
-        <label>Linestramming</label>
+        <label data-i18n="Linestramming">Linestramming</label>
         <div class="track"><div id="tension" class="fill tension"></div></div>
       </div>
     </div>
@@ -53,7 +65,7 @@
       <div class="catch-name" id="catchName">Abbor</div>
       <div class="catch-info" id="catchInfo">0.8 kg · 32 kr</div>
       <div class="catch-tag" id="catchTag"></div>
-      <div class="catch-cont">Klikk for å fortsette</div>
+      <div class="catch-cont" data-i18n="Klikk for å fortsette">Klikk for å fortsette</div>
     </div>
 
     <!-- ===== Start menu ===== -->
@@ -68,71 +80,72 @@
       <div class="panel center">
         <h1 class="title">Cozy&nbsp;Pond</h1>
         <div class="menu-buttons">
-          <button class="big-btn" id="startBtn" data-action="startGame">Start spill</button>
-          <button class="big-btn ghost" data-action="openSlots">Lagringsplasser</button>
-          <button class="big-btn ghost" data-action="openHelp">Hvordan spille</button>
-          <button class="big-btn ghost" data-action="openScores">Toppliste</button>
+          <button class="big-btn" id="startBtn" data-action="startGame" data-i18n="Start spill">Start spill</button>
+          <button class="big-btn ghost" data-action="openSlots" data-i18n="Lagringsplasser">Lagringsplasser</button>
+          <button class="big-btn ghost" data-action="openHelp" data-i18n="Hvordan spille">Hvordan spille</button>
+          <button class="big-btn ghost" data-action="openScores" data-i18n="Toppliste">Toppliste</button>
         </div>
-        <button class="link-btn" data-action="watchIntro">Se introen igjen</button>
+        <button class="link-btn" data-action="watchIntro" data-i18n="Se introen igjen">Se introen igjen</button>
+        <button class="link-btn" data-action="toggleLang" id="langToggle">English</button>
       </div>
     </div>
 
     <!-- ===== Market hub ===== -->
     <div id="market" class="overlay market-overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="openMenu" title="Meny" aria-label="Meny">☰ Meny</button>
+        <button class="ui-btn" data-action="openMenu" title="Meny" aria-label="Meny" data-i18n="☰ Meny">☰ Meny</button>
         <div class="coin"><span class="moneyMirror">0</span> kr</div>
       </div>
-      <div class="market-hint">Klikk på en bod for å gå inn — eller bilen for å reise videre</div>
+      <div class="market-hint" data-i18n="Klikk på en bod for å gå inn — eller bilen for å reise videre">Klikk på en bod for å gå inn — eller bilen for å reise videre</div>
     </div>
 
     <!-- ===== Map ===== -->
     <div id="map" class="overlay market-overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="backFromMap">← Tilbake</button>
+        <button class="ui-btn" data-action="backFromMap" data-i18n="← Tilbake">← Tilbake</button>
         <div class="coin"><span class="moneyMirror">0</span> kr</div>
       </div>
-      <div class="market-hint">Klikk på et fiskevann — eller Markedet — for å reise dit</div>
+      <div class="market-hint" data-i18n="Klikk på et fiskevann — eller Markedet — for å reise dit">Klikk på et fiskevann — eller Markedet — for å reise dit</div>
     </div>
 
     <!-- ===== Help ===== -->
     <div id="help" class="overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="backFromHelp">← Tilbake</button>
+        <button class="ui-btn" data-action="backFromHelp" data-i18n="← Tilbake">← Tilbake</button>
       </div>
       <div class="help-body">
-        <h2>Hvordan spille</h2>
-        <p><b>Fiske:</b> Klikk i vannet (eller trykk mellomrom) for å kaste ut. Vent på napp — små rykk er bare lureri. Klikk i det duppen dras skikkelig under for å kroke fisken.</p>
-        <p><b>Sveiv inn:</b> Hold inne for å dra fisken nærmere, men slipp når den rykker hardt — ellers ryker lina. Store og sjeldne fisk slåss hardest. Hvert vann skjuler en svær troféfisk.</p>
-        <p><b>Reise:</b> Kjør pickupen bak deg for å åpne kartet. På kartet ser du fiskene som svømmer i hvert vann — snok rundt og klikk deg fram. Nye vann låses opp med penger (og hvert vann krever sitt eget fiskekort).</p>
-        <p><b>Markedet:</b> Selg fangsten hos dama, kjøp stenger hos gubben, fiskekort hos fiskeoppsynet og godsaker i kiosken. Prøv lykken i kasinoet om du tør.</p>
-        <p><b>Fiskekort &amp; bot:</b> Fisker oppsynet deg uten gyldig kort for vannet du står i, ryker 25 % av pengene i bot. Kortene dine ser du oppe til venstre.</p>
-        <p><b>Godsaker:</b> Alt fra kiosken gir midlertidig fiskeflaks — du ser den som <b>FLAKS</b>-baren nede til høyre (en tidslinje som teller ned). Drikke, snus og røyk fyller også <b>RUS</b>-baren: blander du for mye, begynner du å vingle, og går baren i taket, sovner du på bredden! Sekken ved siden av deg har også stang-bytte og fangstrekorder.</p>
-        <p><b>Småtteri:</b> Radioen spiller country mens du fisker, og katten din kan slå følge — men trykk på den om den prøver å snike til seg den minste fisken!</p>
+        <h2 data-i18n="Hvordan spille">Hvordan spille</h2>
+        <p data-i18n-html="<b>Fiske:</b> Klikk i vannet (eller trykk mellomrom) for å kaste ut. Vent på napp — små rykk er bare lureri. Klikk i det duppen dras skikkelig under for å kroke fisken."><b>Fiske:</b> Klikk i vannet (eller trykk mellomrom) for å kaste ut. Vent på napp — små rykk er bare lureri. Klikk i det duppen dras skikkelig under for å kroke fisken.</p>
+        <p data-i18n-html="<b>Sveiv inn:</b> Hold inne for å dra fisken nærmere, men slipp når den rykker hardt — ellers ryker lina. Store og sjeldne fisk slåss hardest. Hvert vann skjuler en svær troféfisk."><b>Sveiv inn:</b> Hold inne for å dra fisken nærmere, men slipp når den rykker hardt — ellers ryker lina. Store og sjeldne fisk slåss hardest. Hvert vann skjuler en svær troféfisk.</p>
+        <p data-i18n-html="<b>Reise:</b> Kjør pickupen bak deg for å åpne kartet. På kartet ser du fiskene som svømmer i hvert vann — snok rundt og klikk deg fram. Nye vann låses opp med penger (og hvert vann krever sitt eget fiskekort)."><b>Reise:</b> Kjør pickupen bak deg for å åpne kartet. På kartet ser du fiskene som svømmer i hvert vann — snok rundt og klikk deg fram. Nye vann låses opp med penger (og hvert vann krever sitt eget fiskekort).</p>
+        <p data-i18n-html="<b>Markedet:</b> Selg fangsten hos dama, kjøp stenger hos gubben, fiskekort hos fiskeoppsynet og godsaker i kiosken. Prøv lykken i kasinoet om du tør."><b>Markedet:</b> Selg fangsten hos dama, kjøp stenger hos gubben, fiskekort hos fiskeoppsynet og godsaker i kiosken. Prøv lykken i kasinoet om du tør.</p>
+        <p data-i18n-html="<b>Fiskekort &amp; bot:</b> Fisker oppsynet deg uten gyldig kort for vannet du står i, ryker 25 % av pengene i bot. Kortene dine ser du oppe til venstre."><b>Fiskekort &amp; bot:</b> Fisker oppsynet deg uten gyldig kort for vannet du står i, ryker 25 % av pengene i bot. Kortene dine ser du oppe til venstre.</p>
+        <p data-i18n-html="<b>Godsaker:</b> Alt fra kiosken gir midlertidig fiskeflaks — du ser den som <b>FLAKS</b>-baren nede til høyre (en tidslinje som teller ned). Drikke, snus og røyk fyller også <b>RUS</b>-baren: blander du for mye, begynner du å vingle, og går baren i taket, sovner du på bredden! Sekken ved siden av deg har også stang-bytte og fangstrekorder."><b>Godsaker:</b> Alt fra kiosken gir midlertidig fiskeflaks — du ser den som <b>FLAKS</b>-baren nede til høyre (en tidslinje som teller ned). Drikke, snus og røyk fyller også <b>RUS</b>-baren: blander du for mye, begynner du å vingle, og går baren i taket, sovner du på bredden! Sekken ved siden av deg har også stang-bytte og fangstrekorder.</p>
+        <p data-i18n-html="<b>Småtteri:</b> Radioen spiller country mens du fisker, og katten din kan slå følge — men trykk på den om den prøver å snike til seg den minste fisken!"><b>Småtteri:</b> Radioen spiller country mens du fisker, og katten din kan slå følge — men trykk på den om den prøver å snike til seg den minste fisken!</p>
       </div>
     </div>
 
     <!-- ===== Leaderboard ===== -->
     <div id="scores" class="overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="backFromScores">← Tilbake</button>
+        <button class="ui-btn" data-action="backFromScores" data-i18n="← Tilbake">← Tilbake</button>
       </div>
       <div class="scores-body">
-        <h2>Toppliste</h2>
+        <h2 data-i18n="Toppliste">Toppliste</h2>
         <div id="myScore" class="my-score"></div>
-        <p class="score-auto">Poengsummen din sendes inn automatisk når du kjører videre med pickupen.</p>
+        <p class="score-auto" data-i18n="Poengsummen din sendes inn automatisk når du kjører videre med pickupen.">Poengsummen din sendes inn automatisk når du kjører videre med pickupen.</p>
         <div id="scoreStatus" class="score-status"></div>
-        <input id="scoreSearch" class="score-search" type="text" placeholder="Søk etter navn …" autocomplete="off" spellcheck="false" />
+        <input id="scoreSearch" class="score-search" type="text" placeholder="Søk etter navn …" data-i18n-ph="Søk etter navn …" autocomplete="off" spellcheck="false" />
         <div class="score-lists">
           <div class="score-col">
-            <h3>🏆 Storfiskeren</h3>
-            <div class="score-sub">Arter + troféer + ferdighet</div>
-            <ol id="listMastery" class="score-list"><li class="score-empty">Laster …</li></ol>
+            <h3 data-i18n="🏆 Storfiskeren">🏆 Storfiskeren</h3>
+            <div class="score-sub" data-i18n="Arter + troféer + ferdighet">Arter + troféer + ferdighet</div>
+            <ol id="listMastery" class="score-list"><li class="score-empty" data-i18n="Laster …">Laster …</li></ol>
           </div>
           <div class="score-col">
-            <h3>🐋 Største fangst</h3>
-            <div class="score-sub">Din tyngste enkeltfisk</div>
-            <ol id="listBiggest" class="score-list"><li class="score-empty">Laster …</li></ol>
+            <h3 data-i18n="🐋 Største fangst">🐋 Største fangst</h3>
+            <div class="score-sub" data-i18n="Din tyngste enkeltfisk">Din tyngste enkeltfisk</div>
+            <ol id="listBiggest" class="score-list"><li class="score-empty" data-i18n="Laster …">Laster …</li></ol>
           </div>
         </div>
       </div>
@@ -141,13 +154,13 @@
     <!-- ===== New game (name entry) ===== -->
     <div id="newGame" class="overlay">
       <div class="panel center">
-        <h1 class="title">Nytt spill</h1>
-        <p class="newgame-sub">Hva heter fiskeren? Navnet vises på topplista.</p>
-        <input id="newGameName" class="name-input" maxlength="18" placeholder="Skriv navnet ditt" autocomplete="off" spellcheck="false" />
+        <h1 class="title" data-i18n="Nytt spill">Nytt spill</h1>
+        <p class="newgame-sub" data-i18n="Hva heter fiskeren? Navnet vises på topplista.">Hva heter fiskeren? Navnet vises på topplista.</p>
+        <input id="newGameName" class="name-input" maxlength="18" placeholder="Skriv navnet ditt" data-i18n-ph="Skriv navnet ditt" autocomplete="off" spellcheck="false" />
         <div id="newGameStatus" class="score-status"></div>
         <div class="menu-buttons">
-          <button class="big-btn" data-action="confirmNewGame">Start fiskelivet</button>
-          <button class="link-btn" data-action="cancelNewGame">Avbryt</button>
+          <button class="big-btn" data-action="confirmNewGame" data-i18n="Start fiskelivet">Start fiskelivet</button>
+          <button class="link-btn" data-action="cancelNewGame" data-i18n="Avbryt">Avbryt</button>
         </div>
       </div>
     </div>
@@ -155,11 +168,11 @@
     <!-- ===== Save slots ===== -->
     <div id="slots" class="overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="backFromSlots">← Tilbake</button>
+        <button class="ui-btn" data-action="backFromSlots" data-i18n="← Tilbake">← Tilbake</button>
       </div>
       <div class="slots-body">
-        <h2>Lagringsplasser</h2>
-        <p class="slots-sub">Du kan ha opptil tre spill gående samtidig. Velg en plass for å spille, eller start på nytt.</p>
+        <h2 data-i18n="Lagringsplasser">Lagringsplasser</h2>
+        <p class="slots-sub" data-i18n="Du kan ha opptil tre spill gående samtidig. Velg en plass for å spille, eller start på nytt.">Du kan ha opptil tre spill gående samtidig. Velg en plass for å spille, eller start på nytt.</p>
         <div id="slotList" class="slot-list"></div>
       </div>
     </div>
@@ -167,16 +180,16 @@
     <!-- ===== Fish shop (the lady) ===== -->
     <div id="shopFish" class="overlay shop-overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="openMarket">← Marked</button>
+        <button class="ui-btn" data-action="openMarket" data-i18n="← Marked">← Marked</button>
         <div class="coin"><span class="moneyMirror">0</span> kr</div>
       </div>
       <div class="shop-body">
         <div class="speech" id="ladySpeech">Hei, kjekken… har du noe fint til meg i dag?</div>
         <div class="basket-panel">
-          <h2>Fangsten din</h2>
+          <h2 data-i18n="Fangsten din">Fangsten din</h2>
           <div id="basketList" class="basket-list"></div>
-          <div class="basket-total">Totalt: <span id="basketTotal">0</span> kr</div>
-          <button class="big-btn" id="sellAllBtn" data-action="sellAll">Selg alt</button>
+          <div class="basket-total"><span data-i18n="Totalt:">Totalt:</span> <span id="basketTotal">0</span> kr</div>
+          <button class="big-btn" id="sellAllBtn" data-action="sellAll" data-i18n="Selg alt">Selg alt</button>
         </div>
       </div>
     </div>
@@ -184,13 +197,13 @@
     <!-- ===== Rod shop (grumpy man) ===== -->
     <div id="shopRod" class="overlay shop-overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="openMarket">← Marked</button>
+        <button class="ui-btn" data-action="openMarket" data-i18n="← Marked">← Marked</button>
         <div class="coin"><span class="moneyMirror">0</span> kr</div>
       </div>
       <div class="shop-body">
         <div class="speech grumpy" id="rodSpeech">Hmf. Skal du kjøpe noe, eller bare glo?</div>
         <div class="rod-panel">
-          <h2>Fiskeutstyr</h2>
+          <h2 data-i18n="Fiskeutstyr">Fiskeutstyr</h2>
           <div id="rodList" class="rod-list"></div>
         </div>
       </div>
@@ -199,15 +212,15 @@
     <!-- ===== License shop (the warden) ===== -->
     <div id="shopLicense" class="overlay shop-overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="openMarket">← Marked</button>
+        <button class="ui-btn" data-action="openMarket" data-i18n="← Marked">← Marked</button>
         <div class="coin"><span class="moneyMirror">0</span> kr</div>
       </div>
       <div class="shop-body">
         <div class="speech" id="licenseSpeech">God dag! Skal det være et gyldig fiskekort? Husk — fiskeoppsynet er ute og går.</div>
         <div class="rod-panel">
-          <h2>Fiskekort</h2>
+          <h2 data-i18n="Fiskekort">Fiskekort</h2>
           <div id="licenseList" class="rod-list"></div>
-          <p class="inv-sub">Hvert vann krever sitt eget kort. Uten gyldig kort risikerer du bot fra fiskeoppsynet.</p>
+          <p class="inv-sub" data-i18n="Hvert vann krever sitt eget kort. Uten gyldig kort risikerer du bot fra fiskeoppsynet.">Hvert vann krever sitt eget kort. Uten gyldig kort risikerer du bot fra fiskeoppsynet.</p>
         </div>
       </div>
     </div>
@@ -215,15 +228,15 @@
     <!-- ===== Kiosk (alcohol / snus / cigars) ===== -->
     <div id="shopKiosk" class="overlay shop-overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="openMarket">← Marked</button>
+        <button class="ui-btn" data-action="openMarket" data-i18n="← Marked">← Marked</button>
         <div class="coin"><span class="moneyMirror">0</span> kr</div>
       </div>
       <div class="shop-body">
         <div class="speech" id="kioskSpeech">Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske.</div>
         <div class="rod-panel">
-          <h2>Kiosken</h2>
+          <h2 data-i18n="Kiosken">Kiosken</h2>
           <div id="kioskList" class="rod-list"></div>
-          <p class="inv-sub">Bruk varene fra sekken mens du fisker — de gir midlertidig fiskeflaks.</p>
+          <p class="inv-sub" data-i18n="Bruk varene fra sekken mens du fisker — de gir midlertidig fiskeflaks.">Bruk varene fra sekken mens du fisker — de gir midlertidig fiskeflaks.</p>
         </div>
       </div>
     </div>
@@ -231,18 +244,18 @@
     <!-- ===== Casino (roulette) ===== -->
     <div id="shopCasino" class="overlay shop-overlay">
       <div class="topbar">
-        <button class="ui-btn" data-action="openMarket">← Marked</button>
+        <button class="ui-btn" data-action="openMarket" data-i18n="← Marked">← Marked</button>
         <div class="coin"><span class="moneyMirror">0</span> kr</div>
       </div>
       <div class="casino-body">
         <div class="speech" id="casinoSpeech">Welcome, my friend! Sett på rød eller svart.</div>
         <div class="casino-controls">
           <div class="cas-row">
-            <button class="cas-col red active" data-action="casinoColor" data-color="red">Rød</button>
-            <button class="cas-col black" data-action="casinoColor" data-color="black">Svart</button>
-            <button class="cas-col green" data-action="casinoColor" data-color="green">Grønn 0</button>
+            <button class="cas-col red active" data-action="casinoColor" data-color="red" data-i18n="Rød">Rød</button>
+            <button class="cas-col black" data-action="casinoColor" data-color="black" data-i18n="Svart">Svart</button>
+            <button class="cas-col green" data-action="casinoColor" data-color="green" data-i18n="Grønn 0">Grønn 0</button>
           </div>
-          <div class="cas-hint">Hjulet har 0–36. Rød eller svart gir <b>dobbelt</b>. Den grønne <b>0</b> er en langskudd-tipp — treffer du, betaler den <b>14×</b>!</div>
+          <div class="cas-hint" data-i18n-html="Hjulet har 0–36. Rød eller svart gir <b>dobbelt</b>. Den grønne <b>0</b> er en langskudd-tipp — treffer du, betaler den <b>14×</b>!">Hjulet har 0–36. Rød eller svart gir <b>dobbelt</b>. Den grønne <b>0</b> er en langskudd-tipp — treffer du, betaler den <b>14×</b>!</div>
           <div class="cas-row" id="casBets">
             <button class="cas-bet" data-action="casinoBet" data-amt="50">50</button>
             <button class="cas-bet active" data-action="casinoBet" data-amt="100">100</button>
@@ -260,11 +273,12 @@
   <div id="rotateHint" class="rotate-hint" aria-hidden="true">
     <div class="rotate-inner">
       <div class="rotate-icon">📱</div>
-      <h2>Snu telefonen</h2>
-      <p>Cozy&nbsp;Pond fiskes best i liggende modus.<br>Vri enheten til siden for full opplevelse.</p>
+      <h2 data-i18n="Snu telefonen">Snu telefonen</h2>
+      <p data-i18n-html="Cozy&nbsp;Pond fiskes best i liggende modus.<br>Vri enheten til siden for full opplevelse.">Cozy&nbsp;Pond fiskes best i liggende modus.<br>Vri enheten til siden for full opplevelse.</p>
     </div>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

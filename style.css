@@ -251,6 +251,14 @@ canvas {
   display: flex;
 }
 
+/* First-boot language picker sits above everything else */
+#langSelect {
+  z-index: 50;
+  background: rgba(8, 9, 18, 0.92);
+  align-items: center;
+  justify-content: center;
+}
+
 /* Market = transparent so the pixel-art scene shows; click stalls on canvas */
 .market-overlay {
   background: none;
