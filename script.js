@@ -294,7 +294,7 @@ let mapReturn = "game";                   // where the map's «back» button ret
 let travel = { key: null, t: 0, dur: 2.8, toName: "" };
 // one-time opening cinematic (poor farm boy leaves the farm to go fishing)
 let intro = { t: 0, running: false, enginePlayed: false, rodSfx: false };
-const IN = { walkStart: 1.4, walkEnd: 7.2, throwS: 7.2, throwE: 8.2, climbS: 8.6, climbE: 10.2, engine: 10.4, driveS: 11.2, end: 18.6, wifeThrowS: 3.2, wifeThrowE: 3.7, wifeThrowR: 3.7, wifeThrowL: 5.0 };
+const IN = { walkStart: 1.2, walkEnd: 7.6, throwS: 7.6, throwE: 8.6, climbS: 9.0, climbE: 10.6, engine: 10.8, driveS: 11.6, end: 18.6, wifeOut: 2.6, wifeAsk: 2.9, manReply: 4.4, wifeThrowS: 5.2, wifeThrowE: 5.7, wifeThrowR: 5.7, wifeThrowL: 6.9 };
 function startTravel(key) {
   travel.key = key; travel.t = 0;
   travel.toName = key === "market" ? "Markedet" : ((LOCATIONS.find((l) => l.key === key) || {}).name || "");
@@ -474,6 +474,31 @@ function wail(f0, f1, dur, vol = 0.12, type = "sawtooth", when = 0) {
   lfo.connect(lg).connect(o.frequency);
   o.connect(g).connect(masterGain || audioCtx.destination);
   o.start(tt); o.stop(tt + dur + 0.05); lfo.start(tt); lfo.stop(tt + dur + 0.05);
+}
+// a cheerful whistled note — pure sine with a tiny scoop-in and light vibrato (the old man strolling off to fish)
+function whistleNote(freq, dur, when = 0, vol = 0.05) {
+  if (muted || !audioCtx) return;
+  const tt = audioCtx.currentTime + when;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = "sine";
+  o.frequency.setValueAtTime(freq * 0.94, tt);                       // little upward scoop into the note
+  o.frequency.linearRampToValueAtTime(freq, tt + Math.min(0.06, dur * 0.4));
+  const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
+  lfo.type = "sine"; lfo.frequency.value = 6; lg.gain.value = freq * 0.012;  // gentle vibrato
+  lfo.connect(lg).connect(o.frequency);
+  g.gain.setValueAtTime(0.0001, tt);
+  g.gain.exponentialRampToValueAtTime(vol, tt + 0.03);
+  g.gain.setValueAtTime(vol, tt + dur * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.0001, tt + dur);
+  o.connect(g).connect(masterGain || audioCtx.destination);
+  o.start(tt); o.stop(tt + dur + 0.03); lfo.start(tt); lfo.stop(tt + dur + 0.03);
+}
+// a happy little walking tune; returns its total length so the caller can loop it
+const WHISTLE_TUNE = [[988, 0.24], [1175, 0.24], [1319, 0.34], [1175, 0.24], [988, 0.34], [880, 0.24], [988, 0.5], [0, 0.3], [1175, 0.24], [1319, 0.24], [1175, 0.34], [988, 0.5], [0, 0.55]];
+function playWhistleTune(vol = 0.05) {
+  let when = 0;
+  for (const [f, d] of WHISTLE_TUNE) { if (f > 0) whistleNote(f, d * 0.92, when, vol); when += d; }
+  return when;
 }
 
 /* ---- recorded samples (mp3 files in /lyder) ---- */
@@ -2080,18 +2105,28 @@ function update(dt) {
   if (screen === "intro") {
     if (intro.running) {
       intro.t += dt;
-      // the wife keeps shrieking from the doorway until he's climbing into the truck
-      if (intro.t >= (intro.nextYell || 1e9) && intro.t < IN.climbS) {
-        womanYell(); intro.nextYell = intro.t + 2.4 + Math.random() * 1.3;
+      // the old man strolls off whistling a happy tune — loop it while he walks to the truck
+      if (intro.t >= (intro.nextWhistle || 1e9) && intro.t < IN.climbS) {
+        const len = playWhistleTune(0.05); intro.nextWhistle = intro.t + len + 0.4;
       }
-      // she hurls a pot after him once he's a few steps away
+      // she hurls a pot after him — and THIS is when her furious shriek lands (the loud peak), timed to the throw
       if (!intro.threw && intro.t >= IN.wifeThrowR) {
         intro.threw = true;
+        if (!muted) { if (introMusicNode) { stopSample(introMusicNode); } introMusicNode = playSample("scream", { vol: 0.62 }); }  // only her brøl, on the throw
         blip(300, 0.12, "triangle", 0.06); setTimeout(() => blip(180, 0.1, "square", 0.05), 120);   // whoosh
         setTimeout(() => { blip(140, 0.08, "sawtooth", 0.06); blip(90, 0.12, "square", 0.05); }, ((IN.wifeThrowL - IN.wifeThrowR) * 1000) | 0);  // smash
       }
+      // the cat, trotting after him, is startled by all the shrieking — it puffs up and hisses
+      if (!intro.catHiss && intro.t >= IN.wifeThrowR + 0.35) { intro.catHiss = true; if (!muted) playSample("catAngry", { vol: 0.45 }); }
+      // the pot whizzes right past his head — his happy whistle comically stumbles into a sour note, then he obliviously carries on
+      if (!intro.sourNote && intro.t >= IN.wifeThrowL - 0.4) {
+        intro.sourNote = true; intro.nextWhistle = intro.t + 1.1;   // pause the cheerful tune for the stumble
+        whistleNote(1320, 0.14, 0, 0.06); whistleNote(560, 0.26, 0.14, 0.06); whistleNote(740, 0.16, 0.42, 0.05);   // "wheeoo-oop" deflate
+      }
       if (!intro.rodSfx && intro.t >= IN.throwS) { intro.rodSfx = true; sfxThrow(); }
       if (!intro.enginePlayed && intro.t >= IN.engine) { intro.enginePlayed = true; startEngine(); }
+      // oblivious to the wreckage behind him, he gives two cheery parting honks as he rolls off
+      if (!intro.honked && intro.t >= IN.driveS + 0.4) { intro.honked = true; blip(440, 0.16, "square", 0.06); setTimeout(() => blip(392, 0.2, "square", 0.06), 220); }
       if (intro.t >= IN.end) endIntro();
     }
     return;
@@ -4944,16 +4979,17 @@ function endIntro() {
   stopIntroMusic(); stopEngine();
   setScreen("menu");
 }
-// no folk tune any more — the old man is being chased off by his furious wife,
-// so the intro runs on dramatic stings and her screaming (lyder/Red girl screaming loud.mp3)
+// the old man heads off fishing whistling a happy tune; his wife only storms out and shrieks
+// once she hears WHERE he's going — her recorded brøl (lyder/Red girl screaming loud.mp3) lands on the pot-throw
 let introMusicNode = null;
 function startIntroMusic() {
   stopIntroMusic();
-  introSting();                 // ominous opening hit as the door flies open
-  intro.nextYell = 1e9;         // no repeated shrieks any more — her recorded yell plays once, naturally
+  intro.nextYell = 1e9;         // no doorway shrieking — her one furious yell now lands on the throw
   intro.threw = false;
-  // the furious wife's shriek from the doorway — played a single time and left to ring out
-  setTimeout(() => { if (intro.running && !muted) introMusicNode = playSample("scream", { vol: 0.5 }); }, 500);
+  intro.catHiss = false;        // the cat gets spooked by the commotion
+  intro.sourNote = false;       // his cheerful whistle stumbles when the pot whizzes by
+  intro.honked = false;         // a cheeky parting honk as he drives off
+  intro.nextWhistle = 0.2;      // he's whistling almost from the off
 }
 function stopIntroMusic() {
   if (introMusicNode) { stopSample(introMusicNode); introMusicNode = null; }
@@ -5019,7 +5055,15 @@ function drawIntroCat(tt) {
   else if (tt < IN.climbS) { cx = 300; walking = false; }
   else if (tt < IN.climbE + 0.3) { const k = clamp((tt - IN.climbS) / (IN.climbE + 0.3 - IN.climbS), 0, 1); cx = lerp(300, 348, k); jump = Math.sin(k * Math.PI) * 14; }
   else return; // tucked into the truck, off we go
+  // startled by the shrieking + flying pot: it freezes, springs up and a "!" pops over its head
+  const spook = tt >= IN.wifeThrowR && tt < IN.wifeThrowR + 1.1;
+  if (spook) { walking = false; jump += Math.max(0, Math.sin((tt - IN.wifeThrowR) / 1.1 * Math.PI)) * 7; }
   drawCatSprite(cx, cy - jump, walking, "#d9863a", "#b8662a", Math.sin(t * 12) * (walking ? 1 : 0.25));
+  if (spook) {
+    ctx.fillStyle = "#ffe066"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("!", cx, cy - jump - 18 + Math.sin(t * 16) * 1.2);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  }
 }
 // shared little tabby cat sprite (used in the intro and as the in-game companion)
 // dir: facing offset for tail sway; body/stripe are colours; gait = leg/tail animation
@@ -5439,15 +5483,18 @@ function drawCat() {
   }
 }
 function drawAngryWife(tt) {
-  // the furious wife (kjærringa) filling the doorway — tall, clearly a woman, shaking her fist
+  if (tt < IN.wifeOut) return;                       // she's still inside until she hears where he's off to
+  const A = clamp((tt - IN.wifeOut) / 0.5, 0, 1);    // steps out of the doorway
+  const furious = tt >= IN.manReply + 0.5;           // calm & curious until he says "fisketur", then (a beat later) livid
   const wx = 78, wy = 207;
-  const shake = Math.sin(t * 14) * 1.0;            // trembling with rage
-  // she winds up and hurls a pot around mid-intro, then keeps shaking her fist
+  const shake = furious ? Math.sin(t * 14) * 1.0 : Math.sin(t * 3) * 0.3;   // trembling with rage once furious
+  // she winds up and hurls a pot once she's furious, then keeps shaking her fist
   const throwing = tt >= IN.wifeThrowS && tt < IN.wifeThrowE;
   const wind = throwing ? clamp((tt - IN.wifeThrowS) / (IN.wifeThrowE - IN.wifeThrowS), 0, 1) : 0;
-  const armUp = throwing ? lerp(-6, 8, wind) : Math.sin(t * 8) * 3;   // arm swings down through the throw
+  const armUp = throwing ? lerp(-6, 8, wind) : (furious ? Math.sin(t * 8) * 3 : 6);   // arm rests down until she's angry
+  ctx.globalAlpha = A;
   // shadow
-  ctx.globalAlpha = 0.22; ctx.fillStyle = "#101810"; ctx.beginPath(); ctx.ellipse(wx, wy + 1, 8, 2, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.globalAlpha = A * 0.22; ctx.fillStyle = "#101810"; ctx.beginPath(); ctx.ellipse(wx, wy + 1, 8, 2, 0, 0, 6.28); ctx.fill(); ctx.globalAlpha = A;
   // long flared dress (clearly a long skirt)
   ctx.fillStyle = "#7a3a6a";
   ctx.beginPath(); ctx.moveTo(wx - 6 + shake * 0.4, wy - 26); ctx.lineTo(wx + 6 + shake * 0.4, wy - 26);
@@ -5467,27 +5514,34 @@ function drawAngryWife(tt) {
   ctx.strokeStyle = "#e8b896"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(wx - 4 + shake * 0.4, wy - 24); ctx.lineTo(ax, ay); ctx.stroke();
   px(ax - 2, ay - 2, 4, 4, "#e8b896");                          // fist
   if (throwing && wind < 0.5) { px(ax - 3, ay - 5, 6, 5, "#a85a3a"); px(ax - 3, ay - 5, 6, 1, "#c47049"); } // pot still in hand at wind-up
-  // head — flushed with fury
+  // head
   const hx = wx + shake, hy = wy - 36;
-  px(hx - 5, hy - 4, 11, 10, "#ec9a82"); px(hx - 5, hy + 5, 11, 1, "#cf7660");
+  px(hx - 5, hy - 4, 11, 10, furious ? "#ec9a82" : "#e8b08e"); px(hx - 5, hy + 5, 11, 1, "#cf7660");
   // long hair framing the face + flowing down (clearly feminine)
   ctx.fillStyle = "#5a3324";
   px(hx - 7, hy - 6, 15, 4, "#5a3324");                          // top
   px(hx - 7, hy - 2, 3, 13, "#5a3324"); px(hx + 5, hy - 2, 3, 13, "#5a3324");  // down both sides
   px(hx - 6, hy - 7, 13, 2, "#6e4030");                          // hair highlight
-  // angry eyes + furrowed brows + open yelling mouth
-  px(hx - 2, hy, 2, 2, "#2a1810"); px(hx + 3, hy, 2, 2, "#2a1810");
-  ctx.strokeStyle = "#3a2418"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(hx - 3, hy - 2); ctx.lineTo(hx, hy - 1); ctx.moveTo(hx + 6, hy - 2); ctx.lineTo(hx + 3, hy - 1); ctx.stroke();
-  px(hx, hy + 3, 6, 3, "#6e1c14"); px(hx + 1, hy + 4, 4, 1, "#b03a2a");
+  if (furious) {
+    // angry eyes + furrowed brows + open yelling mouth
+    px(hx - 2, hy, 2, 2, "#2a1810"); px(hx + 3, hy, 2, 2, "#2a1810");
+    ctx.strokeStyle = "#3a2418"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(hx - 3, hy - 2); ctx.lineTo(hx, hy - 1); ctx.moveTo(hx + 6, hy - 2); ctx.lineTo(hx + 3, hy - 1); ctx.stroke();
+    px(hx, hy + 3, 6, 3, "#6e1c14"); px(hx + 1, hy + 4, 4, 1, "#b03a2a");
+  } else {
+    // calm, curious face — small mouth, level eyes
+    px(hx - 2, hy, 2, 2, "#2a1810"); px(hx + 3, hy, 2, 2, "#2a1810");
+    px(hx + 1, hy + 4, 3, 1, "#a05a4a");
+  }
   // red lips/blush hint of make-up
   px(hx - 4, hy + 2, 1, 1, "#d06a6a"); px(hx + 6, hy + 2, 1, 1, "#d06a6a");
-  // pulsing anger-curse above her head while she yells
-  if (intro.running && Math.sin(t * 6) > -0.3) {
+  // pulsing anger-curse above her head once she's yelling
+  if (intro.running && furious && Math.sin(t * 6) > -0.3) {
     ctx.fillStyle = "#ff5a4a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText("#%@!", hx, hy - 12 + Math.sin(t * 8) * 1.5);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   }
+  ctx.globalAlpha = 1;
 }
 // the pot she hurls after the fleeing old man, arcing across the yard
 function drawWifeThrow(tt) {
@@ -5511,7 +5565,7 @@ function drawWifeThrow(tt) {
 }
 function drawFarmer(tt) {
   let gx, walking, alpha = 1;
-  if (tt < IN.walkStart) { gx = 96; walking = false; }
+  if (tt < IN.walkStart) { gx = lerp(82, 96, clamp(tt / IN.walkStart, 0, 1)); walking = tt > 0.3; alpha = clamp(tt / 0.6, 0, 1); }   // steps out of the doorway
   else if (tt < IN.walkEnd) { gx = lerp(96, 322, (tt - IN.walkStart) / (IN.walkEnd - IN.walkStart)); walking = true; }
   else if (tt < IN.climbS) { gx = 322; walking = false; }
   else { const k = clamp((tt - IN.climbS) / (IN.climbE - IN.climbS), 0, 1); gx = lerp(322, 358, k); walking = true; alpha = 1 - k * 0.9; }
@@ -5650,14 +5704,21 @@ function drawIntroBg() {
   if (tt >= IN.throwS && tt < IN.throwE) drawThrownRod(tt);
   if (tt < IN.climbE) drawFarmer(tt);
   drawIntroCat(tt);
-  // dialogue: he's off fishing (again!) and the wife is livid about it
-  if (tt > 0.4 && tt < 6.7) {
-    const wifeLines = (Math.floor(tt / 1.7) % 2 === 0) ? ["FISKETUR?!", "IKKE TALE OM!"] : ["KOM DEG HJEM,", "DIN LATSABB!"];
+  // dialogue arc: she steps out and asks where he's off to, he cheerfully says fishing, and THEN she blows up
+  if (tt > IN.wifeAsk && tt < IN.manReply) {
+    drawIntroBubble(116, 150, ["Hvor skal du?"], "#ffd0a0");
+  } else if (tt >= IN.wifeThrowR && tt < IN.wifeThrowR + 2.4) {
+    const wifeLines = (Math.floor((tt - IN.wifeThrowR) / 1.0) % 2 === 0) ? ["FISKETUR?!", "IKKE TALE OM!"] : ["KOM DEG HJEM,", "DIN LATSABB!"];
     drawIntroBubble(116, 150, wifeLines, "#ff7a6a");
   }
-  if (tt > IN.walkStart + 0.5 && tt < 6.4) {
+  if (tt > IN.manReply && tt < IN.wifeThrowR + 0.4) {
     const fgx = clamp(lerp(96, 322, (tt - IN.walkStart) / (IN.walkEnd - IN.walkStart)), 104, 372);
     drawIntroBubble(fgx, 170, ["P\u00e5 fisketur! \ud83c\udfa3"], "#9ad0ff");
+  }
+  // oblivious to the chaos, he calls back a cheery goodbye as the truck rolls away
+  if (tt >= IN.driveS + 0.3 && tt < IN.driveS + 2.8) {
+    const bx = clamp(introTruckX(tt) - 14, 60, 300);
+    drawIntroBubble(bx, 150, ["Hjem til middag,", "skatt! \ud83c\udfa3"], "#9ad0ff");
   }
   // closing title once the truck has rolled off
   const titleA = clamp((tt - 16) / 1.6, 0, 1);
