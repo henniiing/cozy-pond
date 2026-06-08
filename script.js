@@ -134,8 +134,11 @@ const RODS = [
   { name: "Splittbambusstang",     reel: 1.4,  tens: 0.7,  rare: 0.14, window: 1.24, cost: 7800, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
   { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.28, window: 1.3,  cost: 18000, color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
   { name: "Jettestanga",           reel: 1.62, tens: 0.6,  rare: 0.42, window: 1.38, cost: 40000, color: "#4a4a55", grip: "#23232c", tip: "#a0ffe0" },
+  // skjult easter-egg: fiksemannens egen lykkestang — finnes ikke i butikkhylla, gis når du fullfører guiden eller kjøper din første stang
+  { name: "Fiksemannens stang",     reel: 1.10, tens: 0.85, rare: 0.01, window: 1.0,  cost: 0,    color: "#b5894a", grip: "#5a2a1a", tip: "#ffe6a0", hidden: true, reward: true },
 ];
 const rod = () => RODS[save.rodLevel] || RODS[0];
+const REWARD_ROD_LEVEL = RODS.findIndex((r) => r.reward);
 
 /* =========================================================================
    Locations (each water has its own look + fish)
@@ -605,7 +608,7 @@ function stopEngine() {
   stopSample(engineNode); engineNode = null;
 }
 let frogTimer = 3 + Math.random() * 5, owlTimer = 10 + Math.random() * 14;
-let ladyIdleTimer = 3, rodIdleTimer = 4;
+let ladyIdleTimer = 3, rodIdleTimer = 12;
 // the fiskekort warden: a smug, profiteering bureaucrat who stamps papers and rubs his hands
 let licenseIdleTimer = 4, wardenStamp = 0, wardenScheme = 0, wardenLine = 0;
 const WARDEN_LINES = [
@@ -1760,10 +1763,11 @@ function setScreen(name) {
   if (name === "shopFish") buildBasket();
   if (name === "shopRod") {
     buildRods();
-    if (tutMarketStep() === 2) {   // gratis nybegynnerstang under opplaeringen
-      if (!save.owned.includes(1)) save.owned.push(1);
-      save.rodLevel = 1; persist();
-      speak("rodSpeech", "Her — en gratis Glassfiberstang til en grønnskolling. Ikke knekk den. Trykk ← Marked når du er klar.");
+    if (tutMarketStep() === 2) {   // belonning for a fullfore guiden: fiksemannens unike lykkestang
+      if (REWARD_ROD_LEVEL >= 0 && !save.owned.includes(REWARD_ROD_LEVEL)) save.owned.push(REWARD_ROD_LEVEL);
+      if (REWARD_ROD_LEVEL >= 0) save.rodLevel = REWARD_ROD_LEVEL;
+      persist();
+      speak("rodSpeech", "Fullførte du runden? Her — min egen gamle lykkestang. Den fås ikke kjøpt i butikken. Bruk den med stolthet. Trykk ← Marked.");
       buildRods(); refreshHUD();
       tutCompleteBooth(2);
     }
@@ -2017,9 +2021,13 @@ function buyRod(level) {
   if (!r) return;
   if (save.owned.includes(level)) { equipRod(level); return; }
   if (save.money < r.cost) { speak("rodSpeech", "Du har ikke råd. Kom igjen når du har penger. Hmf."); rodGrumpyBuy = false; sfxMiss(); return; }
-  save.money -= r.cost; save.owned.push(level); save.rodLevel = level; persist();
+  save.money -= r.cost; save.owned.push(level); save.rodLevel = level;
+  // easter egg: ved din aller forste handel stikker fiksemannen deg ogsa sin gamle lykkestang
+  let gotReward = false;
+  if (REWARD_ROD_LEVEL >= 0 && !save.owned.includes(REWARD_ROD_LEVEL)) { save.owned.push(REWARD_ROD_LEVEL); gotReward = true; }
+  persist();
   sfxCoin(); playSample("buying", { vol: 0.6 }); rodGrumpyBuy = true; rodHop = 1;
-  speak("rodSpeech", `«${r.name}». Endelig litt handel. Ikke knekk den, da.`);
+  speak("rodSpeech", gotReward ? `«${r.name}»! Og siden det var din første handel — ta min gamle lykkestang på kjøpet. Den finner du i sekken. Ikke si det til noen.` : `«${r.name}». Endelig litt handel. Ikke knekk den, da.`);
   buildRods(); refreshHUD();
 }
 function equipRod(level) {
@@ -2290,6 +2298,7 @@ function buildRods() {
   const list = $("rodList"); if (!list) return;
   list.innerHTML = "";
   RODS.forEach((r, i) => {
+    if (r.hidden) return;   // belonningsstangen vises aldri i kjopslisten
     const owned = save.owned.includes(i);
     const equipped = i === save.rodLevel;
     const row = document.createElement("div");
@@ -2499,7 +2508,7 @@ function update(dt) {
   }
   // chatty shopkeepers make idle noises
   if (screen === "shopFish") { ladyIdleTimer -= dt; if (ladyIdleTimer <= 0) { ladyIdleTimer = 4 + Math.random() * 5; sfxLady(); } }
-  if (screen === "shopRod") { rodIdleTimer -= dt; if (rodIdleTimer <= 0) { rodIdleTimer = 4.5 + Math.random() * 4; playSample("grumpyVoice", { vol: 0.5 }); } }
+  if (screen === "shopRod") { rodIdleTimer -= dt; if (rodIdleTimer <= 0) { rodIdleTimer = 16 + Math.random() * 12; playSample("grumpyVoice", { vol: 0.4 }); } }
   if (screen === "shopKiosk") { kioskIdleTimer -= dt; if (kioskIdleTimer <= 0) { kioskIdleTimer = 5 + Math.random() * 5; sfxKiosk(); } }
   // the warden idly stamps papers, mutters sly threats and rubs his hands
   if (wardenStamp > 0) wardenStamp = Math.max(0, wardenStamp - dt * 1.8);
@@ -3862,9 +3871,10 @@ function drawShopRodBg() {
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, "#2a2820"); g.addColorStop(1, "#181610"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   // wall with the actual rods for sale, each in its own colour
-  const n = RODS.length, gap = (W - 80) / n;
-  RODS.forEach((r, i) => {
-    const rx = 40 + gap * (i + 0.5), top = 44, bot = 146;
+  const visible = RODS.map((r, i) => ({ r, i })).filter((o) => !o.r.hidden);
+  const n = visible.length, gap = (W - 80) / n;
+  visible.forEach(({ r, i }, vi) => {
+    const rx = 40 + gap * (vi + 0.5), top = 44, bot = 146;
     const owned = save.owned.includes(i), equipped = i === save.rodLevel;
     // peg
     px(rx - 2, top - 6, 5, 5, "#7a5a3a");
@@ -3879,10 +3889,40 @@ function drawShopRodBg() {
     ctx.fillText(equipped ? "I BRUK" : (owned ? "EID" : fmt(r.cost) + "kr"), rx + 4, bot + 9);
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  drawRewardRodFrame();
   // counter
   px(60, 175, 360, 55, "#4a3a26"); px(60, 175, 360, 6, "#5e4a32");
   drawGrumpyMan(150, 148);
   drawVignette();
+}
+// easter egg: fiksemannens egen lykkestang innrammet i hjornet \u2014 silhuett til du har fortjent den
+function drawRewardRodFrame() {
+  if (REWARD_ROD_LEVEL < 0) return;
+  const er = RODS[REWARD_ROD_LEVEL];
+  const owned = save.owned.includes(REWARD_ROD_LEVEL), equipped = save.rodLevel === REWARD_ROD_LEVEL;
+  const fx = 442, fy = 18, fw = 28, fh = 70, cx = fx + fw / 2;
+  px(fx - 3, fy - 3, fw + 6, fh + 6, "#1c140c");          // outer frame
+  px(fx, fy, fw, fh, owned ? "#3a2c18" : "#15110a");      // backing
+  ctx.save();
+  if (!owned) ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = er.color; ctx.lineWidth = 2; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx - 4, fy + 9); ctx.quadraticCurveTo(cx + 5, fy + fh / 2, cx + 2, fy + fh - 9); ctx.stroke();
+  ctx.strokeStyle = er.grip; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - 4, fy + 9); ctx.lineTo(cx - 3, fy + 20); ctx.stroke();
+  px(cx - 5, fy + 7, 3, 3, er.tip);
+  ctx.restore();
+  ctx.lineWidth = 1; ctx.lineCap = "butt";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  if (owned) {
+    if (Math.sin(t * 3) > 0.7) px(cx, fy + 12, 2, 2, "#fff");   // little glint
+    ctx.fillStyle = equipped ? "#9affc0" : "#ffe6a0"; ctx.font = "6px monospace";
+    ctx.fillText(equipped ? "I BRUK" : "\u2605 EID", cx, fy + fh + 6);
+  } else {
+    ctx.fillStyle = "#6a5c40"; ctx.font = "bold 11px monospace";
+    ctx.fillText("?", cx, fy + fh / 2);
+    ctx.fillStyle = "#5a4e36"; ctx.font = "6px monospace";
+    ctx.fillText("?", cx, fy + fh + 6);
+  }
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 function drawShopKioskBg() {
   const g = ctx.createLinearGradient(0, 0, 0, H);
