@@ -170,7 +170,7 @@ const LOCATIONS = [
     rare: { key: "myrtroll", name: "Myrtrollet", min: 9, max: 22, kr: 90, shape: "long", body: "#3a4a2a", belly: "#5a6a38", fin: "#2a3520", pattern: "spots", spot: "#1a2410", seed: 999, tag: "Hva i alle dager?!" },
   },
   {
-    key: "elgtjern", name: "Elgtjernet", cost: 1500, desc: "Lyst sommertjern \u2014 elgen titter innom",
+    key: "elgtjern", name: "Elgtjernet", cost: 700, desc: "Lyst sommertjern \u2014 elgen titter innom",
     sky: ["#1b2c52", "#395a86", "#6f93b4", "#d6a878", "#f4d79a"],
     water: ["#2f6f72", "#1f5256", "#123638"],
     tree: "#1d3a22", moon: true, fog: 0.03, junk: 0.7, moose: true, summer: true,
