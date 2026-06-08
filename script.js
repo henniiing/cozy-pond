@@ -1289,7 +1289,7 @@ function drawHoverHighlight() {
   }
   ctx.globalAlpha = 1;
   // floating label
-  const label = HOVER_LABELS[hoverProp];
+  const label = T(HOVER_LABELS[hoverProp]);
   if (label) {
     ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const lw = ctx.measureText(label).width + 8, lx = r.x + r.w / 2, ly = r.y - 7;
@@ -1306,12 +1306,13 @@ function drawTouchHints() {
   const pulse = 0.55 + 0.45 * Math.sin(t * 3);
   ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (const [r, label] of [[TRUCK, "Reise"], [SEKK, "Sekk"], [RADIO, "Radio"]]) {
+    const L = T(label);
     const lx = r.x + r.w / 2, ly = r.y - 6;
-    const lw = ctx.measureText(label).width + 6;
+    const lw = ctx.measureText(L).width + 6;
     ctx.globalAlpha = 0.8;
     px(Math.round(lx - lw / 2), Math.round(ly - 5), Math.round(lw), 10, "rgba(14,12,22,0.7)");
     ctx.globalAlpha = 0.7 + 0.3 * pulse;
-    ctx.fillStyle = "#ffe6a0"; ctx.fillText(label, lx, ly);
+    ctx.fillStyle = "#ffe6a0"; ctx.fillText(L, lx, ly);
   }
   ctx.globalAlpha = 1; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
@@ -1325,6 +1326,7 @@ function marketTarget(p) {
   return null;
 }
 function drawMarketLabel(r, label, alpha) {
+  label = T(label);
   ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "top";
   const lx = r.x + r.w / 2, ly = r.y + r.h + 4, lw = ctx.measureText(label).width + 8;
   ctx.globalAlpha = alpha; px(Math.round(lx - lw / 2), ly - 1, Math.round(lw), 11, "rgba(14,12,22,0.82)");
@@ -1460,9 +1462,9 @@ function deleteSlot(slot) {
   if (!(slot >= 0 && slot < SLOT_COUNT)) return;
   const sum = slotSummary(slot);
   const nm = sum && sum.name ? cleanName(sum.name) : "";
-  const warn = `Slette spillet i Plass ${slot + 1}?`
-    + (nm ? ` ${nm} fjernes også fra den globale topplista.` : "")
-    + ` Dette kan ikke angres.`;
+  const warn = T("Slette spillet i Plass {n}?", { n: slot + 1 })
+    + (nm ? T(" {nm} fjernes også fra den globale topplista.", { nm }) : "")
+    + T(" Dette kan ikke angres.");
   if (!confirm(warn)) return;
   try { localStorage.removeItem(slotKey(slot)); } catch (e) {}
   if (nm) removeFromLeaderboard(nm);            // pull the player off the global board too
@@ -2806,12 +2808,12 @@ function update(dt) {
       bobber.sink = Math.min(10, bobber.sink + dt * 60);
       bobber.y = castTarget.y + bobber.sink;
       if (Math.random() < dt * 8) addRipple(bobber.x, bobber.y - bobber.sink, 10);
-      biteWindow -= dt; if (biteWindow <= 0) setMiss("Den slapp…");
+      biteWindow -= dt; if (biteWindow <= 0) setMiss(T("Den slapp…"));
       break;
     case "hooked": {
       const r = rod();
       // safety net: no fish fights forever — after a long struggle the line finally parts
-      if (stateTime > 40) { setMiss("Fisken rømte til slutt…"); break; }
+      if (stateTime > 40) { setMiss(T("Fisken rømte til slutt…")); break; }
       // how hard THIS fish fights, scaled by its actual weight (kg):
       // a small fish is a quick reel-in, a heavy trophy is a real battle
       // …it tires a LITTLE over time so the runs ease off a touch — but a true giant never
@@ -2857,7 +2859,7 @@ function update(dt) {
       tensionEl.style.width = tension + "%";
       tensionEl.classList.toggle("danger", tension > 70);
       if (progress >= 100) catchFish();
-      else if (tension >= 100) setMiss("Lina røk!");
+      else if (tension >= 100) setMiss(T("Lina røk!"));
       break;
     }
     case "reveal":
@@ -3572,11 +3574,11 @@ function drawMarketBg() {
   drawStall(SX[3], 110, "#5a2a4a", 90); drawCroupier(SX[3], 150); drawStallCounter(SX[3], 110, 90);
   drawStall(SX[4], 110, "#3a5a44", 90); drawLicenseWarden(SX[4], 150); drawStallCounter(SX[4], 110, 90);
   // wooden signs (no emoji)
-  drawSign(SX[0], 92, "FISKEHANDEL");
-  drawSign(SX[1], 92, "KIOSK");
-  drawSign(SX[2], 92, "FISKEUTSTYR");
-  drawSign(SX[3], 92, "KASINO");
-  drawSign(SX[4], 92, "FISKEKORT");
+  drawSign(SX[0], 92, T("FISKEHANDEL"));
+  drawSign(SX[1], 92, T("KIOSK"));
+  drawSign(SX[2], 92, T("FISKEUTSTYR"));
+  drawSign(SX[3], 92, T("KASINO"));
+  drawSign(SX[4], 92, T("FISKEKORT"));
   // people strolling the street — drawn in FRONT of the stalls so they never vanish behind a booth
   for (const n of marketNPCs) drawMarketNPC(n);
   drawMarketGag();
@@ -3691,7 +3693,7 @@ function drawFence() {
     const pulse = 0.5 + 0.5 * Math.sin(t * 6);
     ctx.globalAlpha = prevA * (0.5 + pulse * 0.5);
     ctx.fillStyle = "#9affc0"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(touchMode ? "Trykk" : "Klikk", x, y + 13);
+    ctx.fillText(touchMode ? T("Trykk") : T("Klikk"), x, y + 13);
     ctx.globalAlpha = prevA;
   }
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
@@ -4039,7 +4041,7 @@ function drawShopRodBg() {
     ctx.lineWidth = 1; ctx.lineCap = "butt";
     // little label
     ctx.fillStyle = owned ? "#9affc0" : "#cbb890"; ctx.font = "7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(equipped ? "I BRUK" : (owned ? "EID" : fmt(r.cost) + "kr"), rx + 4, bot + 9);
+    ctx.fillText(equipped ? T("I BRUK") : (owned ? T("EID") : fmt(r.cost) + "kr"), rx + 4, bot + 9);
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   drawRewardRodFrame();
@@ -4068,7 +4070,7 @@ function drawRewardRodFrame() {
   if (owned) {
     if (Math.sin(t * 3) > 0.7) px(cx, fy + 12, 2, 2, "#fff");   // little glint
     ctx.fillStyle = equipped ? "#9affc0" : "#ffe6a0"; ctx.font = "6px monospace";
-    ctx.fillText(equipped ? "I BRUK" : "\u2605 EID", cx, fy + fh + 6);
+    ctx.fillText(equipped ? T("I BRUK") : T("\u2605 EID"), cx, fy + fh + 6);
   } else {
     ctx.fillStyle = "#6a5c40"; ctx.font = "bold 11px monospace";
     ctx.fillText("?", cx, fy + fh / 2);
@@ -5934,7 +5936,7 @@ function drawHatSeller() {
   px(sx - 2, sy - 8, 5, 1, "#ffd23a"); px(sx - 1, sy - 10, 3, 2, "#ffd23a");   // yellow
   // speech bubble while she's around to be tapped
   if (hatSeller.state === "idle" || hatSeller.state === "approach") {
-    const txt = "Kj\u00f8pe hatt?!";
+    const txt = T("Kj\u00f8pe hatt?!");
     ctx.font = "bold 7px monospace";
     const bw = ctx.measureText(txt).width + 8;
     const bx = clamp(x - bw / 2, 2, W - bw - 2), by = y - 30;
@@ -5947,7 +5949,7 @@ function drawHatSeller() {
       const pulse = 0.5 + 0.5 * Math.sin(t * 6);
       ctx.globalAlpha = prevA * (0.5 + pulse * 0.5);
       ctx.fillStyle = "#ffd27a"; ctx.font = "7px monospace";
-      ctx.fillText(touchMode ? "Trykk!" : "Klikk!", x, y + 22);
+      ctx.fillText(touchMode ? T("Trykk!") : T("Klikk!"), x, y + 22);
       ctx.globalAlpha = prevA;
     }
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";

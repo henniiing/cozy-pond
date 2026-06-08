@@ -163,10 +163,37 @@ window.EN = {
   "Sjeldne fisk": "Rare fish",
   "I bruk": "In use",
   "Bruk": "Equip",
+  "I BRUK": "IN USE",
+  "EID": "OWNED",
+  "★ EID": "★ OWNED",
   "Fiksemannens egen — fra guiden eller din første stang · {base}": "The handyman's own — from the guide or your very first rod · {base}",
   "Gyldig — dekker {n} fangster til": "Valid — covers {n} more catches",
   "Mangler kort!": "No license!",
   "slipp bot fra fiskeoppsynet": "dodge the warden's fine",
+
+  /* ---- Hover / booth labels ---- */
+  "Reise": "Travel",
+  "Sekk": "Bag",
+  "Radio": "Radio",
+  "Selg fisk": "Sell fish",
+  "Kiosk": "Kiosk",
+  "Stenger": "Rods",
+  "Kasino": "Casino",
+  "Trykk": "Tap",
+  "Klikk": "Click",
+  "Klikk!": "Click!",
+  "Kjøpe hatt?!": "Buy a hat?!",
+
+  /* ---- Miss reasons & misc hints ---- */
+  "Den slapp…": "It got away…",
+  "Fisken rømte til slutt…": "The fish finally escaped…",
+  "Lina røk!": "The line snapped!",
+
+  /* ---- Delete slot confirm ---- */
+  "Slette spillet i Plass {n}?": "Delete the game in Slot {n}?",
+  " {nm} fjernes også fra den globale topplista.": " {nm} will also be removed from the global leaderboard.",
+  " Dette kan ikke angres.": " This can't be undone.",
+
 
   /* ---- Fish names ---- */
   "Abbor": "Perch",
@@ -483,6 +510,12 @@ window.EN = {
   "KREVES": "REQUIRED",
   "av alle som fisker": "of everyone who fishes",
   "FISKEKARTET": "THE FISHING MAP",
+
+  /* ---- Market booth signs ---- */
+  "FISKEHANDEL": "FISH STALL",
+  "KIOSK": "KIOSK",
+  "FISKEUTSTYR": "FISHING GEAR",
+  "KASINO": "CASINO",
 
   /* ---- Inspector ---- */
   "Fiskeoppsynet:": "The warden:",
