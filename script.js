@@ -179,6 +179,11 @@ const RODS = [
 ];
 const rod = () => RODS[save.rodLevel] || RODS[0];
 const REWARD_ROD_LEVEL = RODS.findIndex((r) => r.reward);
+// effective power tier used for fish-size scaling. The hidden reward rod sits at the END of the
+// array (highest index) but is a sentimental, modest rod — its stats mirror the tier-1 glassfiber.
+// Keying weight off the raw array index would silently hand it the top-tier big-fish curve, so the
+// reward rod reports a low tier instead, matching the weak stats shown in its shop row.
+const rodTier = () => (save.rodLevel === REWARD_ROD_LEVEL ? 1 : save.rodLevel);
 
 /* =========================================================================
    Locations (each water has its own look + fish)
@@ -274,7 +279,7 @@ function pickFish() {
 }
 
 function rollWeight(f) {
-  const p = Math.max(0.7, 1.8 - save.rodLevel * 0.22);
+  const p = Math.max(0.7, 1.8 - rodTier() * 0.22);
   return +(f.min + (f.max - f.min) * Math.pow(Math.random(), p)).toFixed(2);
 }
 // pick the weather for a fresh fishing session. Snowy/foggy waters lean misty;
