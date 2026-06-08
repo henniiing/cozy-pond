@@ -956,27 +956,29 @@ function drawTutorial() {
   if (!tutActive()) return;
   if (screen === "game") {
     if (save.tut === TUT_CAST) {
-      drawTutCard("Kast ut", tutWrap("Klikk i vannet for \u00e5 kaste ut. Vent p\u00e5 napp og klikk igjen for \u00e5 kroke fisken.", 284));
-    } else if (save.tut === TUT_BAG) {
-      if (coolerMenu) {
-        drawTutCard("Sekken din", [
-          "Godsaker   \u2013 \u00f8l, snus og r\u00f8yk som gir fiskeflaks.",
-          "Bytt stang \u2013 velg hvilken fiskestang du bruker.",
-          "Hatter     \u2013 bytt mellom luene du eier.",
-          "Se fangst  \u2013 fisken du har i sekken n\u00e5.",
-          "Rekorder   \u2013 dine st\u00f8rste fangster per art.",
-          "Skrotsamling \u2013 rare ting du har fisket opp.",
-        ], { next: "Neste \u203a" });
-      } else {
+      // hold kortet unna mens fisken avsl\u00f8res, ellers blir det rotete oppe i hj\u00f8rnet
+      if (fishState !== "reveal") drawTutCard("Kast ut", tutWrap("Klikk i vannet for \u00e5 kaste ut. Vent p\u00e5 napp og klikk igjen for \u00e5 kroke fisken.", 284));
+    } else if (save.tut === TUT_BAG && coolerMenu) {
+      drawTutCard("Sekken din", [
+        "Godsaker   \u2013 \u00f8l, snus og r\u00f8yk som gir fiskeflaks.",
+        "Bytt stang \u2013 velg hvilken fiskestang du bruker.",
+        "Hatter     \u2013 bytt mellom luene du eier.",
+        "Se fangst  \u2013 fisken du har i sekken n\u00e5.",
+        "Rekorder   \u2013 dine st\u00f8rste fangster per art.",
+        "Skrotsamling \u2013 rare ting du har fisket opp.",
+      ], { next: "Neste \u203a" });
+    } else if (fishState === "ready" && !coolerMenu && !godsakerPanel && !rodPanel && !hatPanel && !bagPanel && !recordsPanel && !funnPanel && !truckMenu && !hatShop) {
+      // resten av steg-hintene venter til lina er inne og ingen undermeny er \u00e5pen
+      if (save.tut === TUT_BAG) {
         tutRingRect(SEKK, 4);
         drawTutCard("Sekken din", tutWrap("Trykk p\u00e5 sekken ved foten din for \u00e5 \u00e5pne den.", 284));
+      } else if (save.tut === TUT_RADIO) {
+        tutRingRect(RADIO, 4);
+        drawTutCard("Radioen", tutWrap("Skru p\u00e5 radioen for litt koselig country mens du fisker.", 284));
+      } else if (save.tut === TUT_TRAVEL) {
+        tutRingRect(TRUCK, 4);
+        drawTutCard("Reis til markedet", tutWrap("Kj\u00f8r pickupen for \u00e5 \u00e5pne kartet, og velg Markedet for \u00e5 selge fisk og handle.", 284));
       }
-    } else if (save.tut === TUT_RADIO) {
-      tutRingRect(RADIO, 4);
-      drawTutCard("Radioen", tutWrap("Skru p\u00e5 radioen for litt koselig country mens du fisker.", 284));
-    } else if (save.tut === TUT_TRAVEL) {
-      tutRingRect(TRUCK, 4);
-      drawTutCard("Reis til markedet", tutWrap("Kj\u00f8r pickupen for \u00e5 \u00e5pne kartet, og velg Markedet for \u00e5 selge fisk og handle.", 284));
     }
   } else if (screen === "map") {
     if (save.tut === TUT_MAP) {
