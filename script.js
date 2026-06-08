@@ -894,7 +894,7 @@ const TUT_TASKS = [
   { r: FISH_STALL,    screen: "shopFish",    name: "Fiskehandel", go: "Klikk p\u00e5 fiskehandelen \u2014 her selger du fangsten.",        todo: "Trykk \u00abSelg alt\u00bb for \u00e5 selge fisken din." },
   { r: KIOSK_STALL,   screen: "shopKiosk",   name: "Kiosken",     go: "Klikk p\u00e5 kiosken for \u00e5 handle godsaker.",                  todo: "Kj\u00f8p en godsak \u2014 den gir deg fiskeflaks ute ved vannet." },
   { r: ROD_STALL,     screen: "shopRod",     name: "Fiskeutstyr", go: "Klikk p\u00e5 fiskeutstyret \u2014 du f\u00e5r en gratis stang!",      todo: "Gubben gir deg en gratis Glassfiberstang." },
-  { r: LICENSE_BOOTH, screen: "shopLicense", name: "Fiskekort",   go: "Klikk p\u00e5 fiskekort-boden.",                              todo: "Kj\u00f8p et gyldig fiskekort for vannet ditt." },
+  { r: LICENSE_BOOTH, screen: "shopLicense", name: "Fiskekort",   go: "Klikk p\u00e5 fiskekort-boden \u2014 du f\u00e5r et gratis startkort!",                              todo: "Oppsynsmannen gir deg et gratis fiskekort." },
   { r: CASINO_STALL,  screen: "shopCasino",  name: "Kasinoet",    go: "Klikk p\u00e5 kasinoet for \u00e5 pr\u00f8ve lykken.",                  todo: "Velg farge, sett innsats og spinn hjulet \u00e9n gang." },
 ];
 function tutActive() { return !!save.tut && save.tut !== TUT_DONE; }
@@ -1849,7 +1849,19 @@ function setScreen(name) {
       tutCompleteBooth(2);
     }
   }
-  if (name === "shopLicense") buildLicenses();
+  if (name === "shopLicense") {
+    buildLicenses();
+    // gratis startkort fra oppsynsmannen under guiden — sa en blakk tutorialspiller aldri laser seg ute med boter
+    if (tutMarketStep() === 3 && currentLicense() <= 0) {
+      save.licenses[save.location] = (save.licenses[save.location] || 0) + LICENSE_FREE_GRANT;
+      persist();
+      wardenStamp = 1; wardenScheme = 2.2; setTimeout(wardenStampSfx, 120);   // han stempler kortet og rekker det over
+      sfxCoin(); playSample("buying", { vol: 0.6 });
+      speak("licenseSpeech", `Her — et gratis startkort som dekker dine ${LICENSE_FREE_GRANT} første fangster. Da slipper du bot fra oppsynet. Trykk ← Marked.`);
+      buildLicenses(); refreshHUD();
+      tutCompleteBooth(3);
+    }
+  }
   if (name === "shopKiosk") buildKiosk();
   if (name === "slots") buildSlots();
   if (name === "shopCasino") { speak("casinoSpeech", "Welcome, my friend! Velg rød eller svart, sett innsatsen og spinn. Treffer fargen vinner du dobbelt — men pass deg for grønn null! 🎩"); buildCasino(); }
@@ -2118,7 +2130,7 @@ function equipRod(level) {
 function speak(id, text) { const e = $(id); if (e) e.textContent = text; }
 
 /* ---- fiskekort (fishing license) sold by the rod seller — one per water ---- */
-const LICENSE_GRANT = 60, LICENSE_FINE = 50, LICENSE_FINE_PCT = 0.25;
+const LICENSE_GRANT = 60, LICENSE_FINE = 50, LICENSE_FINE_PCT = 0.25, LICENSE_FREE_GRANT = 10;
 function licenseCostFor(key) {
   const l = LOCATIONS.find((x) => x.key === key) || LOCATIONS[0];
   return 50 + Math.round((l.cost || 0) / 16);   // pricier waters carry pricier permits
