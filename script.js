@@ -1837,6 +1837,13 @@ const LOCATION_EVENTS = {
     { t: "Fiskenisse", l: "En liten nisse legger igjen {n} kr p\u00e5 isen til deg.", k: "money", amt: [60, 140], c: "#ffd877", s: "gnome" },
     { t: "Polarkulde", l: "Bitende kulde \u2014 fisken blir doven og sky.", k: "scare", c: "#cfe6ff", s: "frost" },
   ],
+  jettegryta: [
+    { t: "STEINRAS!", l: "Steiner raser ned fra taket og smeller i vannet \u2014 fisken stikker av i panikk!", k: "scare", c: "#8a8a96", s: "rockfall" },
+    { t: "Grotteheksa", l: "Ei heks glir forbi p\u00e5 kosteskaftet og mumler en fiskeformular \u2014 flaksen gnistrer gr\u00f8nt!", k: "luck", luck: 0.55, dur: 22, c: "#b890ff", s: "witch" },
+    { t: "Flaggermussverm!", l: "En sverm flaggermus virvler opp fra m\u00f8rket \u2014 fisken dukker til bunns!", k: "scare", c: "#5a4a6a", s: "bats" },
+    { t: "Krystall\u00e5re", l: "Lommelykta treffer en \u00e5re med edelstener \u2014 du vrikker l\u00f8s {n} kr!", k: "money", amt: [90, 200], c: "#9affe0", s: "gems" },
+    { t: "DRAUGEN", l: "En grottedraug stiger opp av det svarte vannet og hyler \u2014 isnende kaldt!", k: "scare", c: "#7affc0", s: "draug" },
+  ],
 };
 function triggerGameEvent() {
   const list = LOCATION_EVENTS[save.location];
@@ -1859,6 +1866,8 @@ function triggerGameEvent() {
     setTimeout(() => { try { sfxSplash(); } catch (e) {} }, 3900);
   } else if (ev.k === "scare") {
     if (ev.s === "trollbig") { try { playSample("grumpyVoice", { vol: 0.75 }); } catch (e) {} blip(70, 0.45, "sawtooth", 0.09); setTimeout(() => { try { noise(0.4, 420, 0.1, "lowpass"); } catch (e) {} }, 140); }
+    if (ev.s === "rockfall") { blip(58, 0.5, "sawtooth", 0.1); setTimeout(() => { try { noise(0.5, 300, 0.12, "lowpass"); } catch (e) {} }, 120); }
+    if (ev.s === "draug") { try { playSample("grumpyVoice", { vol: 0.6 }); } catch (e) {} blip(90, 0.55, "sine", 0.08); }
     if (fishState === "waiting" || fishState === "bite") { setFish("waiting"); biteTimer = 5 + Math.random() * 7; addRipple(bobber.x, bobber.y, 20); setHint("Fisken ble skremt \u2014 vent litt..."); }
     sfxMiss();
   } else {
@@ -2782,6 +2791,7 @@ function drawFishShadow(x, y, dir) {
   ctx.restore();
 }
 function drawShore() {
+  if (LOC.cave) { drawCaveShore(); return; }   // a wet rocky bank, no grass
   ctx.fillStyle = "#1e3326";
   ctx.beginPath(); ctx.moveTo(0, WATER_Y - 6); ctx.lineTo(0, H); ctx.lineTo(132, H);
   ctx.quadraticCurveTo(150, WATER_Y + 8, 96, WATER_Y - 4); ctx.quadraticCurveTo(40, WATER_Y - 14, 0, WATER_Y - 6); ctx.fill();
@@ -2789,6 +2799,24 @@ function drawShore() {
   ctx.beginPath(); ctx.moveTo(0, WATER_Y - 1); ctx.quadraticCurveTo(60, WATER_Y + 5, 120, WATER_Y + 14); ctx.lineTo(132, H); ctx.lineTo(0, H); ctx.fill();
   ctx.strokeStyle = "#2f5238"; ctx.lineWidth = 1;
   for (let i = 0; i < 18; i++) { const gx = 6 + i * 7; if (gx > 120) continue; const gy = WATER_Y - 4 + (i % 3) * 4 + Math.min(40, i * 2); ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx - 1 + Math.sin(t + i) * 1.5, gy - 5); ctx.stroke(); }
+}
+// Jettegryta — a dark, wet stone bank instead of the grassy shore
+function drawCaveShore() {
+  ctx.fillStyle = "#1a1c26";
+  ctx.beginPath(); ctx.moveTo(0, WATER_Y - 6); ctx.lineTo(0, H); ctx.lineTo(132, H);
+  ctx.quadraticCurveTo(150, WATER_Y + 8, 96, WATER_Y - 4); ctx.quadraticCurveTo(40, WATER_Y - 14, 0, WATER_Y - 6); ctx.fill();
+  ctx.fillStyle = "#101220";
+  ctx.beginPath(); ctx.moveTo(0, WATER_Y - 1); ctx.quadraticCurveTo(60, WATER_Y + 5, 120, WATER_Y + 14); ctx.lineTo(132, H); ctx.lineTo(0, H); ctx.fill();
+  // scattered pebbles + cracks instead of grass blades
+  let seed = 9; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < 18; i++) {
+    const gx = 6 + rnd() * 116, gy = WATER_Y + 2 + rnd() * 74;
+    px(Math.round(gx), Math.round(gy), 2, 1, rnd() > 0.5 ? "#2a2d3a" : "#212430");
+  }
+  // a damp sheen along the waterline
+  ctx.globalAlpha = 0.25; ctx.strokeStyle = "#3a4a5a"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, WATER_Y - 2); ctx.quadraticCurveTo(60, WATER_Y + 3, 120, WATER_Y + 12); ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 function drawLine() {
   let tipX = ROD_TIP.x, tipY = ROD_TIP.y, bx = bobber.x, by = bobber.y;
@@ -2990,6 +3018,7 @@ function drawProps() {
   }
 }
 function drawReedsFront() {
+  if (LOC.cave) return;   // no reeds grow in the cavern
   ctx.strokeStyle = "#10261a"; ctx.lineWidth = 2;
   const reed = (x, h, ph) => { ctx.beginPath(); ctx.moveTo(x, H); ctx.quadraticCurveTo(x + Math.sin(t * 0.8 + ph) * 6, H - h * 0.6, x + Math.sin(t * 0.8 + ph) * 10, H - h); ctx.stroke(); ctx.fillStyle = "#3a2a1a"; ctx.fillRect(x + Math.sin(t * 0.8 + ph) * 10 - 1, H - h - 6, 3, 8); };
   for (let i = 0; i < 5; i++) reed(W - 8 - i * 11, 40 + i * 8, i);
@@ -4322,6 +4351,77 @@ function drawEventActor() {
       ctx.globalAlpha = ea;
       break;
     }
+    case "rockfall": {
+      // boulders crashing down from the cavern roof into the pond
+      const cxr = clamp(bobber.x, 150, W - 50);
+      for (let i = 0; i < 4; i++) {
+        const ph = (p * 1.4 + i * 0.22) % 1;
+        const rx = cxr - 30 + i * 18 + Math.sin(i) * 6;
+        const ry = lerp(0, WATER_Y + 6, ph);
+        const rr = 3 + (i % 3);
+        ctx.fillStyle = "#5a5560"; ctx.beginPath(); ctx.arc(rx, ry, rr, 0, 6.28); ctx.fill();
+        px(rx - rr + 1, ry - rr + 1, 2, 2, "#7a7682");
+        if (ph > 0.92) { for (let k = 0; k < 5; k++) { const a2 = -1 + k * 0.4; px(rx + Math.cos(a2) * 8, WATER_Y - Math.abs(Math.sin(a2)) * 10, 2, 2, "#bcd0e6"); } addRippleMaybe(rx, WATER_Y + 2); }
+      }
+      // dust puff at the ceiling crack
+      ctx.globalAlpha = ea * 0.4 * (1 - p); ctx.fillStyle = "#6a6470"; ctx.beginPath(); ctx.arc(cxr, 6, 10, 0, 6.28); ctx.fill();
+      ctx.globalAlpha = ea;
+      break;
+    }
+    case "witch": {
+      // a witch glides across on a broomstick, trailing green spell-sparkles
+      const x = cross, y = 56 + Math.sin(t * 2 + sd) * 8;
+      ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
+      px(x - 14, y + 4, 22, 2, "#7a5630"); for (let i = 0; i < 5; i++) px(x + 8, y + 2 + i, 6 - i, 1, "#caa060"); // broom + bristles
+      px(x - 6, y - 6, 10, 12, "#2a1f3a"); px(x - 6, y - 6, 10, 2, "#3a2f4a");        // cloak
+      px(x - 3, y - 12, 6, 7, "#9ad08a"); px(x - 2, y - 9, 1, 1, "#1a1208"); px(x + 1, y - 9, 1, 1, "#1a1208"); // green face + eyes
+      ctx.fillStyle = "#1a1228"; ctx.beginPath(); ctx.moveTo(x - 5, y - 11); ctx.lineTo(x + 5, y - 11); ctx.lineTo(x + 1, y - 23); ctx.closePath(); ctx.fill(); // pointy hat
+      px(x - 6, y - 11, 12, 2, "#1a1228"); px(x - 1, y - 19, 3, 2, "#7a3a8a");          // brim + band
+      ctx.restore();
+      for (let i = 1; i < 5; i++) { ctx.globalAlpha = ea * (1 - i / 5); px(x + dir * i * 6, y + 6 + Math.sin(t * 3 + i) * 3, 2, 2, "#9affc0"); }
+      ctx.globalAlpha = ea;
+      break;
+    }
+    case "bats": {
+      // a swarm of bats flitting across the cavern
+      for (let i = 0; i < 9; i++) {
+        const ph = (p + i * 0.11) % 1;
+        const bx = dir > 0 ? -20 + ph * (W + 40) : W + 20 - ph * (W + 40);
+        const by = 38 + (i % 4) * 16 + Math.sin(t * 6 + i) * 6;
+        const flap = Math.sin(t * 18 + i) > 0 ? 1 : -1;
+        ctx.fillStyle = "#5a5070"; px(bx, by, 2, 2, "#6a6080");
+        ctx.beginPath(); ctx.moveTo(bx, by + 1); ctx.lineTo(bx - 4, by - flap * 2); ctx.lineTo(bx - 1, by + 1); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(bx + 2, by + 1); ctx.lineTo(bx + 6, by - flap * 2); ctx.lineTo(bx + 3, by + 1); ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case "gems": {
+      // a vein of glittering crystals in the back wall
+      const x = 150, y = 118;
+      for (const [ox, oy, col] of [[0, 0, "#9affe0"], [6, 3, "#7ad0ff"], [-4, 4, "#c0a0ff"], [3, -3, "#9affe0"]]) {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x + ox, y + oy - 3); ctx.lineTo(x + ox + 2, y + oy); ctx.lineTo(x + ox, y + oy + 3); ctx.lineTo(x + ox - 2, y + oy); ctx.closePath(); ctx.fill();
+        px(x + ox - 1, y + oy - 1, 1, 1, "#eafff8");
+      }
+      for (let i = 0; i < 3; i++) sparkle(x - 4 + i * 5, y + Math.sin(t * 2 + i) * 2, t * 2 + i);
+      break;
+    }
+    case "draug": {
+      // a spectral cave-draug heaves up out of the black water, wailing, then sinks
+      const x = clamp(bobber.x, 150, W - 60);
+      const rise = Math.min(clamp(gameEvent.t / 1.2, 0, 1), clamp((gameEvent.dur - gameEvent.t) / 1.2, 0, 1));
+      const base = WATER_Y + 30, cy = base - rise * 56;
+      ctx.globalAlpha = ea * 0.85;
+      const gg = ctx.createRadialGradient(x, cy + 6, 4, x, cy + 6, 34); gg.addColorStop(0, "rgba(120,255,200,0.4)"); gg.addColorStop(1, "rgba(120,255,200,0)");
+      ctx.fillStyle = gg; ctx.fillRect(x - 34, cy - 28, 68, 68);
+      ctx.fillStyle = "#3a6a58";
+      ctx.beginPath(); ctx.moveTo(x - 14, cy + 34); ctx.lineTo(x - 10, cy); ctx.quadraticCurveTo(x, cy - 14, x + 10, cy); ctx.lineTo(x + 14, cy + 34); ctx.closePath(); ctx.fill(); // tattered shroud
+      px(x - 6, cy - 6, 12, 12, "#cfeee0"); px(x - 6, cy + 4, 12, 2, "#9ac0b0");           // skull
+      px(x - 4, cy - 1, 3, 4, "#0a1a14"); px(x + 1, cy - 1, 3, 4, "#0a1a14");              // eye sockets
+      px(x - 1, cy + 4, 2, 3, "#0a1a14"); px(x - 4, cy + 8, 8, 1, "#1a2a22");              // nose + jaw
+      ctx.globalAlpha = ea;
+      if (rise > 0.5 && Math.random() < 0.3) { addRippleMaybe(x - 12, base + 4); addRippleMaybe(x + 12, base + 6); }
+      break;
+    }
   }
   ctx.restore();
 }
@@ -4441,9 +4541,9 @@ function drawGroundFish() {
   const n = save.basket.length;
   if (n < 5) return;
   const count = clamp(Math.floor((n - 3) / 3), 0, 7);
-  // a little tuft of grass under the pile so it clearly reads as resting on land
+  // a little pad under the pile so it clearly reads as resting on land
   const cx = 40, cy = 226;
-  ctx.fillStyle = "#16261c"; ctx.beginPath(); ctx.ellipse(cx + 4, cy + 4, 22, 6, 0, 0, 6.28); ctx.fill();
+  ctx.fillStyle = LOC.cave ? "#14161f" : "#16261c"; ctx.beginPath(); ctx.ellipse(cx + 4, cy + 4, 22, 6, 0, 0, 6.28); ctx.fill();
   // stack them in overlapping rows forming a mound (bottom row widest)
   const layout = [
     [-16, 2, 1, false], [-2, 4, -1, true], [12, 2, 1, false],   // base row
@@ -4531,6 +4631,69 @@ function drawKioskKeeper(x, y) {
 }
 
 /* ---- world map ---- */
+// terrain doodles that make the parchment read like a real region map
+function drawMapTerrain() {
+  ctx.save();
+  // faint topographic contour rings for texture
+  ctx.strokeStyle = "rgba(150,128,90,0.22)"; ctx.lineWidth = 1;
+  for (const [cx, cy, rr] of [[70, 56, 30], [70, 56, 20], [205, 36, 24], [405, 150, 34], [405, 150, 22], [255, 235, 22]]) {
+    ctx.beginPath(); ctx.ellipse(cx, cy, rr, rr * 0.7, 0, 0, 6.28); ctx.stroke();
+  }
+  // a winding river hinting at how the waters connect
+  ctx.strokeStyle = "rgba(90,140,165,0.4)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(120, 60); ctx.quadraticCurveTo(180, 120, 150, 170); ctx.quadraticCurveTo(130, 215, 200, 240); ctx.stroke();
+  // little forest clusters (pine triangles) scattered in the empty patches
+  for (const [fx, fy] of [[40, 118], [62, 205], [205, 168], [275, 96], [350, 44], [150, 58], [120, 150], [330, 200]]) {
+    for (let i = 0; i < 3; i++) {
+      const ox = fx + (i - 1) * 6;
+      ctx.fillStyle = "#5f7d4a"; ctx.beginPath(); ctx.moveTo(ox, fy - 7); ctx.lineTo(ox - 3, fy); ctx.lineTo(ox + 3, fy); ctx.closePath(); ctx.fill();
+      px(ox - 1, fy, 2, 2, "#6a4a28");
+    }
+  }
+  // a small snow-tipped mountain range across the top
+  for (const [mx, my] of [[300, 50], [318, 46], [338, 52]]) {
+    ctx.fillStyle = "#9a8a72"; ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx - 10, my + 14); ctx.lineTo(mx + 10, my + 14); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#eef0e0"; ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx - 3, my + 5); ctx.lineTo(mx + 3, my + 5); ctx.closePath(); ctx.fill();
+  }
+  drawCompassRose(40, 44, 15);
+  drawMapSerpent(320, 246);
+  // decorative title cartouche, top middle
+  const tw = 96, tx = W / 2 - tw / 2, ty = 16;
+  ctx.fillStyle = "rgba(165,135,86,0.5)"; px(tx, ty, tw, 15, "rgba(165,135,86,0.5)");
+  ctx.strokeStyle = "#7a5a38"; ctx.lineWidth = 1; ctx.strokeRect(tx, ty, tw, 15);
+  px(tx - 3, ty + 3, 3, 9, "rgba(140,112,70,0.6)"); px(tx + tw, ty + 3, 3, 9, "rgba(140,112,70,0.6)"); // scroll ends
+  ctx.fillStyle = "#4a2f15"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("FISKEKARTET", W / 2, ty + 8);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.restore();
+}
+// a little hand-drawn compass rose
+function drawCompassRose(cx, cy, r) {
+  ctx.strokeStyle = "#7a5a38"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.28); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, r - 3, 0, 6.28); ctx.stroke();
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2 - Math.PI / 2;
+    const tx = cx + Math.cos(a) * r, ty = cy + Math.sin(a) * r;
+    const lx = cx + Math.cos(a + 2.2) * (r * 0.32), ly = cy + Math.sin(a + 2.2) * (r * 0.32);
+    const rx = cx + Math.cos(a - 2.2) * (r * 0.32), ry = cy + Math.sin(a - 2.2) * (r * 0.32);
+    ctx.fillStyle = i === 0 ? "#9a4030" : "#6a4e30";
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(lx, ly); ctx.lineTo(rx, ry); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = "#7a2a1a"; ctx.font = "bold 7px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("N", cx, cy - r - 4);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+// a classic "here be monsters" sea-serpent doodle
+function drawMapSerpent(x, y) {
+  ctx.strokeStyle = "rgba(70,100,90,0.5)"; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i <= 20; i++) { const xx = x + i * 3, yy = y + Math.sin(i * 0.7) * 4; if (i === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy); }
+  ctx.stroke();
+  ctx.fillStyle = "rgba(70,100,90,0.6)"; ctx.beginPath(); ctx.arc(x, y, 4, 0, 6.28); ctx.fill();
+  px(x - 2, y - 2, 1, 1, "#d8e8d0");
+}
+
 function drawMapBg() {
   // parchment
   const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -4542,6 +4705,7 @@ function drawMapBg() {
   // border
   ctx.strokeStyle = "#7a6038"; ctx.lineWidth = 3; ctx.strokeRect(8, 8, W - 16, H - 16);
   ctx.strokeStyle = "#9a8050"; ctx.lineWidth = 1; ctx.strokeRect(12, 12, W - 24, H - 24);
+  drawMapTerrain();   // forests, hills, contours, compass + doodles so it reads like a real region
   // little ponds under spots — with the fish that live there swimming inside, so you can see what's biting
   for (const sp of MAP_SPOTS) {
     ctx.fillStyle = "rgba(90,130,150,0.5)";
@@ -4559,10 +4723,15 @@ function drawMapBg() {
     });
     ctx.globalAlpha = 1;
   }
-  // dotted roads connecting spots in order
+  // dotted road threading the waters from cheapest to priciest — the angler's journey
+  const route = MAP_SPOTS.slice().sort((a, b) => {
+    const ca = (LOCATIONS.find((l) => l.key === a.key) || {}).cost || 0;
+    const cb = (LOCATIONS.find((l) => l.key === b.key) || {}).cost || 0;
+    return ca - cb;
+  });
   ctx.strokeStyle = "#7a5a38"; ctx.setLineDash([3, 4]); ctx.lineWidth = 2;
   ctx.beginPath();
-  MAP_SPOTS.forEach((sp, i) => { if (i === 0) ctx.moveTo(sp.x, sp.y); else ctx.lineTo(sp.x, sp.y); });
+  route.forEach((sp, i) => { if (i === 0) ctx.moveTo(sp.x, sp.y); else ctx.lineTo(sp.x, sp.y); });
   ctx.stroke(); ctx.setLineDash([]);
   // markers
   const atMarket = mapReturn === "market";
