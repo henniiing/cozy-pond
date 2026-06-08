@@ -124,12 +124,12 @@ const JUNK = [
 
 const RODS = [
   { name: "Pinnestang",            reel: 1.0,  tens: 0.9,  rare: 0.0,  window: 1.0,  cost: 0,    color: "#7a5a36", grip: "#3b2b1f", tip: "#caa97a" },
-  { name: "Glassfiberstang",       reel: 1.1,  tens: 0.85, rare: 0.0,  window: 1.06, cost: 600,  color: "#3f7d8c", grip: "#23404a", tip: "#bfe6ef" },
-  { name: "Karbonstang",           reel: 1.2,  tens: 0.8,  rare: 0.0,  window: 1.12, cost: 1700, color: "#2c2c34", grip: "#7a1f1f", tip: "#d24a3a" },
-  { name: "Proffstang",            reel: 1.3,  tens: 0.74, rare: 0.0,  window: 1.18, cost: 3200, color: "#caa23a", grip: "#5a3aa0", tip: "#fff2a0" },
-  { name: "Splittbambusstang",     reel: 1.4,  tens: 0.7,  rare: 0.14, window: 1.24, cost: 6000, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
-  { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.28, window: 1.3,  cost: 13000, color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
-  { name: "Jettestanga",           reel: 1.62, tens: 0.6,  rare: 0.42, window: 1.38, cost: 28000, color: "#4a4a55", grip: "#23232c", tip: "#a0ffe0" },
+  { name: "Glassfiberstang",       reel: 1.1,  tens: 0.85, rare: 0.0,  window: 1.06, cost: 650,  color: "#3f7d8c", grip: "#23404a", tip: "#bfe6ef" },
+  { name: "Karbonstang",           reel: 1.2,  tens: 0.8,  rare: 0.0,  window: 1.12, cost: 1800, color: "#2c2c34", grip: "#7a1f1f", tip: "#d24a3a" },
+  { name: "Proffstang",            reel: 1.3,  tens: 0.74, rare: 0.0,  window: 1.18, cost: 3600, color: "#caa23a", grip: "#5a3aa0", tip: "#fff2a0" },
+  { name: "Splittbambusstang",     reel: 1.4,  tens: 0.7,  rare: 0.14, window: 1.24, cost: 7800, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
+  { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.28, window: 1.3,  cost: 18000, color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
+  { name: "Jettestanga",           reel: 1.62, tens: 0.6,  rare: 0.42, window: 1.38, cost: 40000, color: "#4a4a55", grip: "#23232c", tip: "#a0ffe0" },
 ];
 const rod = () => RODS[save.rodLevel] || RODS[0];
 
@@ -146,7 +146,7 @@ const LOCATIONS = [
     rare: { key: "gammelgjedda", name: "Gammelgjedda", min: 6, max: 14, kr: 110, shape: "long", body: "#3f5230", belly: "#cfd49a", fin: "#6a3a28", pattern: "spots", spot: "#d2e08a", seed: 731, tag: "En skikkelig urskogsmonster! 🐊" },
   },
   {
-    key: "fjellvatn", name: "Fjellvatnet", cost: 3600, desc: "\u00d8rret, r\u00f8ye & harr \u2014 dyrt",
+    key: "fjellvatn", name: "Fjellvatnet", cost: 4600, desc: "\u00d8rret, r\u00f8ye & harr \u2014 dyrt",
     sky: ["#0e1430", "#1f2a52", "#3a4f7a", "#6f8fb0", "#cfe0ec"],
     water: ["#2a4a6e", "#1c3450", "#0e2030"],
     tree: "#1a2a3a", snow: true, moon: true, fog: 0.05, junk: 0.5, mountains: true,
@@ -154,7 +154,7 @@ const LOCATIONS = [
     rare: { key: "storroye", name: "Gammelrøya", min: 4, max: 9, kr: 220, shape: "normal", body: "#3f5d7a", belly: "#f08b4a", fin: "#f8983a", pattern: "spots", spot: "#fff0d0", seed: 701 },
   },
   {
-    key: "elva", name: "Stryket", cost: 2100, desc: "\u00d8rret, harr & lake",
+    key: "elva", name: "Stryket", cost: 2400, desc: "\u00d8rret, harr & lake",
     sky: ["#241a32", "#3a2a48", "#6a4a5a", "#c08a5a", "#e0a878"],
     water: ["#3a5a5a", "#264a48", "#143230"],
     tree: "#142218", moon: false, fog: 0, junk: 0.8, waterfall: true,
@@ -162,7 +162,7 @@ const LOCATIONS = [
     rare: { key: "kjempeorret", name: "Kjempeørret", min: 5, max: 12, kr: 200, shape: "normal", body: "#6a5838", belly: "#f0d2a0", fin: "#5a4628", pattern: "spots", spot: "#c03a2a", seed: 711 },
   },
   {
-    key: "myra", name: "Trollmyra", cost: 850, desc: "Skummelt \u2014 store troll lurer",
+    key: "myra", name: "Trollmyra", cost: 900, desc: "Skummelt \u2014 store troll lurer",
     sky: ["#0e1a14", "#16241a", "#2a3a26", "#46502e", "#6a5a3a"],
     water: ["#2a3a26", "#1a2a1a", "#0e1a10"],
     tree: "#0a140c", fog: 0.28, moon: true, spooky: true, junk: 1.6, eyes: true,
@@ -170,7 +170,7 @@ const LOCATIONS = [
     rare: { key: "myrtroll", name: "Myrtrollet", min: 9, max: 22, kr: 90, shape: "long", body: "#3a4a2a", belly: "#5a6a38", fin: "#2a3520", pattern: "spots", spot: "#1a2410", seed: 999, tag: "Hva i alle dager?!" },
   },
   {
-    key: "elgtjern", name: "Elgtjernet", cost: 1300, desc: "Lyst sommertjern \u2014 elgen titter innom",
+    key: "elgtjern", name: "Elgtjernet", cost: 1450, desc: "Lyst sommertjern \u2014 elgen titter innom",
     sky: ["#1b2c52", "#395a86", "#6f93b4", "#d6a878", "#f4d79a"],
     water: ["#2f6f72", "#1f5256", "#123638"],
     tree: "#1d3a22", moon: true, fog: 0.03, junk: 0.7, moose: true, summer: true,
@@ -178,7 +178,7 @@ const LOCATIONS = [
     rare: { key: "tjernsgiganten", name: "Tjernsgiganten", min: 6, max: 16, kr: 170, shape: "round", body: "#7a6a2a", belly: "#e8d88a", fin: "#5a4a1a", pattern: "plain", seed: 811, tag: "S\u00e5 stor at elgen ble misunnelig! \ud83e\udeac" },
   },
   {
-    key: "nordlys", name: "Nordlysvatnet", cost: 5200, desc: "Arktisk \u2014 nordlyset danser",
+    key: "nordlys", name: "Nordlysvatnet", cost: 7600, desc: "Arktisk \u2014 nordlyset danser",
     sky: ["#02060f", "#06101e", "#0a1828", "#0e2236", "#143048"],
     water: ["#10283a", "#0a1c2c", "#06121e"],
     tree: "#0c1822", snow: true, fog: 0.06, junk: 0.4, aurora: true,
@@ -186,7 +186,7 @@ const LOCATIONS = [
     rare: { key: "nordlysroya", name: "Nordlysr\u00f8ya", min: 5, max: 11, kr: 300, shape: "normal", body: "#2a6a7a", belly: "#9affd0", fin: "#6affc0", pattern: "spots", spot: "#e0fff0", seed: 821, tag: "Den lyser som selve nordlyset! \u2728" },
   },
   {
-    key: "jettegryta", name: "Jettegryta", cost: 14000, desc: "Bunnl\u00f8st grottevatn \u2014 gigantfisk i m\u00f8rket",
+    key: "jettegryta", name: "Jettegryta", cost: 20000, desc: "Bunnl\u00f8st grottevatn \u2014 gigantfisk i m\u00f8rket",
     sky: ["#05060a", "#0a0a12", "#10101c", "#161826", "#1c2030"],
     water: ["#142028", "#0c161e", "#060c12"],
     tree: "#0a0c14", cave: true, glow: true, drip: true, fog: 0.12, junk: 0.5, fightMul: 1.35,
