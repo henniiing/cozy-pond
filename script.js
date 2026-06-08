@@ -208,8 +208,8 @@ const locFish = () => FISH.filter((f) => LOC.fish.includes(f.key));
 function pickFish() {
   const r = rod().rare;
   const luck = (buff.t > 0 ? buff.luck : 0) + (castOnRise ? 0.5 : 0);
-  // legendary catch of this location
-  if (LOC.rare && Math.random() < 0.014 + r * 0.02 + luck * 0.04) return LOC.rare;
+  // legendary catch of this location — rare early (a real "wow"), climbs with the top rods + luck
+  if (LOC.rare && Math.random() < 0.008 + r * 0.026 + luck * 0.04) return LOC.rare;
   const pool = [];
   for (const f of locFish()) {
     let w = f.weight;
