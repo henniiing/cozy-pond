@@ -1143,7 +1143,7 @@ function canvasPress(p) {
   if (hatPanel) {
     if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { hatPanel = false; coolerMenu = true; sfxClink(); return; }
     for (const rr of hatRowRects) if (inRect(p.x, p.y, rr)) {
-      if (save.hat !== rr.key) { save.hat = rr.key; persist(); setHint("Byttet til " + (HAT_BY_KEY[rr.key] || {}).name); }
+      if (save.hat !== rr.key) { save.hat = rr.key; persist(); setHint(T("Byttet til {name}", { name: T((HAT_BY_KEY[rr.key] || {}).name || "") })); }
       sfxClink(); hatPanel = false; return;
     }
     hatPanel = false; return;
@@ -1158,7 +1158,7 @@ function canvasPress(p) {
   if (rodPanel) {
     if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { rodPanel = false; coolerMenu = true; sfxClink(); return; }
     for (const it of rodPanelRects()) if (inRect(p.x, p.y, it)) {
-      if (save.owned.includes(it.level)) { equipRod(it.level); setHint("Byttet til " + RODS[it.level].name); }
+      if (save.owned.includes(it.level)) { equipRod(it.level); setHint(T("Byttet til {name}", { name: T(RODS[it.level].name) })); }
       rodPanel = false; return;
     }
     rodPanel = false; return;
@@ -1413,15 +1413,15 @@ function buildSlots() {
     const active = i === currentSlot;
     const row = document.createElement("div");
     row.className = "slot-row" + (active ? " active" : "");
-    const title = `Plass ${i + 1}` + (active ? " · aktiv" : "");
+    const title = T("Plass {n}", { n: i + 1 }) + (active ? T(" · aktiv") : "");
     const info = sum
-      ? `${sum.name ? escapeHtml(sum.name) + " · " : ""}${fmt(sum.money)} kr · ${sum.species} arter<br><small>${escapeHtml(sum.location)}</small>`
-      : "<small>Tom plass — start et nytt eventyr</small>";
+      ? `${sum.name ? escapeHtml(sum.name) + " · " : ""}${fmt(sum.money)} kr · ${sum.species} ${T("arter")}<br><small>${escapeHtml(T(sum.location))}</small>`
+      : `<small>${T("Tom plass — start et nytt eventyr")}</small>`;
     row.innerHTML =
       `<span class="grow"><b>${title}</b><br>${info}</span>` +
       `<span class="slot-btns">` +
-      `<button class="buy-btn" data-action="playSlot" data-slot="${i}">${sum ? "Spill" : "Nytt"}</button>` +
-      (sum ? `<button class="del-btn" data-action="deleteSlot" data-slot="${i}" title="Slett">🗑</button>` : "") +
+      `<button class="buy-btn" data-action="playSlot" data-slot="${i}">${sum ? T("Spill") : T("Nytt")}</button>` +
+      (sum ? `<button class="del-btn" data-action="deleteSlot" data-slot="${i}" title="${T("Slett")}">🗑</button>` : "") +
       `</span>`;
     list.appendChild(row);
   }
@@ -1940,7 +1940,7 @@ function setScreen(name) {
 function refreshHUD() {
   moneyEl.textContent = fmt(save.money);
   basketCountEl.textContent = save.basket.length;
-  rodNameEl.textContent = rod().name;
+  rodNameEl.textContent = T(rod().name);
   if (licenseStateEl) {
     const lic = currentLicense();
     licenseStateEl.textContent = lic > 0 ? "✓ " + lic : "✗ mangler";
@@ -2058,8 +2058,8 @@ function catchFish() {
   advanceTut(TUT_CAST);
   setFish("reveal");
   const c = currentCatch;
-  if (c.junk) { catchName.textContent = c.f.name; catchInfo.textContent = "til samlingen · " + ((save.junkFound && save.junkFound[c.f.key]) || 1) + " stk"; catchTag.textContent = c.tag || ""; }
-  else { catchName.textContent = c.f.name; catchInfo.textContent = c.weight.toFixed(2) + " kg · " + fmt(c.value) + " kr"; catchTag.textContent = c.tag || ""; }
+  if (c.junk) { catchName.textContent = T(c.f.name); catchInfo.textContent = T("til samlingen · {n} stk", { n: (save.junkFound && save.junkFound[c.f.key]) || 1 }); catchTag.textContent = T(c.tag || ""); }
+  else { catchName.textContent = T(c.f.name); catchInfo.textContent = c.weight.toFixed(2) + " kg · " + fmt(c.value) + " kr"; catchTag.textContent = T(c.tag || ""); }
   catchEl.classList.remove("hidden");
   setHint("");
   if (c.junk) sfxMiss(); else sfxCatch();
@@ -2197,14 +2197,14 @@ function buyLicense(locKey) {
   const key = locKey || save.location;
   const loc = LOCATIONS.find((x) => x.key === key) || LOCATIONS[0];
   const cost = licenseCostFor(key);
-  if (save.money < cost) { speak("licenseSpeech", "Fiskekort koster penger, det også. Kom igjen med kontanter."); sfxMiss(); return; }
+  if (save.money < cost) { speak("licenseSpeech", T("Fiskekort koster penger, det også. Kom igjen med kontanter.")); sfxMiss(); return; }
   save.money -= cost; save.licenses[key] = (save.licenses[key] || 0) + LICENSE_GRANT; persist();
   licenseBoughtThisVisit = true;
   sfxCoin(); playSample("buying", { vol: 0.6 });
   wardenStamp = 1; wardenScheme = 2.2; setTimeout(wardenStampSfx, 120);   // he stamps your card with a smug flourish
-  speak("licenseSpeech", `Vær så god — kort for ${loc.name} som varer ${LICENSE_GRANT} fangster.`);
+  speak("licenseSpeech", T("Vær så god — kort for {loc} som varer {n} fangster.", { loc: T(loc.name), n: LICENSE_GRANT }));
   buildLicenses(); refreshHUD();
-  if (tutMarketStep() === 3) { tutCompleteBooth(3); speak("licenseSpeech", "Da slipper du bot fra oppsynet. Trykk ← Marked for å fortsette."); }
+  if (tutMarketStep() === 3) { tutCompleteBooth(3); speak("licenseSpeech", T("Da slipper du bot fra oppsynet. Trykk ← Marked for å fortsette.")); }
 }
 
 /* ---- fiskeoppsynet: a rare inspector who checks your license ---- */
@@ -2331,12 +2331,12 @@ const KIOSK_GOODS = {
 };
 function buyConsumable(kind) {
   const g = KIOSK_GOODS[kind]; if (!g) return;
-  if (save.money < g.cost) { speak("kioskSpeech", "Tomme lommer? Kom igjen med kontanter, kompis."); sfxMiss(); return; }
+  if (save.money < g.cost) { speak("kioskSpeech", T("Tomme lommer? Kom igjen med kontanter, kompis.")); sfxMiss(); return; }
   save.money -= g.cost; save.stock[kind] = (save.stock[kind] || 0) + g.per; persist();
   sfxCoin(); playSample("buying", { vol: 0.6 }); sfxKiosk();
-  speak("kioskSpeech", `Vær så god — ${g.per}× ${g.name}. Skitt fiske! 🎣`);
+  speak("kioskSpeech", T("Vær så god — {per}× {name}. Skitt fiske! 🎣", { per: g.per, name: T(g.name) }));
   buildKiosk(); refreshHUD();
-  if (tutMarketStep() === 1) { tutCompleteBooth(1); speak("kioskSpeech", "Bra valg! Trykk ← Marked for å gå videre."); }
+  if (tutMarketStep() === 1) { tutCompleteBooth(1); speak("kioskSpeech", T("Bra valg! Trykk ← Marked for å gå videre.")); }
 }
 function buildKiosk() {
   const list = $("kioskList"); if (!list) return;
@@ -2347,7 +2347,7 @@ function buildKiosk() {
     const afford = save.money >= g.cost;
     const row = document.createElement("div");
     row.className = "rod-row" + (afford ? "" : " locked");
-    row.innerHTML = `<span class="grow"><b>${g.name}</b> <small>(${g.per} stk)</small><br><small>${g.blurb}</small><br><small>Har: ${have}</small></span>` +
+    row.innerHTML = `<span class="grow"><b>${T(g.name)}</b> <small>(${g.per} ${T("stk")})</small><br><small>${T(g.blurb)}</small><br><small>${T("Har:")} ${have}</small></span>` +
       `<button class="buy-btn" data-action="buyConsumable" data-kind="${key}" ${afford ? "" : "disabled"}>${fmt(g.cost)} kr</button>`;
     list.appendChild(row);
   }
@@ -2366,7 +2366,7 @@ function casinoColor(c) { if (casino.spinning) return; casino.color = c; sfxClin
 function casinoBet(amt) { if (casino.spinning) return; casino.bet = parseInt(amt, 10); sfxClink(); buildCasino(); }
 function casinoSpin() {
   if (casino.spinning) return;
-  if (save.money < casino.bet) { speak("casinoSpeech", "No cash, no spin, my friend. Come back with some green."); sfxMiss(); return; }
+  if (save.money < casino.bet) { speak("casinoSpeech", T("No cash, no spin, my friend. Come back with some green.")); sfxMiss(); return; }
   save.money -= casino.bet; persist(); refreshHUD();
   casino.spinning = true; casino.t = 0; casino.result = Math.floor(Math.random() * 37); casino.win = false;
   if (casinoLoseNode) { stopSample(casinoLoseNode); casinoLoseNode = null; }   // cut any lingering loser-laugh so fast spins don't stack
@@ -2378,7 +2378,7 @@ function casinoSpin() {
   let delta = (want - casino.angle) % (Math.PI * 2); if (delta < 0) delta += Math.PI * 2;
   casino.targetAngle = casino.angle + Math.PI * 2 * 5 + delta; // 5 full turns then settle
   casinoSpinNode = playSample("casinoSpin", { vol: 0.6 });
-  speak("casinoSpeech", "Round and round she goes… hold on tight now!");
+  speak("casinoSpeech", T("Round and round she goes… hold on tight now!"));
   const r = $("casinoResult"); if (r) { r.textContent = ""; r.className = "casino-result"; }
   buildCasino();
 }
@@ -2388,29 +2388,29 @@ function settleRoulette() {
   if (casinoSpinNode) { stopSample(casinoSpinNode); casinoSpinNode = null; }
   const col = rouletteColor(casino.result);
   casino.win = col === casino.color;
-  const colName = col === "red" ? "rød" : col === "black" ? "svart" : "grønn";
+  const colName = col === "red" ? T("rød") : col === "black" ? T("svart") : T("grønn");
   if (casino.win) {
     const payout = CASINO_PAYOUT[col] || 2;
     save.money += casino.bet * payout; persist(); sfxCoin();
-    const bonus = col === "green" ? " GRØNN JACKPOT! 🍀" : "";
-    speak("casinoSpeech", `${casino.result} ${colName} — winner winner!${bonus} Well played, brother. 🎉`);
+    const bonus = col === "green" ? T(" GRØNN JACKPOT! 🍀") : "";
+    speak("casinoSpeech", T("{n} {col} — winner winner!{bonus} Well played, brother. 🎉", { n: casino.result, col: colName, bonus }));
     const r = $("casinoResult");
     if (r) { r.textContent = `+${fmt(casino.bet * payout)} kr`; r.className = "casino-result win"; }
   } else {
     if (casinoLoseNode) { stopSample(casinoLoseNode); casinoLoseNode = null; }
     casinoLoseNode = playSample(Math.random() < 0.5 ? "spinLose" : "spinLose2", { vol: 0.85 });
-    speak("casinoSpeech", `${casino.result} ${colName} — not your colour this time. Chin up, friend!`);
+    speak("casinoSpeech", T("{n} {col} — not your colour this time. Chin up, friend!", { n: casino.result, col: colName }));
     const r = $("casinoResult");
     if (r) { r.textContent = `−${fmt(casino.bet)} kr`; r.className = "casino-result lose"; }
   }
   refreshHUD(); buildCasino();
-  if (tutMarketStep() === 4) { tutCompleteBooth(4); speak("casinoSpeech", "Godt spinn! Nå er du klar — kjør tilbake til vannet og fisk i vei! 🎣"); }
+  if (tutMarketStep() === 4) { tutCompleteBooth(4); speak("casinoSpeech", T("Godt spinn! Nå er du klar — kjør tilbake til vannet og fisk i vei! 🎣")); }
 }
 function buildCasino() {
   document.querySelectorAll("#shopCasino .cas-col").forEach((b) => b.classList.toggle("active", b.dataset.color === casino.color));
   document.querySelectorAll("#shopCasino .cas-bet").forEach((b) => b.classList.toggle("active", parseInt(b.dataset.amt, 10) === casino.bet));
   const spin = $("casinoSpin");
-  if (spin) { spin.disabled = casino.spinning || save.money < casino.bet; spin.textContent = casino.spinning ? "Spinner…" : `Spinn ${fmt(casino.bet)} kr`; }
+  if (spin) { spin.disabled = casino.spinning || save.money < casino.bet; spin.textContent = casino.spinning ? T("Spinner…") : T("Spinn {n} kr", { n: fmt(casino.bet) }); }
 }
 
 /* =========================================================================
@@ -2420,7 +2420,7 @@ function buildBasket() {
   const list = $("basketList"); if (!list) return;
   list.innerHTML = "";
   if (!save.basket.length) {
-    list.innerHTML = '<div class="empty-note">Kurven er tom.</div>';
+    list.innerHTML = `<div class="empty-note">${T("Kurven er tom.")}</div>`;
   } else {
     // group by species
     const groups = {};
@@ -2433,7 +2433,7 @@ function buildBasket() {
     for (const key in groups) {
       const f = FISH_BY_KEY[key]; const g = groups[key];
       const row = document.createElement("div"); row.className = "basket-row";
-      row.innerHTML = `<img src="${fishSpriteURL(f, 2)}" alt=""><span class="grow">${f.name} ×${g.count}<br><small>største ${g.best.toFixed(2)} kg</small></span><button class="mini-sell" data-action="sellSpecies" data-key="${key}">${fmt(g.value)} kr</button>`;
+      row.innerHTML = `<img src="${fishSpriteURL(f, 2)}" alt=""><span class="grow">${T(f.name)} ×${g.count}<br><small>${T("største")} ${g.best.toFixed(2)} kg</small></span><button class="mini-sell" data-action="sellSpecies" data-key="${key}">${fmt(g.value)} kr</button>`;
       list.appendChild(row);
     }
   }
@@ -2455,13 +2455,13 @@ function buildRods() {
     const equipped = i === save.rodLevel;
     const row = document.createElement("div");
     row.className = "rod-row" + (owned ? " owned" : "") + (equipped ? " equipped" : "");
-    const baseStats = `Innhaling +${Math.round((r.reel - 1) * 100)}% · Tåler ${Math.round((1 - r.tens) * 100)}% mer drag · Sjeldne fisk +${Math.round(r.rare * 100)}%`;
-    const stats = r.reward ? `Fiksemannens egen — fra guiden eller din første stang · ${baseStats}` : baseStats;
+    const baseStats = `${T("Innhaling")} +${Math.round((r.reel - 1) * 100)}% · ${T("Tåler")} ${Math.round((1 - r.tens) * 100)}% ${T("mer drag")} · ${T("Sjeldne fisk")} +${Math.round(r.rare * 100)}%`;
+    const stats = r.reward ? T("Fiksemannens egen — fra guiden eller din første stang · {base}", { base: baseStats }) : baseStats;
     let btn;
-    if (equipped) btn = `<button class="buy-btn" disabled>I bruk</button>`;
-    else if (owned) btn = `<button class="buy-btn" data-action="equipRod" data-level="${i}">Bruk</button>`;
+    if (equipped) btn = `<button class="buy-btn" disabled>${T("I bruk")}</button>`;
+    else if (owned) btn = `<button class="buy-btn" data-action="equipRod" data-level="${i}">${T("Bruk")}</button>`;
     else btn = `<button class="buy-btn" data-action="buyRod" data-level="${i}" ${save.money < r.cost ? "disabled" : ""}>${fmt(r.cost)} kr</button>`;
-    row.innerHTML = `<img class="rod-pic" src="${rodSpriteURL(r)}" alt=""><div class="rod-info"><div class="rod-title">${r.name}</div><div class="rod-stats">${stats}</div></div>${btn}`;
+    row.innerHTML = `<img class="rod-pic" src="${rodSpriteURL(r)}" alt=""><div class="rod-info"><div class="rod-title">${T(r.name)}</div><div class="rod-stats">${stats}</div></div>${btn}`;
     list.appendChild(row);
   });
 }
@@ -2474,10 +2474,10 @@ function buildLicenses() {
     const cost = licenseCostFor(loc.key);
     const have = (save.licenses && save.licenses[loc.key]) || 0;
     const afford = save.money >= cost;
-    const status = have > 0 ? `Gyldig — dekker ${have} fangster til` : "Mangler kort!";
+    const status = have > 0 ? T("Gyldig — dekker {n} fangster til", { n: have }) : T("Mangler kort!");
     const row = document.createElement("div");
     row.className = "rod-row" + (afford ? "" : " locked");
-    row.innerHTML = `<div class="rod-info"><div class="rod-title">🎫 ${loc.name}</div><div class="rod-stats">${status} · slipp bot fra fiskeoppsynet</div></div><button class="buy-btn" data-action="buyLicense" data-key="${loc.key}" ${afford ? "" : "disabled"}>${fmt(cost)} kr</button>`;
+    row.innerHTML = `<div class="rod-info"><div class="rod-title">🎫 ${T(loc.name)}</div><div class="rod-stats">${status} · ${T("slipp bot fra fiskeoppsynet")}</div></div><button class="buy-btn" data-action="buyLicense" data-key="${loc.key}" ${afford ? "" : "disabled"}>${fmt(cost)} kr</button>`;
     list.appendChild(row);
   }
 }
@@ -4628,7 +4628,7 @@ function drawTruckMenu() {
   px(x, top, w, bot - top, "rgba(14,12,22,0.94)");
   px(x, top, w, 3, "#d24a3a");
   ctx.fillStyle = "#ffd6a0"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("HVOR SKAL VI?", x + w / 2, top + 9);
+  ctx.fillText(T("HVOR SKAL VI?"), x + w / 2, top + 9);
   for (const it of rects) {
     const here = it.key === save.location;
     const locked = it.key !== "market" && !(save.unlocked || []).includes(it.key);
@@ -4637,10 +4637,10 @@ function drawTruckMenu() {
     px(it.x, it.y, it.w, 1, "#3a2e4a");
     ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.font = "9px monospace";
     ctx.fillStyle = it.key === "market" ? "#ffe6a0" : (here ? "#9affc0" : (locked ? "#8a7a6a" : "#f0e6d0"));
-    ctx.fillText((it.key === "market" ? "» " : locked ? "🔒 " : "  ") + it.name, it.x + 7, it.y + 8);
-    if (it.desc) { ctx.fillStyle = "#9aa6b8"; ctx.font = "7px monospace"; ctx.fillText(it.desc, it.x + 9, it.y + 17); }
+    ctx.fillText((it.key === "market" ? "» " : locked ? "🔒 " : "  ") + (it.key === "market" ? T("Markedet") : T(it.name)), it.x + 7, it.y + 8);
+    if (it.desc) { ctx.fillStyle = "#9aa6b8"; ctx.font = "7px monospace"; ctx.fillText(T(it.desc), it.x + 9, it.y + 17); }
     ctx.textAlign = "right";
-    if (here) { ctx.fillStyle = "#9affc0"; ctx.font = "8px monospace"; ctx.fillText("her", it.x + it.w - 6, it.y + 8); }
+    if (here) { ctx.fillStyle = "#9affc0"; ctx.font = "8px monospace"; ctx.fillText(T("her"), it.x + it.w - 6, it.y + 8); }
     else if (locked) { ctx.fillStyle = afford ? "#ffe6a0" : "#a06a6a"; ctx.font = "8px monospace"; ctx.fillText(fmt(it.cost) + " kr", it.x + it.w - 6, it.y + 8); }
   }
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
@@ -5419,8 +5419,8 @@ function drawMapBg() {
     ctx.fillStyle = "#f0d8b0"; ctx.beginPath(); ctx.arc(sp.x, sp.y - 12, 3, 0, 6.28); ctx.fill();
     // label
     ctx.fillStyle = "#3a2c18"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-    ctx.fillText(loc.name, sp.x, sp.y + 6);
-    if (current) { ctx.fillStyle = "#2a6a3a"; ctx.fillText("(her)", sp.x, sp.y + 16); }
+    ctx.fillText(T(loc.name), sp.x, sp.y + 6);
+    if (current) { ctx.fillStyle = "#2a6a3a"; ctx.fillText(T("(her)"), sp.x, sp.y + 16); }
     else if (locked) {
       const afford = save.money >= loc.cost;
       ctx.fillStyle = afford ? "#7a5a2a" : "#9a4030";
@@ -5440,8 +5440,8 @@ function drawMapBg() {
     px(mx - 3, my - 8, 6, 8, "#6e4a2a");   // door
     // label
     ctx.fillStyle = "#3a2c18"; ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-    ctx.fillText("Markedet", mx, my + 4);
-    if (atMarket) { ctx.fillStyle = "#2a6a3a"; ctx.fillText("(her)", mx, my + 14); }
+    ctx.fillText(T("Markedet"), mx, my + 4);
+    if (atMarket) { ctx.fillStyle = "#2a6a3a"; ctx.fillText(T("(her)"), mx, my + 14); }
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     if (atMarket) drawMapHere(mx + 16, my - 14);
   }
@@ -5556,7 +5556,7 @@ function drawTravelBg() {
   // progress bar + destination
   ctx.fillStyle = "rgba(10,8,16,0.6)"; ctx.fillRect(120, 30, 240, 22);
   ctx.fillStyle = "#e6d8a8"; ctx.font = "9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("Kj\u00f8rer til " + travel.toName + "\u2026", W / 2, 36);
+  ctx.fillText(T("Kjører til {to}…", { to: T(travel.toName) }), W / 2, 36);
   ctx.fillStyle = "#3a2f1a"; ctx.fillRect(135, 44, 210, 4);
   ctx.fillStyle = "#c43a2a"; ctx.fillRect(135, 44, 210 * p, 4);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
