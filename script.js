@@ -1951,10 +1951,17 @@ function triggerGameEvent() {
     if (ev.s === "bats") { for (let i = 0; i < 9; i++) { try { blip(2200 + Math.random() * 1600, 0.035, "square", 0.03, i * 0.05); } catch (e) {} } setTimeout(() => { try { noise(0.5, 1200, 0.05, "highpass"); } catch (e) {} }, 60); }
     // draug: an unearthly two-tone wail rising from the black water, no human voice
     if (ev.s === "draug") { wail(170, 80, 1.5, 0.13, "sawtooth"); wail(255, 120, 1.5, 0.07, "sine", 0.05); setTimeout(() => { try { noise(0.8, 200, 0.1, "lowpass"); } catch (e) {} }, 200); }
+    // beaver: a meaty tail-slap splash timed to the smack on the surface (~3.2 s into the event)
+    if (ev.s === "beaver") { setTimeout(() => { try { noise(0.22, 320, 0.12, "lowpass"); sfxSplash(); } catch (e) {} }, 3200); }
+    // moose: a long wet slurp as it hoovers up the bait
+    if (ev.s === "moose") { setTimeout(() => { try { noise(0.5, 600, 0.06, "bandpass"); blip(160, 0.18, "sawtooth", 0.05); } catch (e) {} }, 1400); }
     if (fishState === "waiting" || fishState === "bite") { setFish("waiting"); biteTimer = 5 + Math.random() * 7; addRipple(bobber.x, bobber.y, 20); setHint("Fisken ble skremt \u2014 vent litt..."); }
     sfxMiss();
   } else {
     blip(440, 0.06, "triangle", 0.04);
+    // small characteristic stings for the quiet flavour critters
+    if (ev.s === "squirrel") { for (let i = 0; i < 4; i++) setTimeout(() => { try { blip(1700 + Math.random() * 500, 0.03, "square", 0.035); } catch (e) {} }, 200 + i * 130); }   // quick chitter
+    if (ev.s === "hunter") { setTimeout(() => { try { noise(0.06, 300, 0.08); } catch (e) {} }, 300); setTimeout(() => { try { blip(520, 0.12, "sine", 0.04); blip(420, 0.16, "sine", 0.035, 0.12); } catch (e) {} }, 1500); }   // twig snap + a puzzled little hum
   }
   // the visual actor crosses left↔right or appears for the whole banner duration
   const dir = Math.random() < 0.5 ? 1 : -1;
@@ -4514,14 +4521,19 @@ function drawEventActor() {
       break;
     }
     case "beaver": {
-      // a beaver swimming across the open water, then a big tail-slap splash
-      const x = cross, y = WATER_Y + 24, slap = p > 0.45 && p < 0.6;
+      // a beaver swimming across the OPEN water, then a big tail-slap splash — kept right of the
+      // seated angler so it never swims over the grassy near bank (same fix as the log/kayak)
+      const LE = 150, RE = W + 24, span = RE - LE;
+      const x = dir > 0 ? LE + p * span : RE - p * span;
+      const edgeFade = clamp((x - LE) / 28, 0, 1);
+      ctx.globalAlpha = ea * edgeFade;
+      const y = WATER_Y + 24, slap = p > 0.45 && p < 0.6;
       ctx.save(); if (dir < 0) { ctx.translate(x * 2, 0); ctx.scale(-1, 1); }
       px(x - 7, y - 2, 13, 5, "#6a4a2a"); px(x - 7, y - 2, 13, 2, "#7d5736");  // body
       px(x + 5, y - 5, 5, 5, "#5a3e22"); px(x + 8, y - 3, 1, 1, "#1a1208");    // head
       px(x - 10, y - 1, 4, 3, "#4a3018");                                      // flat tail
       ctx.restore();
-      if (slap) { for (let i = 0; i < 8; i++) { const a2 = -1 + i * 0.3; ctx.globalAlpha = ea; px(x - dir * 9 + Math.cos(a2) * 10, y + 2 - Math.abs(Math.sin(a2)) * 12, 2, 2, "#cfe0ff"); } addRippleMaybe(x - dir * 9, y + 3); }
+      if (slap && edgeFade > 0.5) { for (let i = 0; i < 8; i++) { const a2 = -1 + i * 0.3; ctx.globalAlpha = ea; px(x - dir * 9 + Math.cos(a2) * 10, y + 2 - Math.abs(Math.sin(a2)) * 12, 2, 2, "#cfe0ff"); } addRippleMaybe(x - dir * 9, y + 3); }
       ctx.globalAlpha = ea;
       break;
     }
