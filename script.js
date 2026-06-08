@@ -359,7 +359,7 @@ const rainDrops = [];
 const snowFlakes = Array.from({ length: 40 }, () => ({ x: Math.random() * W, y: Math.random() * WATER_Y, sp: 8 + Math.random() * 14, r: 1 + Math.random() * 1.4, ph: Math.random() * 6.28, drift: 0.5 + Math.random() * 0.8 }));
 const WEATHER_HINT = { clear: "Klar og stille kveld \u2014 fint fiskev\u00e6r.", overcast: "Gr\u00e5tt og overskyet i kveld.", rain: "Lett regn pisler i vannet \u2014 fisken er p\u00e5hugget!", mist: "T\u00e5ka ligger t\u00e9tt over vannet i kveld." };
 const smoke = [];
-let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, funnPanel = false, kioskIdleTimer = 5, partyNode = null;
+let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, recordsPanel = false, godsakerPanel = false, funnPanel = false, kioskIdleTimer = 5, kioskWave = 0, partyNode = null;
 // cosmetic hats: bought from the wandering hat seller, equipped from the sekk
 let hatPanel = false, hatShop = false;
 let hatRowRects = [];
@@ -1813,7 +1813,7 @@ function setScreen(name) {
   if (from === "shopLicense" && name !== "shopLicense" && licenseBoughtThisVisit) { playSample("sinister", { vol: 0.7 }); licenseBoughtThisVisit = false; }
   // fishing warden: a polite greeting + paper shuffle when you visit the permit booth
   if (name === "shopLicense" && from !== "shopLicense") { speak("licenseSpeech", "God dag! Skal det være et gyldig fiskekort? Husk — fiskeoppsynet er ute og går."); blip(520, 0.05, "square", 0.04); setTimeout(() => blip(440, 0.05, "square", 0.035), 90); }  // kiosk: muffled party music on loop while inside + a greeting
-  if (name === "shopKiosk" && from !== "shopKiosk") { speak("kioskSpeech", "Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske."); playSample("eyybro", { vol: 0.7 }); }
+  if (name === "shopKiosk" && from !== "shopKiosk") { speak("kioskSpeech", "Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske."); playSample("eyybro", { vol: 0.7 }); kioskWave = 1.4; }
   // looping ambience per screen — always clear it first so nothing bleeds between screens
   if (partyNode) { stopSample(partyNode); partyNode = null; }
   if (marketNode) { stopSample(marketNode); marketNode = null; }
@@ -2400,12 +2400,11 @@ function buildLicenses() {
     if (!save.unlocked.includes(loc.key)) continue;
     const cost = licenseCostFor(loc.key);
     const have = (save.licenses && save.licenses[loc.key]) || 0;
-    const here = loc.key === save.location;
     const afford = save.money >= cost;
     const status = have > 0 ? `Gyldig — dekker ${have} fangster til` : "Mangler kort!";
     const row = document.createElement("div");
-    row.className = "rod-row" + (afford ? "" : " locked") + (here ? " equipped" : "");
-    row.innerHTML = `<div class="rod-info"><div class="rod-title">🎫 ${loc.name}${here ? " <small>(din plass)</small>" : ""}</div><div class="rod-stats">${status} · slipp bot fra fiskeoppsynet</div></div><button class="buy-btn" data-action="buyLicense" data-key="${loc.key}" ${afford ? "" : "disabled"}>${fmt(cost)} kr</button>`;
+    row.className = "rod-row" + (afford ? "" : " locked");
+    row.innerHTML = `<div class="rod-info"><div class="rod-title">🎫 ${loc.name}</div><div class="rod-stats">${status} · slipp bot fra fiskeoppsynet</div></div><button class="buy-btn" data-action="buyLicense" data-key="${loc.key}" ${afford ? "" : "disabled"}>${fmt(cost)} kr</button>`;
     list.appendChild(row);
   }
 }
@@ -2590,6 +2589,7 @@ function update(dt) {
   if (screen === "shopFish") { ladyIdleTimer -= dt; if (ladyIdleTimer <= 0) { ladyIdleTimer = 4 + Math.random() * 5; sfxLady(); } }
   if (screen === "shopRod") { rodIdleTimer -= dt; if (rodIdleTimer <= 0) { rodIdleTimer = 16 + Math.random() * 12; playSample("grumpyVoice", { vol: 0.4 }); } }
   if (screen === "shopKiosk") { kioskIdleTimer -= dt; if (kioskIdleTimer <= 0) { kioskIdleTimer = 5 + Math.random() * 5; sfxKiosk(); } }
+  if (kioskWave > 0) kioskWave = Math.max(0, kioskWave - dt);   // the cheery greeting wave fades out
   // the warden idly stamps papers, mutters sly threats and rubs his hands
   if (wardenStamp > 0) wardenStamp = Math.max(0, wardenStamp - dt * 1.8);
   if (wardenScheme > 0) wardenScheme = Math.max(0, wardenScheme - dt);
@@ -3635,7 +3635,7 @@ function drawFenceShop() {
   ctx.fillStyle = "#bfe6a0"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText("\u2026SKRAPHANDEL", x + w / 2, top + 10);
   drawBackArrow(x, w, top);
-  ctx.font = "7px monospace"; ctx.fillStyle = "#9aa6d0";
+  ctx.font = "7px monospace"; ctx.fillStyle = "#9aa6d0"; ctx.textAlign = "center";
   ctx.fillText("Godt betalt. Ingen sp\u00f8rsm\u00e5l.", x + w / 2, top + 21);
   fenceRowRects = [];
   ctx.textBaseline = "middle";
@@ -4080,6 +4080,8 @@ function drawCroupier(x, y) {
   px(x - 5, y - 5, 3, 2, "#f4f4f4"); px(x + 2, y - 5, 3, 2, "#f4f4f4");
   px(x - 4, y - 5, 1, 2, "#2a1a10"); px(x + 3, y - 5, 1, 2, "#2a1a10");
   px(x - 4, y + 0, 8, 2, "#f4f4f4"); // big white grin
+  px(x + 2, y + 0, 2, 2, "#ffd65a"); // a glinting gold tooth
+  if (Math.sin(t * 3) > 0.7) px(x + 2, y - 1, 1, 1, "#fffbe6");   // occasional sparkle on the gold
   // grey moustache (old-school)
   px(x - 4, y - 1, 8, 1, "#d8d2c8");
   // greying hair + a touch of sideburns
@@ -4161,12 +4163,12 @@ function drawLicenseWarden(x, y) {
   px(x - 12, y + 9, 4, 3, "#caa23a"); px(x - 11, y + 10, 2, 1, "#fff2a0");
   // arms — one holds a clipboard
   px(x - 19, y + 8, 5, 16, "#4a5a38"); px(x + 14, y + 8, 5, 14, "#4a5a38");
-  px(x - 20, y + 22, 4, 4, "#e3b58c");
+  if (!(wardenScheme > 0)) px(x - 20, y + 22, 4, 4, "#e3b58c");   // resting far hand (tucked away while he rubs)
   // clipboard in the near hand
   px(x + 11, y + 18, 11, 13, "#6a4a2a"); px(x + 12, y + 19, 9, 11, "#efe7d2");
   px(x + 15, y + 17, 4, 2, "#caa23a");
   for (let i = 0; i < 3; i++) px(x + 13, y + 22 + i * 3, 7, 1, "#9aa0a8");
-  px(x + 9, y + 20, 4, 4, "#e3b58c");
+  if (!(wardenScheme > 0)) px(x + 9, y + 20, 4, 4, "#e3b58c");    // resting near hand (tucked away while he rubs)
   // a rubber stamp he keeps thunking down on the paperwork
   if (wardenStamp > 0) {
     const lift = Math.round(wardenStamp * 9);
@@ -4236,6 +4238,25 @@ function drawShopLicenseBg() {
   // pinned permit cards on the wall
   const cols = ["#ffe6a0", "#bfe6ef", "#f0c0d0", "#c8f0c0"];
   for (let i = 0; i < 4; i++) { const cx = 168 + i * 28; px(cx, 44, 18, 12, cols[i]); px(cx, 44, 18, 2, "#fff"); px(cx + 8, 41, 2, 4, "#7a5a38"); }
+  // ——— back-room easter egg: the corrupt inspector hoards his fine money back here ———
+  // a dim doorway cut into the far wall
+  px(360, 28, 46, 80, "#0b110a"); px(360, 28, 46, 3, "#243a26"); px(360, 28, 3, 80, "#243a26"); px(403, 28, 3, 80, "#243a26");
+  // a fat money sack slouched in the corner
+  px(368, 80, 22, 24, "#6a5a32"); px(368, 80, 22, 3, "#7e6c3e"); px(368, 80, 3, 24, "#5a4c2a");
+  px(372, 73, 14, 9, "#5a4c2a"); px(376, 75, 6, 3, "#3a3018");        // tied-off neck of the sack
+  ctx.fillStyle = "#ffe6a0"; ctx.font = "bold 8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("kr", 379, 93); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  // he peeks out for a couple of seconds every so often, then ducks guiltily back in
+  const peekT = t % 9;
+  if (peekT < 2.4) {
+    const lean = Math.sin(peekT / 2.4 * Math.PI);                     // 0 → 1 → 0 ease as he leans out and back
+    const hx = 357 + Math.round(lean * 13), hy = 54;
+    px(hx, hy, 13, 12, "#e7c19a"); px(hx, hy + 10, 13, 2, "#d2a87c");  // head leaning past the door edge
+    px(hx + 3, hy + 4, 2, 2, "#2a2030"); px(hx + 8, hy + 4, 2, 2, "#2a2030");   // shifty eyes
+    px(hx + 3, hy + 7, 7, 1, "#6a5a3a");                              // moustache
+    px(hx - 1, hy - 3, 15, 4, "#2f4a30"); px(hx + 4, hy - 4, 4, 2, "#caa23a");  // peaked cap + brass badge
+    px(hx + 4, hy + 8, 5, 1, "#7a4a4a");                              // guilty little grin
+  }
   // counter + the warden
   px(60, 175, 360, 55, "#3a4a30"); px(60, 175, 360, 6, "#4a5e3f");
   drawLicenseWarden(150, 150);
@@ -4368,15 +4389,19 @@ function drawGodsakerPanel() {
 function rodPanelRects() {
   const owned = save.owned.slice().sort((a, b) => a - b);
   const n = owned.length;
-  const w = 168, h = 27, x = PANEL_R - 172, gap = 29, top = 24;
-  // highest level sits at the top, lowest at the bottom; the whole stack is anchored near
-  // the screen top so it always fits on-screen even when you own every rod (incl. the reward)
+  const w = 168, x = PANEL_R - 172, top = 24;
+  // fit the whole stack between the top and a safe bottom margin, shrinking the row pitch when
+  // you own a lot of rods so the menu can never spill off the bottom of the screen
+  const avail = 248 - top;
+  const gap = Math.min(29, Math.floor(avail / Math.max(1, n)));
+  const h = Math.min(27, gap - 2);
+  // highest level sits at the top, lowest at the bottom
   return owned.map((level, i) => ({ level, x, y: top + (n - 1 - i) * gap, w, h }));
 }
 function drawRodPanel() {
   if (!rodPanel) return;
   const rects = rodPanelRects();
-  const top = rects[rects.length - 1].y - 16, bot = rects[0].y + 27 + 5;
+  const top = rects[rects.length - 1].y - 16, bot = rects[0].y + rects[0].h + 5;
   const x0 = rects[0].x - 4, pw = 176;
   px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
   px(x0, top, pw, 3, "#caa46a");
@@ -5179,8 +5204,15 @@ function drawKioskKeeper(x, y) {
   // apron / body
   px(x - 10, y + 6, 20, 24, "#2f6a4a"); px(x - 10, y + 6, 20, 3, "#3f8a5a");
   px(x - 3, y + 10, 6, 14, "#e8e2d0");
-  // arms
-  px(x - 13, y + 9, 4, 13, "#e0b48a"); px(x + 9, y + 9, 4, 13, "#e0b48a");
+  // arms — the near one shoots up in a cheery wave right as he greets you
+  px(x - 13, y + 9, 4, 13, "#e0b48a");
+  if (kioskWave > 0) {
+    const wob = Math.sin(t * 16) * 2;
+    px(x + 9, y - 6, 4, 15, "#e0b48a");          // forearm raised up alongside his head
+    px(x + 8 + wob, y - 11, 5, 5, "#e8c098");    // open hand waving up high
+  } else {
+    px(x + 9, y + 9, 4, 13, "#e0b48a");          // resting arm
+  }
   // head
   px(x - 6, y - 6, 12, 11, "#e8c098"); px(x - 6, y + 4, 12, 2, "#d2a07c");
   // sunglasses
