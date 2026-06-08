@@ -2389,6 +2389,7 @@ function update(dt) {
         pulling = 0.4 + Math.random() * 0.3 + fishFight * 0.15;
         pullTimer = 0.85 + Math.random() * 0.8 + fishFight * 0.12;
         if (fishFight > 0.9) { setHint("SLIPP! Den rykker! ⚠️"); blip(150, 0.12, "sawtooth", 0.05); }
+        else { setHint("Den napper — slipp litt! 🎣"); blip(220, 0.08, "sawtooth", 0.04); }
       }
       const rb = buff.t > 0 ? buff.reel : 0;        // booze eases the fight a little
       if (holding) {
