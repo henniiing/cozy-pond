@@ -39,7 +39,7 @@ const SLOT_COUNT = 3;
 const SLOT_KEY = "cozyPond_slot";      // which slot is currently active (0..2)
 function slotKey(i) { return SAVE_KEY + "_s" + i; }
 function defaultSave() {
-  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, junkSeen: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "", hats: ["straw"], hat: "straw" };
+  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, junkSeen: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "", hats: ["straw"], hat: "straw", tut: 0 };
 }
 // one-time migration: fold the old single save into slot 0 the first time we boot the slot system
 function migrateSaves() {
@@ -712,7 +712,7 @@ function playRadioSong() {
 function clickRadio() {
   ensureAudio();
   radio.on = !radio.on;
-  if (radio.on) { radioIdx = Math.floor(Math.random() * RADIO_SONGS.length); playRadioSong(); }
+  if (radio.on) { radioIdx = Math.floor(Math.random() * RADIO_SONGS.length); playRadioSong(); advanceTut(TUT_RADIO); }
   else { stopSample(radioNode); radioNode = null; }
   sfxClink();
 }
@@ -867,11 +867,169 @@ function toCanvas(e) {
 const inRect = (x, y, r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 const padRect = (r, p) => ({ x: r.x - p, y: r.y - p, w: r.w + p * 2, h: r.h + p * 2 });
 
+/* =========================================================================
+   First-time onboarding tutorial — a gentle 5-step guide for brand-new
+   players, plus a guided walk through the market booths. save.tut holds the
+   current step (0 = finished / not running). New games start it in
+   confirmNewGame(); existing saves migrate to 0 so veterans never see it.
+   ========================================================================= */
+const TUT_DONE = 0, TUT_MAP = 1, TUT_CAST = 2, TUT_BAG = 3, TUT_RADIO = 4, TUT_TRAVEL = 5, TUT_MARKET = 6;
+let tutBooth = 0;                            // which interactive market task we're on
+let licenseWarn = 0;                         // seconds left on the "missing permit" banner
+let tutSkipRect = null, tutNextRect = null;  // buttons drawn by drawTutorial(), clicked in canvasPress
+// the market walkthrough now actually walks the player through the booths that matter
+const TUT_TASKS = [
+  { r: FISH_STALL,    screen: "shopFish",    name: "Fiskehandel", go: "Klikk p\u00e5 fiskehandelen \u2014 her selger du fangsten.",        todo: "Trykk \u00abSelg alt\u00bb for \u00e5 selge fisken din." },
+  { r: KIOSK_STALL,   screen: "shopKiosk",   name: "Kiosken",     go: "Klikk p\u00e5 kiosken for \u00e5 handle godsaker.",                  todo: "Kj\u00f8p en godsak \u2014 den gir deg fiskeflaks ute ved vannet." },
+  { r: ROD_STALL,     screen: "shopRod",     name: "Fiskeutstyr", go: "Klikk p\u00e5 fiskeutstyret \u2014 du f\u00e5r en gratis stang!",      todo: "Gubben gir deg en gratis Glassfiberstang." },
+  { r: CASINO_STALL,  screen: "shopCasino",  name: "Kasinoet",    go: "Klikk p\u00e5 kasinoet for \u00e5 pr\u00f8ve lykken.",                  todo: "Velg farge, sett innsats og spinn hjulet \u00e9n gang." },
+  { r: LICENSE_BOOTH, screen: "shopLicense", name: "Fiskekort",   go: "Klikk p\u00e5 fiskekort-boden.",                              todo: "Kj\u00f8p et gyldig fiskekort for vannet ditt." },
+];
+function tutActive() { return !!save.tut && save.tut !== TUT_DONE; }
+function tutMarketStep() { return (tutActive() && save.tut === TUT_MARKET) ? tutBooth : -1; }
+function advanceTut(fromStep) {
+  if (save.tut !== fromStep) return;
+  let n = fromStep + 1; if (n > TUT_MARKET) n = TUT_DONE;
+  save.tut = n; tutBooth = 0; persist();
+}
+function skipTut() { save.tut = TUT_DONE; tutBooth = 0; persist(); sfxClink(); }
+// finished a market booth task -> move to the next, or wrap up the whole guide
+function tutCompleteBooth(i) {
+  if (tutMarketStep() !== i) return;
+  tutBooth++;
+  if (tutBooth >= TUT_TASKS.length) advanceTut(TUT_MARKET);   // last booth done -> guide finished
+  else persist();
+}
+// the \u00abNeste \u203a\u00bb button now only appears on the sekk-intro card
+function tutNext() {
+  if (save.tut === TUT_BAG) { sfxClink(); coolerMenu = false; advanceTut(TUT_BAG); }
+}
+function tutWrap(text, maxW) {
+  ctx.font = "8px monospace";
+  const words = text.split(" "); const lines = []; let cur = "";
+  for (const w of words) {
+    const test = cur ? cur + " " + w : w;
+    if (cur && ctx.measureText(test).width > maxW) { lines.push(cur); cur = w; } else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+function tutRingRect(r, pad) {
+  const rr = padRect(r, pad), pulse = 0.5 + 0.5 * Math.sin(t * 5);
+  ctx.save();
+  ctx.globalAlpha = 0.45 + 0.5 * pulse; ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 2;
+  ctx.strokeRect(Math.round(rr.x) + 0.5, Math.round(rr.y) + 0.5, Math.round(rr.w) - 1, Math.round(rr.h) - 1);
+  ctx.restore();
+}
+function tutRingCircle(cx, cy, rad) {
+  const pulse = 0.5 + 0.5 * Math.sin(t * 5);
+  ctx.save();
+  ctx.globalAlpha = 0.45 + 0.5 * pulse; ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, rad + pulse * 2, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+function drawTutCard(title, lines, opts) {
+  opts = opts || {};
+  const w = 300, x = Math.round((W - w) / 2), y = 30;
+  const h = 18 + lines.length * 10 + 14;
+  px(x, y, w, h, "rgba(12,11,20,0.92)");
+  px(x, y, w, 2, "#ffe066");
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#ffe066"; ctx.font = "bold 9px monospace"; ctx.fillText(title, x + 8, y + 14);
+  ctx.fillStyle = "#eef0ff"; ctx.font = "8px monospace";
+  lines.forEach((ln, i) => ctx.fillText(ln, x + 8, y + 26 + i * 10));
+  const by = y + h - 5;
+  ctx.font = "7px monospace"; ctx.fillStyle = "#9aa6d0";
+  const sk = "Hopp over guide";
+  ctx.fillText(sk, x + 8, by);
+  tutSkipRect = { x: x + 6, y: by - 9, w: ctx.measureText(sk).width + 4, h: 12 };
+  if (opts.next) {
+    ctx.font = "bold 8px monospace";
+    const nw = ctx.measureText(opts.next).width + 14, nx = x + w - nw - 6, ny = y + h - 15;
+    px(nx, ny, nw, 13, "#33406a"); px(nx, ny, nw, 1, "#5f6fb0");
+    ctx.fillStyle = "#ffe6a0"; ctx.fillText(opts.next, nx + 7, ny + 9);
+    tutNextRect = { x: nx, y: ny, w: nw, h: 13 };
+  }
+}
+function drawTutorial() {
+  tutSkipRect = null; tutNextRect = null;
+  if (!tutActive()) return;
+  if (screen === "game") {
+    if (save.tut === TUT_CAST) {
+      drawTutCard("Kast ut", tutWrap("Klikk i vannet for \u00e5 kaste ut. Vent p\u00e5 napp og klikk igjen for \u00e5 kroke fisken.", 284));
+    } else if (save.tut === TUT_BAG) {
+      if (coolerMenu) {
+        drawTutCard("Sekken din", [
+          "Godsaker   \u2013 \u00f8l, snus og r\u00f8yk som gir fiskeflaks.",
+          "Bytt stang \u2013 velg hvilken fiskestang du bruker.",
+          "Hatter     \u2013 bytt mellom luene du eier.",
+          "Se fangst  \u2013 fisken du har i sekken n\u00e5.",
+          "Rekorder   \u2013 dine st\u00f8rste fangster per art.",
+          "Skrotsamling \u2013 rare ting du har fisket opp.",
+        ], { next: "Neste \u203a" });
+      } else {
+        tutRingRect(SEKK, 4);
+        drawTutCard("Sekken din", tutWrap("Trykk p\u00e5 sekken ved foten din for \u00e5 \u00e5pne den.", 284));
+      }
+    } else if (save.tut === TUT_RADIO) {
+      tutRingRect(RADIO, 4);
+      drawTutCard("Radioen", tutWrap("Skru p\u00e5 radioen for litt koselig country mens du fisker.", 284));
+    } else if (save.tut === TUT_TRAVEL) {
+      tutRingRect(TRUCK, 4);
+      drawTutCard("Reis til markedet", tutWrap("Kj\u00f8r pickupen for \u00e5 \u00e5pne kartet, og velg Markedet for \u00e5 selge fisk og handle.", 284));
+    }
+  } else if (screen === "map") {
+    if (save.tut === TUT_MAP) {
+      const sp = MAP_SPOTS[0]; tutRingCircle(sp.x, sp.y - 12, 16);
+      drawTutCard("Kartet ditt", tutWrap("Herfra reiser du mellom fiskevann og markedet. Trykk p\u00e5 Skogstjern for \u00e5 begynne.", 284));
+    } else if (save.tut === TUT_TRAVEL) {
+      tutRingCircle(MAP_MARKET.x, MAP_MARKET.y - 12, 18);
+      drawTutCard("Til markedet", tutWrap("Velg Markedet for \u00e5 reise dit og selge fangsten.", 284));
+    }
+  } else if (screen === "market" && save.tut === TUT_MARKET) {
+    const b = TUT_TASKS[tutBooth] || TUT_TASKS[0];
+    px(0, 0, W, H, "rgba(6,6,12,0.28)");
+    tutRingRect(b.r, 3);
+    drawTutCard(b.name + "  (" + (tutBooth + 1) + "/" + TUT_TASKS.length + ")", tutWrap(b.go, 284));
+  }
+}
+// liten varsling n\u00e5r du ankommer et vann uten gyldig fiskekort
+function drawLicenseWarn() {
+  if (licenseWarn <= 0) return;
+  const a = Math.min(1, licenseWarn);
+  const txt = "Mangler fiskekort her!";
+  ctx.save();
+  ctx.font = "bold 10px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const w = ctx.measureText(txt).width + 28, x = Math.round((W - w) / 2), y = 14;
+  ctx.globalAlpha = 0.88 * a;
+  px(x, y, w, 18, "#3c0c0c");
+  px(x, y, w, 1, "#ff6b5a"); px(x, y + 17, w, 1, "#ff6b5a");
+  ctx.globalAlpha = a;
+  ctx.fillStyle = "#ffd0c0";
+  ctx.fillText("\u26a0 " + txt, W / 2, y + 9);
+  ctx.restore();
+}
+
 function canvasPress(p) {
   ensureAudio();
   if (knockout.active) return;          // passed out cold — no fishing until he comes to
   if (screen === "intro") { if (!intro.running) startIntroPlayback(); else endIntro(); return; }
+  // the onboarding guide's buttons take priority on every screen it appears
+  if (tutActive() && (screen === "game" || screen === "market" || screen === "map")) {
+    if (tutSkipRect && inRect(p.x, p.y, tutSkipRect)) { skipTut(); return; }
+    if (tutNextRect && inRect(p.x, p.y, tutNextRect)) { tutNext(); return; }
+  }
   if (screen === "market") {
+    // during the guided walkthrough only the highlighted booth responds (the car stays locked)
+    if (save.tut === TUT_MARKET) {
+      const tk = TUT_TASKS[tutBooth];
+      if (tk && inRect(p.x, p.y, tk.r)) {
+        if (tk.screen === "shopKiosk") sfxKiosk();
+        else if (tk.screen === "shopLicense") sfxClink();
+        setScreen(tk.screen);
+      }
+      return;
+    }
     // the shady fence's buy-menu takes priority while it's open
     if (fenceShop) {
       if (backBtnRect && inRect(p.x, p.y, backBtnRect)) { fenceShop = false; sfxClink(); return; }
@@ -888,6 +1046,12 @@ function canvasPress(p) {
     return;
   }
   if (screen === "map") {
+    // first-time guide: gently steer the new player to Skogstjern only
+    if (save.tut === TUT_MAP) {
+      const sk = MAP_SPOTS[0];
+      if (Math.hypot(p.x - sk.x, p.y - (sk.y - 12)) < 18) tryTravel("skogstjern");
+      return;
+    }
     if (Math.hypot(p.x - MAP_MARKET.x, p.y - (MAP_MARKET.y - 12)) < 20) { tryTravel("market"); return; }
     for (const sp of MAP_SPOTS) {
       if (Math.hypot(p.x - sp.x, p.y - (sp.y - 12)) < 18) { tryTravel(sp.key); return; }
@@ -1304,7 +1468,12 @@ function confirmNewGame() {
   refreshAll();
   pendingNewSlot = -1;
   rollWeather();
-  setScreen("game");
+  save.basket = [
+    { key: "abbor", weight: 1.1, value: Math.round(40 * 1.1) },
+    { key: "orret", weight: 1.4, value: Math.round(120 * 1.4) },
+  ];   // et par startfisk saa fiskehandelen i opplaeringen gir mening
+  save.tut = TUT_MAP; mapReturn = "game"; persist();
+  setScreen("map");
 }
 function cancelNewGame() {
   pendingNewSlot = -1;
@@ -1583,12 +1752,33 @@ function setScreen(name) {
   hudEl.classList.toggle("hidden", name !== "game");
   if (name !== "game") { reelEl.classList.add("hidden"); catchEl.classList.add("hidden"); hintEl.classList.add("hidden"); }
   if (name === "game") { resetFishing(); setHint("Klikk for å kaste ut"); if (radio.on && !radioNode) { radioIdx = Math.floor(Math.random() * RADIO_SONGS.length); playRadioSong(); } }
+  if (name === "game" && save.tut === TUT_MAP) advanceTut(TUT_MAP);
+  if (name === "market" && save.tut === TUT_TRAVEL) { tutBooth = 0; advanceTut(TUT_TRAVEL); }
   if (name === "shopFish") buildBasket();
-  if (name === "shopRod") { buildRods(); }
+  if (name === "shopRod") {
+    buildRods();
+    if (tutMarketStep() === 2) {   // gratis nybegynnerstang under opplaeringen
+      if (!save.owned.includes(1)) save.owned.push(1);
+      save.rodLevel = 1; persist();
+      speak("rodSpeech", "Her — en gratis Glassfiberstang til en grønnskolling. Ikke knekk den. Trykk ← Marked når du er klar.");
+      buildRods(); refreshHUD();
+      tutCompleteBooth(2);
+    }
+  }
   if (name === "shopLicense") buildLicenses();
   if (name === "shopKiosk") buildKiosk();
   if (name === "slots") buildSlots();
   if (name === "shopCasino") { speak("casinoSpeech", "Welcome, my friend! Velg rød eller svart, sett innsatsen og spinn. Treffer fargen vinner du dobbelt — men pass deg for grønn null! 🎩"); buildCasino(); }
+  // opplaering: vis hva spilleren skal gjore i hver bod
+  if (tutMarketStep() >= 0) {
+    const tk = TUT_TASKS[tutBooth];
+    if (tk && name === tk.screen) {
+      if (name === "shopFish") speak("ladySpeech", tk.todo);
+      else if (name === "shopKiosk") speak("kioskSpeech", tk.todo);
+      else if (name === "shopCasino") speak("casinoSpeech", tk.todo);
+      else if (name === "shopLicense") speak("licenseSpeech", tk.todo);
+    }
+  }
   refreshHUD();
   ensureAudio();
   hoverProp = null; updateCursor();   // recompute the cursor for the new screen even without a mouse move
@@ -1710,6 +1900,7 @@ function finalizeCatch() {
 function catchFish() {
   reelEl.classList.add("hidden");
   finalizeCatch();
+  advanceTut(TUT_CAST);
   setFish("reveal");
   const c = currentCatch;
   if (c.junk) { catchName.textContent = c.f.name; catchInfo.textContent = "til samlingen · " + ((save.junk && save.junk[c.f.key]) || 1) + " stk"; catchTag.textContent = c.tag || ""; }
@@ -1804,6 +1995,7 @@ function sellAll() {
   sfxCoin(); playSample("buying", { vol: 0.6 }); playSample("moan", { vol: 0.6 });
   speak("ladySpeech", `Mmm, ${n} fisk for ${fmt(total)} kr. Takk skal du ha, kjekken 😘`);
   buildBasket(); refreshHUD();
+  if (tutMarketStep() === 0) { tutCompleteBooth(0); speak("ladySpeech", "Nydelig handel! Trykk ← Marked for å fortsette."); }
 }
 function sellSpecies(key) {
   const sold = save.basket.filter((b) => b.key === key);
@@ -1815,6 +2007,7 @@ function sellSpecies(key) {
   const f = FISH_BY_KEY[key];
   speak("ladySpeech", `${sold.length}× ${f.name} for ${fmt(total)} kr — godt valg 😘`);
   buildBasket(); refreshHUD();
+  if (tutMarketStep() === 0 && !save.basket.length) { tutCompleteBooth(0); speak("ladySpeech", "Da var sekken tom! Trykk ← Marked for å fortsette."); }
 }
 function buyRod(level) {
   const r = RODS[level];
@@ -1852,6 +2045,7 @@ function buyLicense(locKey) {
   wardenStamp = 1; wardenScheme = 2.2; setTimeout(wardenStampSfx, 120);   // he stamps your card with a smug flourish
   speak("licenseSpeech", `Vær så god — kort for ${loc.name} som varer ${LICENSE_GRANT} fangster.`);
   buildLicenses(); refreshHUD();
+  if (tutMarketStep() === 4) { tutCompleteBooth(4); speak("licenseSpeech", "Da er du klar for fiske! God fornøyelse der ute."); }
 }
 
 /* ---- fiskeoppsynet: a rare inspector who checks your license ---- */
@@ -1983,6 +2177,7 @@ function buyConsumable(kind) {
   sfxCoin(); playSample("buying", { vol: 0.6 }); sfxKiosk();
   speak("kioskSpeech", `Vær så god — ${g.per}× ${g.name}. Skitt fiske! 🎣`);
   buildKiosk(); refreshHUD();
+  if (tutMarketStep() === 1) { tutCompleteBooth(1); speak("kioskSpeech", "Bra valg! Trykk ← Marked for å gå videre."); }
 }
 function buildKiosk() {
   const list = $("kioskList"); if (!list) return;
@@ -2050,6 +2245,7 @@ function settleRoulette() {
     if (r) { r.textContent = `−${fmt(casino.bet)} kr`; r.className = "casino-result lose"; }
   }
   refreshHUD(); buildCasino();
+  if (tutMarketStep() === 3) { tutCompleteBooth(3); speak("casinoSpeech", "Godt spinn! Trykk ← Marked for å fortsette."); }
 }
 function buildCasino() {
   document.querySelectorAll("#shopCasino .cas-col").forEach((b) => b.classList.toggle("active", b.dataset.color === casino.color));
@@ -2130,6 +2326,7 @@ function rodTab(tab) {
    ========================================================================= */
 function update(dt) {
   t += dt; stateTime += dt;
+  if (licenseWarn > 0) licenseWarn = Math.max(0, licenseWarn - dt);
 
   // ambient everywhere
   for (const r of ripples) { r.r += dt * 18; r.life -= dt * 1.3; }
@@ -2182,6 +2379,7 @@ function update(dt) {
       else {
         setLocation(travel.key); resetFishing(); rollWeather(); setScreen("game");
         setHint(WEATHER_HINT[weather.type] || "");
+        if (currentLicense() === 0) licenseWarn = 3;   // minner deg paa at du mangler fiskekort her
       }
     }
     return;
@@ -5950,11 +6148,13 @@ function render() {
       drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawCaveDetails(); drawShore(); drawRiseSpot();
       drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawHatSeller(); drawInspector(); drawReedsFront(); drawCoolerMenu(); drawGodsakerPanel(); drawHatPanel(); drawHatShop(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawFireflies(); drawSnow();
       drawRevealFish(); drawFog(); drawWeather(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette(); drawHangover(); drawKnockout();
+      drawTutorial();
+      drawLicenseWarn();
       break;
     case "menu": drawMenuBg(); break;
-    case "market": drawMarketBg(); break;
+    case "market": drawMarketBg(); drawTutorial(); break;
     case "intro": drawIntroBg(); break;
-    case "map": drawMapBg(); break;
+    case "map": drawMapBg(); drawTutorial(); break;
     case "travel": drawTravelBg(); break;
     case "shopFish": drawShopScene("shopFish", drawShopFishBg); break;
     case "shopRod": drawShopScene("shopRod", drawShopRodBg); break;
