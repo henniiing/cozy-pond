@@ -688,6 +688,13 @@ canvas {
 .rod-row.locked {
   opacity: 0.6;
 }
+.rod-row.gift {
+  background: linear-gradient(90deg, rgba(202, 164, 106, 0.18), rgba(202, 164, 106, 0.04));
+  outline: 1px solid #caa46a;
+}
+.rod-row.gift .rod-title {
+  color: #ffe6a0;
+}
 .rod-row .grow {
   flex: 1;
 }

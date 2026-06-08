@@ -39,7 +39,7 @@ const SLOT_COUNT = 3;
 const SLOT_KEY = "cozyPond_slot";      // which slot is currently active (0..2)
 function slotKey(i) { return SAVE_KEY + "_s" + i; }
 function defaultSave() {
-  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, junkSeen: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "", hats: ["straw"], hat: "straw", tut: 0 };
+  return { money: 0, rodLevel: 0, beers: 0, basket: [], record: {}, junk: {}, junkSeen: {}, junkFound: {}, location: "skogstjern", unlocked: ["skogstjern"], owned: [0], stock: { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 }, licenses: {}, gated: true, seenIntro: false, playerName: "", hats: ["straw"], hat: "straw", tut: 0 };
 }
 // one-time migration: fold the old single save into slot 0 the first time we boot the slot system
 function migrateSaves() {
@@ -65,6 +65,12 @@ function loadSave(slot) {
       // the Skrotsamling remembers every junk type you've ever landed, even after you sell it to the fence
       if (!merged.junkSeen || typeof merged.junkSeen !== "object") merged.junkSeen = {};
       for (const k in (merged.junk || {})) if (merged.junk[k] > 0) merged.junkSeen[k] = true;
+      // junkFound = how many of each curio you've reeled up in total (kept even after selling)
+      if (!merged.junkFound || typeof merged.junkFound !== "object") merged.junkFound = {};
+      for (const k in merged.junkSeen) {                          // veterans: seed a sensible count
+        const held = (merged.junk && merged.junk[k]) || 0;
+        merged.junkFound[k] = Math.max(merged.junkFound[k] || 0, held, 1);
+      }
       // migrate the old single global licence count onto whichever water you were last at
       if (typeof s.license === "number" && s.license > 0) merged.licenses[merged.location] = (merged.licenses[merged.location] || 0) + s.license;
       delete merged.license;
@@ -1836,7 +1842,9 @@ function setScreen(name) {
       if (REWARD_ROD_LEVEL >= 0 && !save.owned.includes(REWARD_ROD_LEVEL)) save.owned.push(REWARD_ROD_LEVEL);
       if (REWARD_ROD_LEVEL >= 0) save.rodLevel = REWARD_ROD_LEVEL;
       persist();
-      speak("rodSpeech", "Fullførte du runden? Her — min egen gamle lykkestang. Den fås ikke kjøpt i butikken. Bruk den med stolthet. Trykk ← Marked.");
+      // gjor overrekkelsen tydelig: gubben spretter til, en glad lyd, og stanga dukker opp i lista hans
+      rodHop = 1; rodGrumpyBuy = true; sfxCoin(); playSample("buying", { vol: 0.6 });
+      speak("rodSpeech", "Her — min egen gamle lykkestang! Den fås ikke kjøpt. Du ser den nederst her og i sekken din. Bruk den med stolthet, og trykk ← Marked.");
       buildRods(); refreshHUD();
       tutCompleteBooth(2);
     }
@@ -1954,7 +1962,9 @@ function finalizeCatch() {
   if (f.junk) {
     save.junk = save.junk || {};
     save.junkSeen = save.junkSeen || {};
+    save.junkFound = save.junkFound || {};
     save.junk[f.key] = (save.junk[f.key] || 0) + 1;
+    save.junkFound[f.key] = (save.junkFound[f.key] || 0) + 1;   // collection tally never goes down
     save.junkSeen[f.key] = true;
     persist();
     currentCatch = { f, junk: true, tag: f.tag };
@@ -1979,7 +1989,7 @@ function catchFish() {
   advanceTut(TUT_CAST);
   setFish("reveal");
   const c = currentCatch;
-  if (c.junk) { catchName.textContent = c.f.name; catchInfo.textContent = "til samlingen · " + ((save.junk && save.junk[c.f.key]) || 1) + " stk"; catchTag.textContent = c.tag || ""; }
+  if (c.junk) { catchName.textContent = c.f.name; catchInfo.textContent = "til samlingen · " + ((save.junkFound && save.junkFound[c.f.key]) || 1) + " stk"; catchTag.textContent = c.tag || ""; }
   else { catchName.textContent = c.f.name; catchInfo.textContent = c.weight.toFixed(2) + " kg · " + fmt(c.value) + " kr"; catchTag.textContent = c.tag || ""; }
   catchEl.classList.remove("hidden");
   setHint("");
@@ -2367,12 +2377,13 @@ function buildRods() {
   const list = $("rodList"); if (!list) return;
   list.innerHTML = "";
   RODS.forEach((r, i) => {
-    if (r.hidden) return;   // belonningsstangen vises aldri i kjopslisten
     const owned = save.owned.includes(i);
+    if (r.hidden && !owned) return;   // belonningsstangen vises forst i lista nar du faktisk eier den
     const equipped = i === save.rodLevel;
     const row = document.createElement("div");
-    row.className = "rod-row" + (owned ? " owned" : "") + (equipped ? " equipped" : "");
-    const stats = `Innhaling +${Math.round((r.reel - 1) * 100)}% · Tåler ${Math.round((1 - r.tens) * 100)}% mer drag · Sjeldne fisk +${Math.round(r.rare * 100)}%`;
+    row.className = "rod-row" + (owned ? " owned" : "") + (equipped ? " equipped" : "") + (r.reward ? " gift" : "");
+    const baseStats = `Innhaling +${Math.round((r.reel - 1) * 100)}% · Tåler ${Math.round((1 - r.tens) * 100)}% mer drag · Sjeldne fisk +${Math.round(r.rare * 100)}%`;
+    const stats = r.reward ? `🎁 Fiksemannens egen — fås ikke kjøpt · ${baseStats}` : baseStats;
     let btn;
     if (equipped) btn = `<button class="buy-btn" disabled>I bruk</button>`;
     else if (owned) btn = `<button class="buy-btn" data-action="equipRod" data-level="${i}">Bruk</button>`;
@@ -4356,8 +4367,11 @@ function drawGodsakerPanel() {
 /* in-scene rod picker (replaces the old inventory overlay for "Bytt stang") */
 function rodPanelRects() {
   const owned = save.owned.slice().sort((a, b) => a - b);
-  const w = 168, h = 27, x = PANEL_R - 172;
-  return owned.map((level, i) => ({ level, x, y: 156 - i * 29, w, h }));
+  const n = owned.length;
+  const w = 168, h = 27, x = PANEL_R - 172, gap = 29, top = 24;
+  // highest level sits at the top, lowest at the bottom; the whole stack is anchored near
+  // the screen top so it always fits on-screen even when you own every rod (incl. the reward)
+  return owned.map((level, i) => ({ level, x, y: top + (n - 1 - i) * gap, w, h }));
 }
 function drawRodPanel() {
   if (!rodPanel) return;
@@ -4442,7 +4456,7 @@ function drawFunnPanel() {
   ctx.fillText(found === JUNK.length ? "Komplett! Du har funnet alt rart." : "Funn: " + found + "/" + JUNK.length + " typer", x + w / 2, top + 19);
   ctx.textBaseline = "middle";
   JUNK.forEach((j, i) => {
-    const n = (save.junk || {})[j.key] || 0;
+    const found = (save.junkFound || {})[j.key] || 0;
     const has = !!seen[j.key];
     const y = top + headH + i * rh + 8;
     if (has) drawJunkSprite(ctx, x + 14, y, 1.4, j.kind);
@@ -4450,8 +4464,8 @@ function drawFunnPanel() {
     ctx.fillStyle = has ? "#f0e6d0" : "#6a6472";
     ctx.fillText(has ? j.name : "???", x + 28, y);
     ctx.textAlign = "right";
-    ctx.fillStyle = has ? (n > 0 ? "#ffe6a0" : "#8a849a") : "#6a6472";
-    ctx.fillText(has ? (n > 0 ? "×" + n : "solgt") : "ikke funnet", x + w - 8, y);
+    ctx.fillStyle = has ? "#ffe6a0" : "#6a6472";
+    ctx.fillText(has ? "×" + Math.max(1, found) : "ikke funnet", x + w - 8, y);
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
