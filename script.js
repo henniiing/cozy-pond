@@ -1190,7 +1190,7 @@ function canvasPress(p) {
   if (cat.mission === "steal" && (cat.state === "arrive" || cat.state === "grab" || cat.state === "carry") &&
       inRect(p.x, p.y, { x: cat.x - 14, y: cat.y - 20, w: 34, h: 26 })) {
     cat.state = "flee"; cat.mission = null; cat.fishKey = null; cat.t = 0; catYowl();
-    showCatEvent("Du jaget katten!", "Pus mjauer surt og stikker av — fisken er reddet.");
+    showCatEvent(T("Du jaget katten!"), T("Pus mjauer surt og stikker av — fisken er reddet."));
     return;
   }
   // pet the friendly cat whenever it's around (lounging OR padding about) → it settles down and purrs
@@ -6000,7 +6000,7 @@ function eatStolenFish() {
   const taken = save.basket.splice(mi, 1)[0];
   persist(); buildBasket(); refreshHUD();
   const f = FISH_BY_KEY[taken.key];
-  showCatEvent("Katten stakk av med " + (f ? f.name : "fisken") + "!", "Du var for treig — pus forsynte seg.");
+  showCatEvent(T("Katten stakk av med {name}!", { name: f ? T(f.name) : T("fisken") }), T("Du var for treig — pus forsynte seg."));
 }
 function showCatEvent(title, line) {
   gameEvent = { active: true, t: 0, dur: 4.5, title, line, color: "#ffd27a", sprite: "_cat", dir: 1, seed: Math.random() };

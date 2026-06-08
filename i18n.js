@@ -176,6 +176,7 @@ window.EN = {
   "Sekk": "Bag",
   "Radio": "Radio",
   "Selg fisk": "Sell fish",
+  "Selg fisk · kjøp utstyr · spill": "Sell fish · buy gear · play",
   "Kiosk": "Kiosk",
   "Stenger": "Rods",
   "Kasino": "Casino",
@@ -188,6 +189,13 @@ window.EN = {
   "Den slapp…": "It got away…",
   "Fisken rømte til slutt…": "The fish finally escaped…",
   "Lina røk!": "The line snapped!",
+
+  /* ---- Cat events ---- */
+  "Du jaget katten!": "You shooed the cat away!",
+  "Pus mjauer surt og stikker av — fisken er reddet.": "Kitty meows sourly and slinks off — the fish is saved.",
+  "Katten stakk av med {name}!": "The cat ran off with {name}!",
+  "Du var for treig — pus forsynte seg.": "You were too slow — kitty helped itself.",
+  "fisken": "the fish",
 
   /* ---- Delete slot confirm ---- */
   "Slette spillet i Plass {n}?": "Delete the game in Slot {n}?",
@@ -220,7 +228,7 @@ window.EN = {
   "Urgjedda": "The Primeval Pike",
   "En skikkelig urskogsmonster! 🐊": "A real old-growth monster! 🐊",
   "Hva i alle dager?!": "What on earth?!",
-  "Så stor at elgen ble misunnelig! 🫎": "So big the moose got jealous! 🫎",
+  "Så stor at elgen ble misunnelig! 🪬": "So big the moose got jealous! 🪬",
   "Den lyser som selve nordlyset! ✨": "It glows like the aurora itself! ✨",
   "Et urtidsmonster fra dypet! 🐉": "A prehistoric monster from the deep! 🐉",
 
