@@ -6464,7 +6464,12 @@ if (!save.gated) {
 }
 if (!save.unlocked.includes("skogstjern")) save.unlocked.unshift("skogstjern");
 if (!Array.isArray(save.owned)) save.owned = [0];
-for (let i = 0; i <= save.rodLevel; i++) if (!save.owned.includes(i)) save.owned.push(i);
+// legacy backfill: old saves only stored rodLevel, so grant ownership of the buyable ladder
+// up to it. The reward rod sits at a HIGH index but is NOT part of that ladder — equipping it
+// must never hand you every rod below it for free, so skip the backfill when it's equipped.
+if (save.rodLevel !== REWARD_ROD_LEVEL) {
+  for (let i = 0; i <= save.rodLevel; i++) if (!save.owned.includes(i)) save.owned.push(i);
+}
 if (!save.owned.includes(0)) save.owned.push(0);
 if (!save.stock || typeof save.stock !== "object") save.stock = { beer: 0, snus: 0, cigar: 0, akevitt: 0, snabel: 0 };
 for (const k of ["beer", "snus", "cigar", "akevitt", "snabel"]) if (save.stock[k] == null) save.stock[k] = 0;
