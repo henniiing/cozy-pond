@@ -502,7 +502,7 @@ function playWhistleTune(vol = 0.05) {
 }
 
 /* ---- recorded samples (mp3 files in /lyder) ---- */
-const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", scream: "Red girl screaming loud", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music", catPurr: "cat-purring", catAngry: "cat-angry-meow", sinister: "sinister-laugh", motor: "backgorund-motor.sound", bottleBreak: "glass-bottle-breaking", blackout: "blacokout", buying: "buying-item", radio5: "radiosong5", radio6: "radiosong6", sellFishBg: "sell-fish-shop-backgorund-music", licenseAmb: "fiskekort-ambience" };
+const SAMPLES = { burp: "burp", fart: "fart", engine: "engine", yiha: "yiha", howl: "howl", cigar: "lighitng-cigar", radio: "radiosong1", radio2: "radiosong2", radio3: "radiosong3", radio4: "radiosong4", hoo: "hooooo", party: "muffled-party-music", moan: "woman-moan", scream: "Red girl screaming loud", grumpyVoice: "grumpy-man-sound", ohbro: "oh-brother", eyybro: "eyy-eyy-eyy-sup-my.bro", market: "market-sound", casinoAmb: "casino-ambient-sound", casinoSpin: "casino-spin", spinLose: "spin-lose", spinLose2: "spin-lose2", ladyWelcome: "lady-welcome-talk", menuMusic: "menu-music", introMusic: "intro-music", catPurr: "cat-purring", catAngry: "cat-angry-meow", sinister: "sinister-laugh", motor: "backgorund-motor.sound", bottleBreak: "glass-bottle-breaking", blackout: "blacokout", buying: "buying-item", radio5: "radiosong5", radio6: "radiosong6", sellFishBg: "sell-fish-shop-backgorund-music", licenseAmb: "fiskekort-ambience", roast: "roaster" };
 const sampleEls = {};
 for (const k in SAMPLES) { const a = new Audio(`lyder/${encodeURIComponent(SAMPLES[k])}.mp3`); a.preload = "auto"; sampleEls[k] = a; }
 // some clips have dead air at the front — skip straight to where the sound actually starts
@@ -1614,7 +1614,7 @@ function updateKnockout(dt) {
   }
   else if (ph === "fall" && knockout.t > 1.3) { knockout.phase = "close"; knockout.t = 0; }
   else if (ph === "close" && knockout.t > 0.8) { knockout.phase = "black"; knockout.t = 0; try { playSample("fart", { vol: 0.5 }); } catch (e) {} }
-  else if (ph === "black" && knockout.t > 1.2) { knockout.phase = "open"; knockout.t = 0; }
+  else if (ph === "black" && knockout.t > 1.2) { knockout.phase = "open"; knockout.t = 0; try { playSample("roast", { vol: 0.7 }); } catch (e) {} }   // a rooster crow wakes him as the screen opens back up
   else if (ph === "open" && knockout.t > 1.0) {
     // comes to — stone-cold sober, rus gone, but woozy for a few seconds (tømmermenn)
     knockout.active = false; drunk = 0;
@@ -2902,7 +2902,7 @@ function drawBobber() {
 }
 
 function drawGuy() {
-  if (knockout.active && knockout.phase !== "fall" && knockout.phase !== "wooze") return;   // hidden behind the black iris
+  if (knockout.active && knockout.phase !== "fall" && knockout.phase !== "wooze" && knockout.phase !== "open") return;   // hidden only while the eyes are fully shut
   const bob = Math.sin(t * 1.4) * 0.6;
   // sway harder and harder during the woozy lead-in, so the topple feels earned
   const woozeK = (knockout.active && knockout.phase === "wooze") ? 1 + clamp(knockout.t / 1.5, 0, 1) * 2.5 : 1;
@@ -2971,38 +2971,34 @@ function drawGuy() {
 function drawKnockout() {
   if (!knockout.active) return;
   const cx = 64, cy = 104;
-  // lead-in: the world dims and pulses at the edges, eyelids getting heavy — readable warning
-  if (knockout.phase === "wooze") {
-    const k = clamp(knockout.t / 1.5, 0, 1);
-    ctx.save();
-    // creeping vignette that grows as he fades
-    const g = ctx.createRadialGradient(cx, cy, 30, cx, cy, 220);
-    g.addColorStop(0, "rgba(0,0,0,0)");
-    g.addColorStop(1, `rgba(0,0,0,${0.25 + k * 0.55})`);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    // eyelids drooping from top and bottom, with a slow blink wobble
-    const lid = (0.18 + k * 0.4) * H + Math.sin(t * 3) * 4 * k;
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, W, lid * 0.6);
-    ctx.fillRect(0, H - lid * 0.6, W, lid * 0.6);
-    ctx.restore();
-    // a few woozy stars already circling
-    for (let i = 0; i < 3; i++) { const a = t * 3 + i * 2.09; sparkle(cx + Math.cos(a) * 9, cy - 16 + Math.sin(a) * 3, t * 1.5 + i); }
-    return;
-  }
-  if (knockout.phase === "fall") {
-    for (let i = 0; i < 4; i++) { const a = t * 5 + i * 1.57; sparkle(cx + Math.cos(a) * 11, cy - 16 + Math.sin(a) * 4, t * 2 + i); }
-    return;
-  }
-  let r;
-  if (knockout.phase === "close") r = lerp(470, 0, clamp(knockout.t / 0.8, 0, 1));
-  else if (knockout.phase === "black") r = 0;
-  else r = lerp(0, 470, clamp(knockout.t / 1.0, 0, 1));
+  // ONE consistent blackout: heavy eyelids droop shut (with a creeping vignette), hold black, then
+  // open back up as he comes to — no competing iris animation.
+  let shut;   // 0 = eyes wide open, 1 = fully shut (black)
+  if (knockout.phase === "wooze") shut = clamp(knockout.t / 1.5, 0, 1) * 0.55;                       // lids getting heavy
+  else if (knockout.phase === "fall") shut = lerp(0.55, 0.86, clamp(knockout.t / 1.3, 0, 1));        // sliding shut as he topples
+  else if (knockout.phase === "close") shut = lerp(0.86, 1, clamp(knockout.t / 0.8, 0, 1));          // snap fully shut
+  else if (knockout.phase === "black") shut = 1;                                                     // out cold
+  else shut = lerp(1, 0, clamp(knockout.t / 1.0, 0, 1));                                             // eyes open again on waking
+
   ctx.save();
-  ctx.fillStyle = "#000"; ctx.beginPath(); ctx.rect(0, 0, W, H);
-  if (r > 0) ctx.arc(cx, cy, r, 0, 6.28, true);
-  ctx.fill("evenodd");
+  // creeping vignette tied to how shut the eyes are
+  const g = ctx.createRadialGradient(cx, cy, 30, cx, cy, 220);
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(1, `rgba(0,0,0,${0.2 + shut * 0.62})`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // eyelids from top and bottom, meeting in the middle when fully shut (with a slow blink wobble while woozy)
+  const wobble = knockout.phase === "wooze" ? Math.sin(t * 3) * 4 * (shut / 0.55) : 0;
+  const lid = shut * (H / 2 + 8) + wobble;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, W, Math.max(0, lid));
+  ctx.fillRect(0, H - Math.max(0, lid), W, Math.max(0, lid));
   ctx.restore();
+  // woozy stars circling while he's still upright or toppling
+  if (knockout.phase === "wooze" || knockout.phase === "fall") {
+    const n = knockout.phase === "fall" ? 4 : 3, sp = knockout.phase === "fall" ? 5 : 3;
+    for (let i = 0; i < n; i++) { const a = t * sp + i * (6.28 / n); sparkle(cx + Math.cos(a) * 10, cy - 16 + Math.sin(a) * 4, t * 1.5 + i); }
+  }
+  // out cold — zZz over the black
   if (knockout.phase === "black") {
     ctx.fillStyle = "#5a5a7a"; ctx.font = "bold 13px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText("z Z z…", cx + 34, cy - 8);
