@@ -878,12 +878,13 @@ let tutBooth = 0;                            // which interactive market task we
 let licenseWarn = 0;                         // seconds left on the "missing permit" banner
 let tutSkipRect = null, tutNextRect = null;  // buttons drawn by drawTutorial(), clicked in canvasPress
 // the market walkthrough now actually walks the player through the booths that matter
+// rekkef\u00f8lge: fiskekort F\u00d8R kasinoet, s\u00e5 et kasino-tap helt p\u00e5 slutten aldri kan l\u00e5se spilleren ute fra fiskekortet
 const TUT_TASKS = [
   { r: FISH_STALL,    screen: "shopFish",    name: "Fiskehandel", go: "Klikk p\u00e5 fiskehandelen \u2014 her selger du fangsten.",        todo: "Trykk \u00abSelg alt\u00bb for \u00e5 selge fisken din." },
   { r: KIOSK_STALL,   screen: "shopKiosk",   name: "Kiosken",     go: "Klikk p\u00e5 kiosken for \u00e5 handle godsaker.",                  todo: "Kj\u00f8p en godsak \u2014 den gir deg fiskeflaks ute ved vannet." },
   { r: ROD_STALL,     screen: "shopRod",     name: "Fiskeutstyr", go: "Klikk p\u00e5 fiskeutstyret \u2014 du f\u00e5r en gratis stang!",      todo: "Gubben gir deg en gratis Glassfiberstang." },
-  { r: CASINO_STALL,  screen: "shopCasino",  name: "Kasinoet",    go: "Klikk p\u00e5 kasinoet for \u00e5 pr\u00f8ve lykken.",                  todo: "Velg farge, sett innsats og spinn hjulet \u00e9n gang." },
   { r: LICENSE_BOOTH, screen: "shopLicense", name: "Fiskekort",   go: "Klikk p\u00e5 fiskekort-boden.",                              todo: "Kj\u00f8p et gyldig fiskekort for vannet ditt." },
+  { r: CASINO_STALL,  screen: "shopCasino",  name: "Kasinoet",    go: "Klikk p\u00e5 kasinoet for \u00e5 pr\u00f8ve lykken.",                  todo: "Velg farge, sett innsats og spinn hjulet \u00e9n gang." },
 ];
 function tutActive() { return !!save.tut && save.tut !== TUT_DONE; }
 function tutMarketStep() { return (tutActive() && save.tut === TUT_MARKET) ? tutBooth : -1; }
@@ -2047,7 +2048,7 @@ function buyLicense(locKey) {
   wardenStamp = 1; wardenScheme = 2.2; setTimeout(wardenStampSfx, 120);   // he stamps your card with a smug flourish
   speak("licenseSpeech", `Vær så god — kort for ${loc.name} som varer ${LICENSE_GRANT} fangster.`);
   buildLicenses(); refreshHUD();
-  if (tutMarketStep() === 4) { tutCompleteBooth(4); speak("licenseSpeech", "Da er du klar for fiske! God fornøyelse der ute."); }
+  if (tutMarketStep() === 3) { tutCompleteBooth(3); speak("licenseSpeech", "Da slipper du bot fra oppsynet. Trykk ← Marked for å fortsette."); }
 }
 
 /* ---- fiskeoppsynet: a rare inspector who checks your license ---- */
@@ -2247,7 +2248,7 @@ function settleRoulette() {
     if (r) { r.textContent = `−${fmt(casino.bet)} kr`; r.className = "casino-result lose"; }
   }
   refreshHUD(); buildCasino();
-  if (tutMarketStep() === 3) { tutCompleteBooth(3); speak("casinoSpeech", "Godt spinn! Trykk ← Marked for å fortsette."); }
+  if (tutMarketStep() === 4) { tutCompleteBooth(4); speak("casinoSpeech", "Godt spinn! Nå er du klar — kjør tilbake til vannet og fisk i vei! 🎣"); }
 }
 function buildCasino() {
   document.querySelectorAll("#shopCasino .cas-col").forEach((b) => b.classList.toggle("active", b.dataset.color === casino.color));
@@ -2381,7 +2382,7 @@ function update(dt) {
       else {
         setLocation(travel.key); resetFishing(); rollWeather(); setScreen("game");
         setHint(WEATHER_HINT[weather.type] || "");
-        if (currentLicense() === 0) licenseWarn = 3;   // minner deg paa at du mangler fiskekort her
+        if (currentLicense() === 0 && !tutActive()) licenseWarn = 3;   // minner deg paa manglende fiskekort (ikke midt i opplaeringen)
       }
     }
     return;
@@ -2472,7 +2473,7 @@ function update(dt) {
       inspectorTimer -= dt;
       if (inspectorTimer <= 0) {
         inspectorTimer = 130 + Math.random() * 160;
-        if (momentGap <= 0 && save.money > LICENSE_FINE) { triggerInspector(); momentGap = 12 + Math.random() * 8; }
+        if (momentGap <= 0 && save.money > LICENSE_FINE && !tutActive()) { triggerInspector(); momentGap = 12 + Math.random() * 8; }
       }
     }
     // per-location random happenings (can fire while you fish; not during the inspector or menus)
