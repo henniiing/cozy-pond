@@ -214,7 +214,7 @@ const locFish = () => FISH.filter((f) => LOC.fish.includes(f.key));
 
 function pickFish() {
   const r = rod().rare;
-  const luck = (buff.t > 0 ? buff.luck : 0) + (castOnRise ? 0.5 : 0);
+  const luck = (buff.t > 0 ? buff.luck : 0) + (castOnRise ? 0.5 : 0) + hatLuck();
   // legendary catch of this location — rare early (a real "wow"), climbs with the top rods + luck
   if (LOC.rare && Math.random() < 0.008 + r * 0.026 + luck * 0.04) return LOC.rare;
   const pool = [];
@@ -358,14 +358,16 @@ let coolerMenu = false, truckMenu = false, rodPanel = false, bagPanel = false, r
 let hatPanel = false, hatShop = false;
 let hatRowRects = [];
 const HATS = [
-  { key: "straw", name: "Str\u00e5hatt", cost: 0, blurb: "Den gode gamle str\u00e5hatten." },
-  { key: "jester", name: "Narrehatt", cost: 3200, blurb: "Fargerik festivalhatt med bjeller." },
-  { key: "pinkcowboy", name: "Rosa cowboyhatt", cost: 5500, blurb: "Glitrende rosa \u2014 for festivalkongen." },
-  { key: "tophat", name: "Flosshatt", cost: 8000, blurb: "Stilig herrehatt for finere fiskere." },
-  { key: "rabbit", name: "Blinkende kanin\u00f8rer", cost: 12000, blurb: "Lyser opp natten. Hvorfor? Hvem vet." },
-  { key: "viking", name: "Vikinghjelm", cost: 18000, blurb: "Med ekte horn. Skitt fiske, h\u00f8vding!" },
+  { key: "straw", name: "Str\u00e5hatt", cost: 0, luck: 0, blurb: "Den gode gamle str\u00e5hatten." },
+  { key: "jester", name: "Narrehatt", cost: 3200, luck: 0.05, blurb: "Fargerik festivalhatt med bjeller." },
+  { key: "pinkcowboy", name: "Rosa cowboyhatt", cost: 5500, luck: 0.08, blurb: "Glitrende rosa \u2014 for festivalkongen." },
+  { key: "tophat", name: "Flosshatt", cost: 8000, luck: 0.12, blurb: "Stilig herrehatt for finere fiskere." },
+  { key: "rabbit", name: "Blinkende kanin\u00f8rer", cost: 12000, luck: 0.16, blurb: "Lyser opp natten. Hvorfor? Hvem vet." },
+  { key: "viking", name: "Vikinghjelm", cost: 18000, luck: 0.20, blurb: "Med ekte horn. Skitt fiske, h\u00f8vding!" },
 ];
 const HAT_BY_KEY = Object.fromEntries(HATS.map((h) => [h.key, h]));
+// hatten gir en liten, varig flaks-bonus mens du har den p\u00e5 (mest pynt \u2014 5\u201320 %)
+function hatLuck() { return (HAT_BY_KEY[save.hat] || {}).luck || 0; }
 // the wandering Romanian hat seller — strolls up from the foreground, offers hats, leaves if ignored
 let hatSeller = { state: "away", x: 108, y: 280, t: 0, timer: 150 + Math.random() * 180, idleDur: 14 };
 let marketNode = null, casinoAmbNode = null, casinoSpinNode = null, casinoLoseNode = null, licenseAmbNode = null;
@@ -4207,11 +4209,11 @@ const COOLER_MENU = [
   { key: "_funn", name: "Skrotsamling", action: true },
 ];
 const CONSUMABLES = [
-  { key: "beer", name: "Trygdepatron" },
-  { key: "snus", name: "Snus" },
-  { key: "cigar", name: "Sigarillo" },
-  { key: "akevitt", name: "Blænnvin" },
-  { key: "snabel", name: "Snabelstoff" },
+  { key: "beer", name: "Trygdepatron", flaks: 14, dur: 48 },
+  { key: "snus", name: "Snus", flaks: 9, dur: 28 },
+  { key: "cigar", name: "Sigarillo", flaks: 22, dur: 65 },
+  { key: "akevitt", name: "Blænnvin", flaks: 40, dur: 90 },
+  { key: "snabel", name: "Snabelstoff", flaks: 55, dur: 120 },
 ];
 function coolerItemRects() {
   const w = 122, h = 17, x = PANEL_R - 126;
@@ -4240,14 +4242,14 @@ function drawCoolerMenu() {
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 function godsakerRects() {
-  const w = 122, h = 17, x = PANEL_R - 126;
-  return CONSUMABLES.map((it, i) => ({ ...it, x, y: 170 - i * 21, w, h }));
+  const w = 150, h = 21, x = PANEL_R - 154;
+  return CONSUMABLES.map((it, i) => ({ ...it, x, y: 158 - i * 24, w, h }));
 }
 function drawGodsakerPanel() {
   if (!godsakerPanel) return;
   const rects = godsakerRects();
-  const top = rects[rects.length - 1].y - 15, bot = rects[0].y + 17 + 4 + 26;   // extra room for the RUS gauge
-  const x0 = rects[0].x - 4, pw = 130;
+  const top = rects[rects.length - 1].y - 15, bot = rects[0].y + 21 + 4 + 26;   // extra room for the RUS gauge
+  const x0 = rects[0].x - 4, pw = 158;
   px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
   px(x0, top, pw, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -4256,16 +4258,19 @@ function drawGodsakerPanel() {
   for (const it of rects) {
     px(it.x, it.y, it.w, it.h, "#241c30");
     px(it.x, it.y, it.w, 1, "#3a2e4a");
-    const cy = it.y + it.h / 2;
     const stock = save.stock[it.key] || 0;
-    drawConsumableIcon(it.key, it.x + 10, cy);
+    drawConsumableIcon(it.key, it.x + 10, it.y + it.h / 2);
+    // line 1: name (left) + stock (right)
     ctx.fillStyle = stock > 0 ? "#f0e6d0" : "#7a6a72"; ctx.font = "9px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(it.name, it.x + 22, cy + 1);
-    ctx.fillStyle = stock > 0 ? "#ffe6a0" : "#a06a6a";
-    ctx.textAlign = "right"; ctx.fillText(stock + " stk", it.x + it.w - 5, cy + 1);
+    ctx.fillText(it.name, it.x + 22, it.y + 7);
+    ctx.fillStyle = stock > 0 ? "#ffe6a0" : "#a06a6a"; ctx.textAlign = "right";
+    ctx.fillText(stock + " stk", it.x + it.w - 5, it.y + 7);
+    // line 2: the boost it grants, so you can see it without going to the kiosk
+    ctx.fillStyle = stock > 0 ? "#8ad0a0" : "#6a7a70"; ctx.font = "7px monospace"; ctx.textAlign = "left";
+    ctx.fillText(`+${it.flaks}% flaks i ${it.dur}s`, it.x + 22, it.y + 16);
   }
   // live RUS gauge so you can see how close you are to blacking out before you keel over
-  const gy = rects[0].y + 17 + 8, gx = x0 + 8, gw = pw - 16, gh = 7;
+  const gy = rects[0].y + 21 + 8, gx = x0 + 8, gw = pw - 16, gh = 7;
   const dfrac = clamp(drunk / DRUNK_KO, 0, 1);
   const near = dfrac >= 0.82;
   const col = dfrac < 0.5 ? "#8ad0ff" : dfrac < 0.82 ? "#ffb04a" : "#ff5a4a";
@@ -4284,14 +4289,14 @@ function drawGodsakerPanel() {
 /* in-scene rod picker (replaces the old inventory overlay for "Bytt stang") */
 function rodPanelRects() {
   const owned = save.owned.slice().sort((a, b) => a - b);
-  const w = 132, h = 20, x = PANEL_R - 136;
-  return owned.map((level, i) => ({ level, x, y: 150 - i * 22, w, h }));
+  const w = 168, h = 27, x = PANEL_R - 172;
+  return owned.map((level, i) => ({ level, x, y: 156 - i * 29, w, h }));
 }
 function drawRodPanel() {
   if (!rodPanel) return;
   const rects = rodPanelRects();
-  const top = rects[rects.length - 1].y - 16, bot = rects[0].y + 20 + 5;
-  const x0 = rects[0].x - 4, pw = 140;
+  const top = rects[rects.length - 1].y - 16, bot = rects[0].y + 27 + 5;
+  const x0 = rects[0].x - 4, pw = 176;
   px(x0, top, pw, bot - top, "rgba(14,12,22,0.94)");
   px(x0, top, pw, 3, "#caa46a");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -4304,12 +4309,16 @@ function drawRodPanel() {
     const r = RODS[it.level];
     // little colored rod swatch
     ctx.strokeStyle = r.color; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(it.x + 5, it.y + it.h - 4); ctx.lineTo(it.x + 14, it.y + 4); ctx.stroke();
-    px(it.x + 13, it.y + 3, 2, 2, r.tip);
+    ctx.beginPath(); ctx.moveTo(it.x + 5, it.y + 18); ctx.lineTo(it.x + 14, it.y + 8); ctx.stroke();
+    px(it.x + 13, it.y + 7, 2, 2, r.tip);
+    // line 1: name (left) + status (right)
     ctx.fillStyle = equipped ? "#bfe6a0" : "#f0e6d0"; ctx.font = "9px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(r.name, it.x + 20, it.y + 11);
-    ctx.fillStyle = equipped ? "#9affc0" : "#9aa6d0"; ctx.textAlign = "right";
-    ctx.fillText(equipped ? "i bruk" : "velg ›", it.x + it.w - 5, it.y + 11);
+    ctx.fillText(r.name, it.x + 20, it.y + 9);
+    ctx.fillStyle = equipped ? "#9affc0" : "#9aa6d0"; ctx.textAlign = "right"; ctx.font = "8px monospace";
+    ctx.fillText(equipped ? "i bruk" : "velg \u203a", it.x + it.w - 6, it.y + 9);
+    // line 2: the boost stats, so the overview lives right here in the menu
+    ctx.fillStyle = "#8a93b8"; ctx.font = "7px monospace"; ctx.textAlign = "left";
+    ctx.fillText(`Innhaling +${Math.round((r.reel - 1) * 100)}%  Drag +${Math.round((1 - r.tens) * 100)}%  Flaks +${Math.round(r.rare * 100)}%`, it.x + 6, it.y + 20);
   }
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
@@ -5582,7 +5591,7 @@ function drawHatPreview(hk, x, y) {
 }
 // shared renderer for the seller's shop (isShop=true, shows prices) and the sekk wardrobe
 function drawHatList(title, listKeys, isShop) {
-  const w = 176, x = PANEL_R - w, rh = 21, top = 28, headH = 22;
+  const w = 184, x = PANEL_R - w, rh = 25, top = 24, headH = 22;
   const h = headH + listKeys.length * rh + 10;
   px(x, top, w, h, "rgba(14,12,22,0.96)");
   px(x, top, w, 3, "#ff8ad0");
@@ -5600,15 +5609,19 @@ function drawHatList(title, listKeys, isShop) {
     hatRowRects.push(rr);
     px(rr.x, rr.y, rr.w, rr.h, equipped ? "#3a2a40" : "#241c30");
     px(rr.x, rr.y, rr.w, 1, equipped ? "#ff8ad0" : "#3a2e4a");
-    const cy = rr.y + rr.h / 2;
-    drawHatPreview(hk, rr.x + 13, cy + 3);
+    drawHatPreview(hk, rr.x + 13, rr.y + 12);
+    // line 1: name (left) + status/price (right)
     ctx.font = "9px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = owned ? "#f0e6d0" : "#d4bcc8";
-    ctx.fillText(hat.name, rr.x + 26, cy + 1);
+    ctx.fillText(hat.name, rr.x + 26, rr.y + 8);
     ctx.textAlign = "right"; ctx.font = "8px monospace";
-    if (equipped) { ctx.fillStyle = "#9affc0"; ctx.fillText("i bruk", rr.x + rr.w - 6, cy + 1); }
-    else if (owned) { ctx.fillStyle = "#9aa6d0"; ctx.fillText("bruk \u203a", rr.x + rr.w - 6, cy + 1); }
-    else { ctx.fillStyle = save.money >= hat.cost ? "#ffe6a0" : "#a06a6a"; ctx.fillText(fmt(hat.cost) + " kr", rr.x + rr.w - 6, cy + 1); }
+    if (equipped) { ctx.fillStyle = "#9affc0"; ctx.fillText("i bruk", rr.x + rr.w - 6, rr.y + 8); }
+    else if (owned) { ctx.fillStyle = "#9aa6d0"; ctx.fillText("bruk \u203a", rr.x + rr.w - 6, rr.y + 8); }
+    else { ctx.fillStyle = save.money >= hat.cost ? "#ffe6a0" : "#a06a6a"; ctx.fillText(fmt(hat.cost) + " kr", rr.x + rr.w - 6, rr.y + 8); }
+    // line 2: the little flaks bonus the hat carries (mostly cosmetic)
+    ctx.textAlign = "left"; ctx.font = "7px monospace";
+    ctx.fillStyle = hat.luck > 0 ? "#8ad0a0" : "#7a7a86";
+    ctx.fillText(hat.luck > 0 ? `+${Math.round(hat.luck * 100)}% flaks` : "ingen bonus \u2014 ren pynt", rr.x + 26, rr.y + 18);
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
