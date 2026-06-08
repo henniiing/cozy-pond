@@ -370,10 +370,10 @@ canvas {
   top: 100%;
   right: 0;
   width: 120px;
-  height: 22px;
+  height: 6px;
   margin: 0;
   /* extra top padding bridges the gap to the button so hover isn't lost */
-  padding: 12px 8px 6px;
+  padding: 14px 12px 12px;
   box-sizing: content-box;
   background: rgba(14, 12, 22, 0.96);
   border: 1px solid rgba(150, 165, 230, 0.4);
@@ -383,8 +383,43 @@ canvas {
   pointer-events: none;
   transform: translateY(-4px);
   transition: opacity 0.14s ease, transform 0.14s ease;
-  accent-color: #ffd65a;
+  -webkit-appearance: none;
+  appearance: none;
   z-index: 6;
+}
+.vol-slider:focus { outline: none; }
+/* flat track */
+.vol-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(150, 165, 230, 0.3);
+}
+.vol-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(150, 165, 230, 0.3);
+}
+/* round knob, vertically centred on the 6px track (margin-top compensates for appearance:none) */
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: #ffd65a;
+  border: 1px solid #1a1626;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.vol-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 1px solid #1a1626;
+  border-radius: 50%;
+  background: #ffd65a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
 }
 .vol-control:hover .vol-slider,
 .vol-control:focus-within .vol-slider {

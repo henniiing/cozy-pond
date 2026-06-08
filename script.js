@@ -575,9 +575,13 @@ const SAMPLE_OFFSETS = { buying: 1.5 };
 const activeLoops = new Set();
 const activeVoices = new Set(); // longer one-shot voice/sfx clones, so they can be cut on screen change
 function playSample(name, opts = {}) {
-  if (muted) return null;
-  const base = sampleEls[name]; if (!base) return null;
   const loop = !!opts.loop;
+  // looping ambience and the radio playlist are "music": track them as loops so a mute never
+  // discards them (stopAllVoices used to wipe the radio, so unmuting left dead air) and so
+  // unmuting brings them straight back. One-shot sfx/voices still stay silent while muted.
+  const music = loop || !!opts.music;
+  if (muted && !music) return null;
+  const base = sampleEls[name]; if (!base) return null;
   const node = loop ? base : base.cloneNode(true);
   node.loop = loop;
   node._baseVol = clamp(opts.vol == null ? 1 : opts.vol, 0, 1);
@@ -588,8 +592,9 @@ function playSample(name, opts = {}) {
   try { node.currentTime = startAt; } catch (e) {}
   const pr = node.play();
   if (pr && pr.then) { node._playPromise = pr; pr.then(() => { if (node._stopped) { try { node.pause(); } catch (e) {} } else if (startAt) { try { if (node.currentTime < startAt - 0.05) node.currentTime = startAt; } catch (e) {} } }).catch(() => {}); }
-  if (loop) activeLoops.add(node);
+  if (music) activeLoops.add(node);
   else { activeVoices.add(node); node.addEventListener("ended", () => activeVoices.delete(node), { once: true }); }
+  if (muted) { try { node.pause(); } catch (e) {} }   // created while muted → park it silently until unmute resumes it
   return node;
 }
 // pause reliably even if the async play() promise hasn't resolved yet (avoids audio bleeding past a stop)
@@ -743,7 +748,7 @@ const RADIO_SONGS = ["radio", "radio2", "radio3", "radio4", "radio5", "radio6"];
 let radioIdx = 0;
 function radioTick(dt) { /* HTMLAudio handles playback; playlist advances on 'ended' */ }
 function playRadioSong() {
-  radioNode = playSample(RADIO_SONGS[radioIdx], { vol: 0.45 });
+  radioNode = playSample(RADIO_SONGS[radioIdx], { vol: 0.45, music: true });
   if (radioNode) {
     activeLoops.add(radioNode);
     radioNode.addEventListener("ended", () => {
@@ -1864,7 +1869,7 @@ function setScreen(name) {
   if (name === "shopRod" && from !== "shopRod") { speak("rodSpeech", T("Hmf. Skal du kjøpe noe, eller bare glo?")); playSample("hoo", { vol: 0.45 }); rodGrumpyBuy = false; rodHop = 0; }
   if (from === "shopRod" && name !== "shopRod") playSample("fart", { vol: 0.7 });
   // fish lady: a spoken welcome when you walk in to sell
-  if (name === "shopFish" && from !== "shopFish") { speak("ladySpeech", T("Hei, kjekken… har du noe fint til meg i dag?")); playSample("ladyWelcome", { vol: 0.8 }); playSample("sellFishBg", { vol: 0.28 }); }
+  if (name === "shopFish" && from !== "shopFish") { speak("ladySpeech", T("Hei, kjekken… har du noe fint til meg i dag?")); playSample("ladyWelcome", { vol: 0.5 }); playSample("sellFishBg", { vol: 0.28 }); }
   // casino croupier greeting
   if (name === "shopCasino" && from !== "shopCasino") playSample("ohbro", { vol: 0.7 });
   // fishing warden: a sinister cackle as you leave after actually buying a permit
@@ -1872,7 +1877,7 @@ function setScreen(name) {
   if (from === "shopLicense" && name !== "shopLicense" && licenseBoughtThisVisit) { playSample("sinister", { vol: 0.7 }); licenseBoughtThisVisit = false; }
   // fishing warden: a polite greeting + paper shuffle when you visit the permit booth
   if (name === "shopLicense" && from !== "shopLicense") { speak("licenseSpeech", T("God dag! Skal det være et gyldig fiskekort? Husk — fiskeoppsynet er ute og går.")); blip(520, 0.05, "square", 0.04); setTimeout(() => blip(440, 0.05, "square", 0.035), 90); }  // kiosk: muffled party music on loop while inside + a greeting
-  if (name === "shopKiosk" && from !== "shopKiosk") { speak("kioskSpeech", T("Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske.")); playSample("eyybro", { vol: 0.7 }); kioskWave = 1.4; }
+  if (name === "shopKiosk" && from !== "shopKiosk") { speak("kioskSpeech", T("Tjena! Trygdepatron, snus, sigarillo, blænnvin — eller snabelstoff for de tøffe? Alt for et godt fiske.")); playSample("eyybro", { vol: 1.0 }); kioskWave = 1.4; }
   // looping ambience per screen — always clear it first so nothing bleeds between screens
   if (partyNode) { stopSample(partyNode); partyNode = null; }
   if (marketNode) { stopSample(marketNode); marketNode = null; }
@@ -1881,6 +1886,9 @@ function setScreen(name) {
   if (casinoLoseNode) { stopSample(casinoLoseNode); casinoLoseNode = null; }
   if (licenseAmbNode) { stopSample(licenseAmbNode); licenseAmbNode = null; }
   if (menuNode && !isMenuFamily(name)) { stopSample(menuNode); menuNode = null; }   // «hvordan spille», lagringsplasser & toppliste er del av menyen — hold musikken gående
+  // the radio only belongs in the boat — stop the node when we leave the game screen, but keep
+  // radio.on so it picks up again on return (it's now tracked as music, so a mute won't kill it)
+  if (name !== "game" && radioNode) { stopSample(radioNode); radioNode = null; }
   if (casino.spinning && name !== "shopCasino") { casino.spinning = false; casino.win = false; }
   if (name === "shopKiosk") partyNode = playSample("party", { loop: true, vol: 0.4 });
   else if (name === "market") marketNode = playSample("market", { loop: true, vol: 0.45 });
@@ -2509,9 +2517,9 @@ function update(dt) {
   if (screen === "intro") {
     if (intro.running) {
       intro.t += dt;
-      // the old man strolls off whistling a happy tune — loop it while he walks to the truck
+      // the old man strolls off whistling a happy tune — just once as he heads for the truck
       if (intro.t >= (intro.nextWhistle || 1e9) && intro.t < IN.climbS) {
-        const len = playWhistleTune(0.05); intro.nextWhistle = intro.t + len + 0.4;
+        playWhistleTune(0.05); intro.nextWhistle = 1e9;
       }
       // she hurls a pot after him — and THIS is when her furious shriek lands (the loud peak), timed to the throw
       if (!intro.threw && intro.t >= IN.wifeThrowR) {
@@ -2524,7 +2532,7 @@ function update(dt) {
       if (!intro.catHiss && intro.t >= IN.wifeThrowR + 0.35) { intro.catHiss = true; if (!muted) playSample("catAngry", { vol: 0.45 }); }
       // the pot whizzes right past his head — his happy whistle comically stumbles into a sour note, then he obliviously carries on
       if (!intro.sourNote && intro.t >= IN.wifeThrowL - 0.4) {
-        intro.sourNote = true; intro.nextWhistle = intro.t + 1.1;   // pause the cheerful tune for the stumble
+        intro.sourNote = true;   // the comedic deflate is the punchline; the tune doesn't resume after
         whistleNote(1320, 0.14, 0, 0.06); whistleNote(560, 0.26, 0.14, 0.06); whistleNote(740, 0.16, 0.42, 0.05);   // "wheeoo-oop" deflate
       }
       if (!intro.rodSfx && intro.t >= IN.throwS) { intro.rodSfx = true; sfxThrow(); }
