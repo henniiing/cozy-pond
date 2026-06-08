@@ -610,7 +610,7 @@ function stopMotor() { if (motorNode) { stopSample(motorNode); motorNode = null;
 function stopPurr() { if (purrNode) { stopSample(purrNode); purrNode = null; } }
 function startEngine() {
   engineNode = playSample("engine", { vol: 0.45, loop: true });
-  playSample("yiha", { vol: 0.85 });
+  playSample("yiha", { vol: 0.5 });
 }
 function stopEngine() {
   stopSample(engineNode); engineNode = null;
@@ -2376,14 +2376,18 @@ let rodGrumpyBuy = null, rodHop = 0;
 function buildRods() {
   const list = $("rodList"); if (!list) return;
   list.innerHTML = "";
-  RODS.forEach((r, i) => {
+  // vis stengene i kjoperekkefolge, men sett fiksemannens lykkestang rett mellom Pinnestang og Glassfiber
+  const order = RODS.map((_, i) => i).filter((i) => !RODS[i].reward);
+  if (REWARD_ROD_LEVEL >= 0) order.splice(1, 0, REWARD_ROD_LEVEL);
+  order.forEach((i) => {
+    const r = RODS[i];
     const owned = save.owned.includes(i);
     if (r.hidden && !owned) return;   // belonningsstangen vises forst i lista nar du faktisk eier den
     const equipped = i === save.rodLevel;
     const row = document.createElement("div");
-    row.className = "rod-row" + (owned ? " owned" : "") + (equipped ? " equipped" : "") + (r.reward ? " gift" : "");
+    row.className = "rod-row" + (owned ? " owned" : "") + (equipped ? " equipped" : "");
     const baseStats = `Innhaling +${Math.round((r.reel - 1) * 100)}% · Tåler ${Math.round((1 - r.tens) * 100)}% mer drag · Sjeldne fisk +${Math.round(r.rare * 100)}%`;
-    const stats = r.reward ? `🎁 Fiksemannens egen — fås ikke kjøpt · ${baseStats}` : baseStats;
+    const stats = r.reward ? `Fiksemannens egen — fra guiden eller din første stang · ${baseStats}` : baseStats;
     let btn;
     if (equipped) btn = `<button class="buy-btn" disabled>I bruk</button>`;
     else if (owned) btn = `<button class="buy-btn" data-action="equipRod" data-level="${i}">Bruk</button>`;
