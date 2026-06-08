@@ -124,12 +124,12 @@ const JUNK = [
 
 const RODS = [
   { name: "Pinnestang",            reel: 1.0,  tens: 0.9,  rare: 0.0,  window: 1.0,  cost: 0,    color: "#7a5a36", grip: "#3b2b1f", tip: "#caa97a" },
-  { name: "Glassfiberstang",       reel: 1.1,  tens: 0.85, rare: 0.1,  window: 1.06, cost: 180,  color: "#3f7d8c", grip: "#23404a", tip: "#bfe6ef" },
-  { name: "Karbonstang",           reel: 1.2,  tens: 0.8,  rare: 0.2,  window: 1.12, cost: 700,  color: "#2c2c34", grip: "#7a1f1f", tip: "#d24a3a" },
-  { name: "Proffstang",            reel: 1.3,  tens: 0.74, rare: 0.32, window: 1.18, cost: 2200, color: "#caa23a", grip: "#5a3aa0", tip: "#fff2a0" },
-  { name: "Splittbambusstang",     reel: 1.4,  tens: 0.7,  rare: 0.42, window: 1.24, cost: 4500, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
-  { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.55, window: 1.3,  cost: 9000,  color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
-  { name: "Jettestanga",           reel: 1.62, tens: 0.6,  rare: 0.68, window: 1.38, cost: 20000, color: "#4a4a55", grip: "#23232c", tip: "#a0ffe0" },
+  { name: "Glassfiberstang",       reel: 1.1,  tens: 0.85, rare: 0.0,  window: 1.06, cost: 180,  color: "#3f7d8c", grip: "#23404a", tip: "#bfe6ef" },
+  { name: "Karbonstang",           reel: 1.2,  tens: 0.8,  rare: 0.0,  window: 1.12, cost: 700,  color: "#2c2c34", grip: "#7a1f1f", tip: "#d24a3a" },
+  { name: "Proffstang",            reel: 1.3,  tens: 0.74, rare: 0.0,  window: 1.18, cost: 2200, color: "#caa23a", grip: "#5a3aa0", tip: "#fff2a0" },
+  { name: "Splittbambusstang",     reel: 1.4,  tens: 0.7,  rare: 0.14, window: 1.24, cost: 4500, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
+  { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.28, window: 1.3,  cost: 11000, color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
+  { name: "Jettestanga",           reel: 1.62, tens: 0.6,  rare: 0.42, window: 1.38, cost: 26000, color: "#4a4a55", grip: "#23232c", tip: "#a0ffe0" },
 ];
 const rod = () => RODS[save.rodLevel] || RODS[0];
 
@@ -186,12 +186,12 @@ const LOCATIONS = [
     rare: { key: "nordlysroya", name: "Nordlysr\u00f8ya", min: 5, max: 11, kr: 300, shape: "normal", body: "#2a6a7a", belly: "#9affd0", fin: "#6affc0", pattern: "spots", spot: "#e0fff0", seed: 821, tag: "Den lyser som selve nordlyset! \u2728" },
   },
   {
-    key: "jettegryta", name: "Jettegryta", cost: 9000, desc: "Bunnl\u00f8st grottevatn \u2014 gigantfisk i m\u00f8rket",
+    key: "jettegryta", name: "Jettegryta", cost: 12000, desc: "Bunnl\u00f8st grottevatn \u2014 gigantfisk i m\u00f8rket",
     sky: ["#05060a", "#0a0a12", "#10101c", "#161826", "#1c2030"],
     water: ["#142028", "#0c161e", "#060c12"],
     tree: "#0a0c14", cave: true, glow: true, drip: true, fog: 0.12, junk: 0.5, fightMul: 1.35,
     fish: ["kjempelake", "grottegjedde", "jetteorret", "lake", "gjedde"],
-    rare: { key: "urgjedda", name: "Urgjedda", min: 14, max: 30, kr: 260, shape: "long", body: "#3a4a36", belly: "#c0c890", fin: "#5a3828", pattern: "spots", spot: "#9ab070", seed: 911, tag: "Et urtidsmonster fra dypet! \ud83d\udc09" },
+    rare: { key: "urgjedda", name: "Urgjedda", min: 14, max: 30, kr: 200, shape: "long", body: "#3a4a36", belly: "#c0c890", fin: "#5a3828", pattern: "spots", spot: "#9ab070", seed: 911, tag: "Et urtidsmonster fra dypet! \ud83d\udc09" },
   },
 ];
 // register rare/legendary fish so they can be looked up + sold
@@ -213,7 +213,7 @@ function pickFish() {
   const pool = [];
   for (const f of locFish()) {
     let w = f.weight;
-    if (f.kr >= 90) w *= 1 + r * 1.0 + luck * 1.1;       // valuable fish more likely with good rod / boost
+    if (f.kr >= 90) w *= 1 + r * 0.6 + luck * 0.9;        // valuable fish a bit more likely with good rod / boost
     if (f.kr <= 30) w *= 1 - r * 0.28 - luck * 0.18;
     pool.push({ f, w });
   }
@@ -456,6 +456,24 @@ function noise(dur, freq, vol = 0.15, type = "lowpass") {
   g.gain.exponentialRampToValueAtTime(0.0001, tt + dur);
   src.connect(filt).connect(g).connect(masterGain || audioCtx.destination);
   src.start(tt); src.stop(tt + dur);
+}
+// a pitch-sweeping tone with a slow vibrato — used for unearthly wails & ghostly moans
+function wail(f0, f1, dur, vol = 0.12, type = "sawtooth", when = 0) {
+  if (muted || !audioCtx) return;
+  const tt = audioCtx.currentTime + when;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, tt);
+  o.frequency.linearRampToValueAtTime(f1, tt + dur);
+  g.gain.setValueAtTime(0.0001, tt);
+  g.gain.exponentialRampToValueAtTime(vol, tt + dur * 0.25);
+  g.gain.exponentialRampToValueAtTime(0.0001, tt + dur);
+  // a slow vibrato makes it warble like a ghost's moan
+  const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
+  lfo.type = "sine"; lfo.frequency.value = 5.5; lg.gain.value = f0 * 0.05;
+  lfo.connect(lg).connect(o.frequency);
+  o.connect(g).connect(masterGain || audioCtx.destination);
+  o.start(tt); o.stop(tt + dur + 0.05); lfo.start(tt); lfo.stop(tt + dur + 0.05);
 }
 
 /* ---- recorded samples (mp3 files in /lyder) ---- */
@@ -1605,7 +1623,7 @@ function hookFish() {
   progress = 10; tension = 10; pullTimer = 0.5 + Math.random() * 0.7; pulling = 0; holding = false;
   reelEl.classList.remove("hidden");
   bigFishTired = false;
-  setHint(currentWeight >= 4 ? "Diger fisk! Hold ut — den blir sliten etter hvert" : "Hold for å sveive — slipp når den drar!");
+  setHint(currentWeight >= 4 ? "Diger fisk! Sveiv jevnt — og SLIPP når den rykker!" : "Hold for å sveive — slipp når den drar!");
   sfxSplash();
 }
 function finalizeCatch() {
@@ -1665,7 +1683,7 @@ function drinkBeer() {
   sfxCanOpen();
   setTimeout(() => { if (screen === "game") sfxGulp(); }, 700); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1100); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1500);
   setTimeout(() => { if (screen !== "game") return; playSample("burp", { vol: 0.8 }); if (Math.random() < 0.45) setTimeout(() => { if (screen === "game") playSample("fart", { vol: 0.6 }); }, 500); }, 2150);
-  applyBuff("Ølmodig", 0.2, 0.12, 48, "#ffcf5a");
+  applyBuff("Ølmodig", 0.14, 0.08, 48, "#ffcf5a");
   drunk = Math.min(DRUNK_MAX, drunk + 0.30);
 }
 function drinkAkevitt() {
@@ -1673,7 +1691,7 @@ function drinkAkevitt() {
   sfxCanOpen();
   setTimeout(() => { if (screen === "game") sfxGulp(); }, 600); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1000); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1400);
   setTimeout(() => { if (screen !== "game") return; playSample("burp", { vol: 0.85 }); setTimeout(() => { if (screen === "game") playSample("fart", { vol: 0.7 }); }, 600); }, 2100);
-  applyBuff("Brennevin", 0.55, 0.3, 90, "#ffe08a");
+  applyBuff("Brennevin", 0.4, 0.22, 90, "#ffe08a");
   drunk = Math.min(DRUNK_MAX, drunk + 0.55);
 }
 function drinkSnabel() {
@@ -1681,19 +1699,19 @@ function drinkSnabel() {
   sfxCanOpen();
   setTimeout(() => { if (screen === "game") sfxGulp(); }, 600); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1050); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1500); setTimeout(() => { if (screen === "game") sfxGulp(); }, 1900);
   setTimeout(() => { if (screen !== "game") return; playSample("burp", { vol: 0.85 }); setTimeout(() => { if (screen === "game") playSample("fart", { vol: 0.85 }); }, 650); }, 2300);
-  applyBuff("Snabelstoff", 0.8, 0.42, 120, "#d8e0c0");
+  applyBuff("Snabelstoff", 0.55, 0.3, 120, "#d8e0c0");
   drunk = Math.min(DRUNK_MAX, drunk + 0.78);
 }
 function takeSnus() {
   snusing = 1.4;
   blip(520, 0.05, "square", 0.08); setTimeout(() => blip(300, 0.08, "sine", 0.07), 120);
-  applyBuff("Snusrus", 0.12, 0.06, 28, "#5fbf5f");
+  applyBuff("Snusrus", 0.09, 0.05, 28, "#5fbf5f");
   drunk = Math.min(DRUNK_MAX, drunk + 0.12);          // a light nicotine buzz feeds the RUS-meter too
 }
 function smokeCigar() {
   smoking = 6.5;
   playSample("cigar", { vol: 0.8 });
-  applyBuff("Røykpause", 0.3, 0.15, 65, "#caa46a");
+  applyBuff("Røykpause", 0.22, 0.11, 65, "#caa46a");
   drunk = Math.min(DRUNK_MAX, drunk + 0.16);          // a mellow tobacco haze adds a little RUS
 }
 function useConsumable(kind) {
@@ -1852,22 +1870,28 @@ function triggerGameEvent() {
   let line = ev.l;
   if (ev.amt) {
     const amount = Math.round(ev.amt[0] + Math.random() * (ev.amt[1] - ev.amt[0]));
-    if (ev.k === "money") { save.money += amount; persist(); refreshHUD(); sfxCoin(); line = line.replace("{n}", fmt(amount)); }
+    if (ev.k === "money") { save.money += amount; persist(); refreshHUD(); sfxCoin(); line = line.replace("{n}", fmt(amount)); if (ev.s === "gems") { [1318, 1568, 1976, 2637].forEach((f, i) => blip(f, 0.22, "sine", 0.06, i * 0.08)); } }
     else if (ev.k === "loss") { const loss = Math.min(amount, save.money); save.money -= loss; persist(); refreshHUD(); sfxMiss(); line = line.replace("{n}", fmt(loss)); }
   } else if (ev.k === "luck") {
     applyBuff(ev.t, ev.luck, 0, ev.dur, ev.c); blip(660, 0.1, "sine", 0.05);
+    // the witch gets a crooked little cackle instead of a plain chime
+    if (ev.s === "witch") { [880, 1040, 760, 980, 700].forEach((f, i) => blip(f, 0.07, "square", 0.05, i * 0.1)); }
   } else if (ev.k === "buddy") {
     // a buddy shares a strong dram — same flaks-kick as a Blænnvin. It nudges you tipsy,
     // but an *event* you didn't choose should never be the thing that knocks you out.
-    applyBuff("Blænnvin", 0.55, 0.3, 90, "#caa84a");
+    applyBuff("Blænnvin", 0.4, 0.22, 90, "#caa84a");
     drunk = Math.min(drunk + 0.4, Math.max(drunk, 1.2));
     setTimeout(() => { try { sfxGulp(); } catch (e) {} }, 900);
     setTimeout(() => { try { playSample("burp", { vol: 0.9 }); } catch (e) {} }, 1700);
     setTimeout(() => { try { sfxSplash(); } catch (e) {} }, 3900);
   } else if (ev.k === "scare") {
     if (ev.s === "trollbig") { try { playSample("grumpyVoice", { vol: 0.75 }); } catch (e) {} blip(70, 0.45, "sawtooth", 0.09); setTimeout(() => { try { noise(0.4, 420, 0.1, "lowpass"); } catch (e) {} }, 140); }
-    if (ev.s === "rockfall") { blip(58, 0.5, "sawtooth", 0.1); setTimeout(() => { try { noise(0.5, 300, 0.12, "lowpass"); } catch (e) {} }, 120); }
-    if (ev.s === "draug") { try { playSample("grumpyVoice", { vol: 0.6 }); } catch (e) {} blip(90, 0.55, "sine", 0.08); }
+    // rockfall: a deep rumble plus a few staggered boulder-thuds smacking the water
+    if (ev.s === "rockfall") { noise(0.7, 240, 0.13, "lowpass"); blip(52, 0.45, "sawtooth", 0.09); [180, 320, 540].forEach((d, i) => setTimeout(() => { try { blip(70 - i * 8, 0.16, "square", 0.08); noise(0.18, 800, 0.07, "bandpass"); } catch (e) {} }, d)); }
+    // bats: a flurry of high, chittering squeaks + leathery wing-flutter
+    if (ev.s === "bats") { for (let i = 0; i < 9; i++) { try { blip(2200 + Math.random() * 1600, 0.035, "square", 0.03, i * 0.05); } catch (e) {} } setTimeout(() => { try { noise(0.5, 1200, 0.05, "highpass"); } catch (e) {} }, 60); }
+    // draug: an unearthly two-tone wail rising from the black water, no human voice
+    if (ev.s === "draug") { wail(170, 80, 1.5, 0.13, "sawtooth"); wail(255, 120, 1.5, 0.07, "sine", 0.05); setTimeout(() => { try { noise(0.8, 200, 0.1, "lowpass"); } catch (e) {} }, 200); }
     if (fishState === "waiting" || fishState === "bite") { setFish("waiting"); biteTimer = 5 + Math.random() * 7; addRipple(bobber.x, bobber.y, 20); setHint("Fisken ble skremt \u2014 vent litt..."); }
     sfxMiss();
   } else {
@@ -2347,13 +2371,14 @@ function update(dt) {
     case "hooked": {
       const r = rod();
       // safety net: no fish fights forever — after a long struggle the line finally parts
-      if (stateTime > 30) { setMiss("Fisken rømte til slutt…"); break; }
+      if (stateTime > 40) { setMiss("Fisken rømte til slutt…"); break; }
       // how hard THIS fish fights, scaled by its actual weight (kg):
       // a small fish is a quick reel-in, a heavy trophy is a real battle
-      // …but it tires: after a few seconds the runs ease off so big fish are actually landable
-      const fatigue = clamp((stateTime - 4) / 16, 0, 0.72);
-      if (fatigue > 0.35 && !bigFishTired && currentWeight >= 3) { bigFishTired = true; setHint("Den begynner å bli sliten — sveiv jevnt inn!"); }
-      const fishFight = (currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.16, 0.4, 2.8)) * (1 - fatigue) * (LOC.fightMul || 1);
+      // …it tires a LITTLE over time so the runs ease off a touch — but a true giant never
+      // just gives up: you have to play it, time your releases and earn the landing.
+      const fatigue = clamp((stateTime - 6) / 22, 0, 0.4);
+      if (fatigue > 0.22 && !bigFishTired && currentWeight >= 3) { bigFishTired = true; setHint("Den drar fortsatt hardt — sveiv jevnt, slipp på rykkene!"); }
+      const fishFight = (currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.17, 0.4, 3.1)) * (1 - fatigue) * (LOC.fightMul || 1);
       pullTimer -= dt;
       if (pulling > 0) {
         pulling -= dt;
@@ -3930,41 +3955,44 @@ function drawRecordsPanel() {
   for (const f of FISH) { const r = save.record[f.key]; if (r && r.count > 0) caught++; }
   let trophies = 0;
   for (const f of RARES) { const r = save.record[f.key]; if (r && r.count > 0) trophies++; }
-  const w = 196, x = PANEL_R - w, rh = 12, top = 18, headH = 24;
-  const h = headH + FISH.length * rh + 16 + RARES.length * rh + 12;
+  // two-column "open book" layout so the whole catalogue fits on-screen as it grows
+  const w = 252, x = PANEL_R - w, rh = 11, top = 13, headH = 23;
+  const colW = (w - 16) / 2, colX = [x + 8, x + 8 + colW];
+  const fishRows = Math.ceil(FISH.length / 2), trophyRows = Math.ceil(RARES.length / 2);
+  const h = headH + fishRows * rh + 14 + trophyRows * rh + 10;
   px(x, top, w, h, "rgba(14,12,22,0.96)");
   px(x, top, w, 3, "#caa46a");
+  // a faint centre crease so it reads like an open book
+  px(x + w / 2, top + headH - 2, 1, fishRows * rh + 4, "rgba(202,164,106,0.18)");
   ctx.fillStyle = "#e6c98a"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText("REKORDBOKA", x + w / 2, top + 10);
   drawBackArrow(x, w, top);
   ctx.font = "7px monospace"; ctx.fillStyle = "#9aa6d0";
   ctx.fillText(`Arter: ${caught}/${FISH.length}   Troféer: ${trophies}/${RARES.length}`, x + w / 2, top + 19);
-  ctx.font = "8px monospace"; ctx.textBaseline = "middle";
+  ctx.textBaseline = "middle";
   FISH.forEach((f, i) => {
     const r = save.record[f.key];
     const has = r && r.count > 0;
-    const y = top + headH + i * rh + 6;
-    ctx.textAlign = "left"; ctx.fillStyle = has ? "#f0e6d0" : "#6a6472";
-    ctx.fillText(has ? f.name : "???", x + 8, y);
-    ctx.textAlign = "right";
-    if (has) { ctx.fillStyle = "#ffe6a0"; ctx.fillText(`${r.best.toFixed(2)} kg · ×${r.count}`, x + w - 8, y); }
-    else { ctx.fillStyle = "#6a6472"; ctx.fillText("ikke fanget", x + w - 8, y); }
+    const cx = colX[i % 2], y = top + headH + Math.floor(i / 2) * rh + 6;
+    ctx.font = "8px monospace"; ctx.textAlign = "left"; ctx.fillStyle = has ? "#f0e6d0" : "#6a6472";
+    ctx.fillText(has ? f.name : "???", cx, y);
+    ctx.textAlign = "right"; ctx.font = "7px monospace";
+    if (has) { ctx.fillStyle = "#ffe6a0"; ctx.fillText(`${r.best.toFixed(1)}kg ×${r.count}`, cx + colW - 6, y); }
+    else { ctx.fillStyle = "#6a6472"; ctx.fillText("—", cx + colW - 6, y); }
   });
   // trophy fish section
-  const ty = top + headH + FISH.length * rh + 10;
+  const ty = top + headH + fishRows * rh + 9;
   ctx.textAlign = "center"; ctx.fillStyle = "#ffd877"; ctx.font = "bold 8px monospace";
   ctx.fillText("— TROFÉFISK —", x + w / 2, ty);
-  ctx.font = "8px monospace";
   RARES.forEach((f, i) => {
     const r = save.record[f.key];
     const has = r && r.count > 0;
-    const y = ty + 10 + i * rh;
-    ctx.textAlign = "left"; ctx.fillStyle = has ? "#ffe6a0" : "#6a6472";
-    ctx.fillText(has ? "🏆 " + f.name : "🔒 ???", x + 8, y);
+    const cx = colX[i % 2], y = ty + 9 + Math.floor(i / 2) * rh;
+    ctx.font = "8px monospace"; ctx.textAlign = "left"; ctx.fillStyle = has ? "#ffe6a0" : "#6a6472";
+    ctx.fillText(has ? "🏆 " + f.name : "🔒 ???", cx, y);
     ctx.textAlign = "right"; ctx.font = "7px monospace";
-    if (has) { ctx.fillStyle = "#ffd877"; ctx.fillText(`${r.best.toFixed(2)} kg · ×${r.count}`, x + w - 8, y); }
-    else { ctx.fillStyle = "#6a6472"; ctx.fillText(f.locName, x + w - 8, y); }
-    ctx.font = "8px monospace";
+    if (has) { ctx.fillStyle = "#ffd877"; ctx.fillText(`${r.best.toFixed(1)}kg`, cx + colW - 6, y); }
+    else { ctx.fillStyle = "#6a6472"; ctx.fillText(f.locName, cx + colW - 6, y); }
   });
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
