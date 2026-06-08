@@ -107,6 +107,10 @@ const FISH = [
   { key: "harr",   name: "Harr",   min: 0.25, max: 1.6, weight: 7,  kr: 95,  shape: "normal", body: "#7d8a93", belly: "#dfe6ea", fin: "#6a4a7a", pattern: "spots", spot: "#3a2c4a", bigDorsal: true, seed: 83 },
   { key: "lake",   name: "Lake",   min: 0.4, max: 3.0, weight: 5,  kr: 50,  shape: "long", body: "#5a5236", belly: "#cfc18a", fin: "#4a4326", pattern: "spots", spot: "#3a3520", seed: 97 },
   { key: "karpe",  name: "Karpe",  min: 0.6, max: 6.0, weight: 6,  kr: 30,  shape: "round", body: "#a8762f", belly: "#e6c98a", fin: "#7a531f", pattern: "plain", seed: 101 },
+  // Jettegryta-kjemper: kjente arter, men vokst seg enorme i det bunnløse grottevatnet
+  { key: "kjempelake",  name: "Kjempelake",  min: 2.0, max: 9.0,  weight: 6, kr: 70,  shape: "long", body: "#4a4630", belly: "#c8b97a", fin: "#33301c", pattern: "spots", spot: "#2a2818", seed: 211 },
+  { key: "grottegjedde", name: "Grottegjedde", min: 3.0, max: 16.0, weight: 8, kr: 65,  shape: "long", body: "#48563f", belly: "#cdd0a0", fin: "#6a4434", pattern: "spots", spot: "#aebf80", seed: 223 },
+  { key: "jetteorret",  name: "Jetteørret",  min: 2.0, max: 11.0, weight: 7, kr: 95,  shape: "normal", body: "#8a7a64", belly: "#ece0c4", fin: "#6a5840", pattern: "spots", spot: "#a85a4a", seed: 233 },
 ];
 const FISH_BY_KEY = Object.fromEntries(FISH.map((f) => [f.key, f]));
 
@@ -124,7 +128,8 @@ const RODS = [
   { name: "Karbonstang",           reel: 1.2,  tens: 0.8,  rare: 0.2,  window: 1.12, cost: 700,  color: "#2c2c34", grip: "#7a1f1f", tip: "#d24a3a" },
   { name: "Proffstang",            reel: 1.3,  tens: 0.74, rare: 0.32, window: 1.18, cost: 2200, color: "#caa23a", grip: "#5a3aa0", tip: "#fff2a0" },
   { name: "Splittbambusstang",     reel: 1.4,  tens: 0.7,  rare: 0.42, window: 1.24, cost: 4500, color: "#7d9a3a", grip: "#3a2a14", tip: "#e8f0a0" },
-  { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.55, window: 1.3,  cost: 9000, color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
+  { name: "Nordlysstang",          reel: 1.5,  tens: 0.66, rare: 0.55, window: 1.3,  cost: 9000,  color: "#2fc0a0", grip: "#3a2a6a", tip: "#b0ffe6" },
+  { name: "Jettestanga",           reel: 1.62, tens: 0.6,  rare: 0.68, window: 1.38, cost: 20000, color: "#4a4a55", grip: "#23232c", tip: "#a0ffe0" },
 ];
 const rod = () => RODS[save.rodLevel] || RODS[0];
 
@@ -179,6 +184,14 @@ const LOCATIONS = [
     tree: "#0c1822", snow: true, fog: 0.06, junk: 0.4, aurora: true,
     fish: ["roye", "harr", "sik", "orret", "lake"],
     rare: { key: "nordlysroya", name: "Nordlysr\u00f8ya", min: 5, max: 11, kr: 300, shape: "normal", body: "#2a6a7a", belly: "#9affd0", fin: "#6affc0", pattern: "spots", spot: "#e0fff0", seed: 821, tag: "Den lyser som selve nordlyset! \u2728" },
+  },
+  {
+    key: "jettegryta", name: "Jettegryta", cost: 9000, desc: "Bunnl\u00f8st grottevatn \u2014 gigantfisk i m\u00f8rket",
+    sky: ["#05060a", "#0a0a12", "#10101c", "#161826", "#1c2030"],
+    water: ["#142028", "#0c161e", "#060c12"],
+    tree: "#0a0c14", cave: true, glow: true, drip: true, fog: 0.12, junk: 0.5, fightMul: 1.35,
+    fish: ["kjempelake", "grottegjedde", "jetteorret", "lake", "gjedde"],
+    rare: { key: "urgjedda", name: "Urgjedda", min: 14, max: 30, kr: 260, shape: "long", body: "#3a4a36", belly: "#c0c890", fin: "#5a3828", pattern: "spots", spot: "#9ab070", seed: 911, tag: "Et urtidsmonster fra dypet! \ud83d\udc09" },
   },
 ];
 // register rare/legendary fish so they can be looked up + sold
@@ -274,6 +287,7 @@ const MAP_SPOTS = [
   { key: "elva", x: 300, y: 138 },
   { key: "fjellvatn", x: 388, y: 74 },
   { key: "nordlys", x: 435, y: 188 },
+  { key: "jettegryta", x: 432, y: 128 },
 ];
 const MAP_MARKET = { x: 110, y: 244 };   // the market town, reachable from the map too
 let mapReturn = "game";                   // where the map's «back» button returns to
@@ -2330,7 +2344,7 @@ function update(dt) {
       // …but it tires: after a few seconds the runs ease off so big fish are actually landable
       const fatigue = clamp((stateTime - 4) / 16, 0, 0.72);
       if (fatigue > 0.35 && !bigFishTired && currentWeight >= 3) { bigFishTired = true; setHint("Den begynner å bli sliten — sveiv jevnt inn!"); }
-      const fishFight = (currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.16, 0.4, 2.8)) * (1 - fatigue);
+      const fishFight = (currentFish.junk ? 0.4 : clamp(0.4 + currentWeight * 0.16, 0.4, 2.8)) * (1 - fatigue) * (LOC.fightMul || 1);
       pullTimer -= dt;
       if (pulling > 0) {
         pulling -= dt;
@@ -2391,6 +2405,7 @@ function drawSky() {
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, WATER_Y);
 }
 function drawStars() {
+  if (LOC.cave) return;   // no sky inside the cavern
   for (const s of stars) {
     const tw = 0.5 + 0.5 * Math.sin(t * 1.5 + s.tw);
     const a = (0.3 + s.b * 0.7) * tw * (1 - s.y / 120);
@@ -2421,6 +2436,7 @@ function drawMoon() {
   ctx.fillStyle = LOC.sky[2]; ctx.beginPath(); ctx.arc(mx + 6, my - 3, 12, 0, 6.28); ctx.fill();
 }
 function drawTreeline() {
+  if (LOC.cave) { drawCaveWall(); return; }   // a jagged rock wall instead of pines
   ctx.fillStyle = LOC.tree;
   let seed = 1; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
   const caps = [];
@@ -2429,6 +2445,59 @@ function drawTreeline() {
   if (LOC.snow) {
     ctx.fillStyle = "#dfeaf2";
     for (const c of caps) if (c[2] > 26) ctx.fillRect(c[0], c[1], 8, 3);
+  }
+}
+// Jettegryta — the dripping back wall of the cavern (stands in for the treeline)
+function drawCaveWall() {
+  // solid rock backdrop above the water
+  const g = ctx.createLinearGradient(0, 0, 0, WATER_Y);
+  g.addColorStop(0, "#070810"); g.addColorStop(0.7, "#12141f"); g.addColorStop(1, "#1a1d2a");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, WATER_Y);
+  // hanging stalactites from the ceiling
+  ctx.fillStyle = LOC.tree;
+  let seed = 4; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let x = -6; x < W + 6; x += 13) {
+    const h = 10 + rnd() * 22;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 6.5, 0); ctx.lineTo(x + 3, h); ctx.closePath(); ctx.fill();
+  }
+  // a soft shaft of pale light from a crack in the ceiling — drawn over the rock so it actually glows
+  const lx = 250;
+  const lg = ctx.createLinearGradient(lx, 0, lx + 30, WATER_Y);
+  lg.addColorStop(0, "rgba(190,215,235,0.22)"); lg.addColorStop(1, "rgba(190,215,235,0)");
+  ctx.fillStyle = lg;
+  ctx.beginPath(); ctx.moveTo(lx - 4, 0); ctx.lineTo(lx + 10, 0); ctx.lineTo(lx + 40, WATER_Y); ctx.lineTo(lx + 6, WATER_Y); ctx.closePath(); ctx.fill();
+  // rugged rock shelf rising from the waterline
+  ctx.fillStyle = "#0d0f18";
+  for (let x = -10; x < W + 10; x += 9) { const h = 8 + rnd() * 18; ctx.fillRect(x, WATER_Y - h, 10, h); }
+  // stumpy stalagmites poking up at the shore
+  ctx.fillStyle = "#151824";
+  for (let x = 10; x < W; x += 47) { const h = 6 + rnd() * 12; ctx.beginPath(); ctx.moveTo(x, WATER_Y); ctx.lineTo(x + 7, WATER_Y); ctx.lineTo(x + 3, WATER_Y - h); ctx.closePath(); ctx.fill(); }
+}
+// Jettegryta — glowing mushrooms, drips and a faint mist that make the cavern feel alive
+let caveDrips = null;
+function drawCaveDetails() {
+  if (!LOC.cave) return;
+  if (!caveDrips) caveDrips = Array.from({ length: 6 }, () => ({ x: 20 + Math.random() * (W - 40), ph: Math.random() * 6.28, sp: 0.5 + Math.random() * 0.6 }));
+  // glowing cave mushrooms clustered along the back rock shelf
+  const spots = [[40, 138], [96, 132], [196, 140], [300, 134], [360, 138], [420, 132]];
+  for (let i = 0; i < spots.length; i++) {
+    const [mx, my] = spots[i];
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.3 + i * 1.7);
+    const gg = ctx.createRadialGradient(mx, my, 1, mx, my, 12);
+    gg.addColorStop(0, `rgba(120,255,200,${0.12 + pulse * 0.12})`); gg.addColorStop(1, "rgba(120,255,200,0)");
+    ctx.fillStyle = gg; ctx.fillRect(mx - 12, my - 12, 24, 24);
+    px(mx, my - 1, 1, 3, "#2a4a3a");                       // tiny stalk
+    px(mx - 1, my - 3, 3, 2, "#7affc8");                   // glowing cap
+    px(mx, my - 4, 1, 1, "#d0ffe8");
+  }
+  // slow drips falling from the ceiling, splashing into the pond
+  ctx.fillStyle = "rgba(170,210,230,0.6)";
+  for (const d of caveDrips) {
+    d.ph += d.sp * 0.02;
+    const fall = (d.ph % 1);
+    const dy = fall * (WATER_Y - 4);
+    px(Math.round(d.x), Math.round(dy), 1, 3, "rgba(170,210,230,0.6)");
+    if (fall > 0.94) { ctx.globalAlpha = (1 - fall) * 12; px(Math.round(d.x) - 1, WATER_Y - 1, 3, 1, "#b9c8ff"); ctx.globalAlpha = 1; }
   }
 }
 // distant snow-capped mountain range (Fjellvatnet)
@@ -2969,7 +3038,7 @@ function drawRevealFish() {
 
 /* ---- other screens' backdrops ---- */
 function drawMenuBg() {
-  drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore();
+  drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawCaveDetails(); drawShore();
   drawGuy(); drawProps(); drawCat(); drawReedsFront(); drawFireflies(); drawVignette();
 }
 function drawMarketBg() {
@@ -4581,6 +4650,11 @@ function drawMapIcon(key, x, y, locked) {
     ctx.strokeStyle = "rgba(120,255,180,0.85)"; ctx.lineWidth = 2;
     for (let i = 0; i < 2; i++) { ctx.beginPath(); ctx.moveTo(ix - 4, iy - 4 + i * 4); ctx.quadraticCurveTo(ix + 4, iy - 10 + i * 4 + Math.sin(t * 2 + i) * 2, ix + 12, iy - 4 + i * 4); ctx.stroke(); }
     px(ix + 10, iy - 10, 1, 1, "#fff");
+  } else if (key === "jettegryta") {     // a dark cave mouth with a glowing eye in the deep
+    ctx.fillStyle = "#5a5040"; ctx.beginPath(); ctx.moveTo(ix - 4, iy + 3); ctx.lineTo(ix - 2, iy - 9); ctx.lineTo(ix + 10, iy - 9); ctx.lineTo(ix + 12, iy + 3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#0a0c12"; ctx.beginPath(); ctx.ellipse(ix + 4, iy - 1, 6, 7, 0, 0, 6.28); ctx.fill();   // dark opening
+    const gl = 0.5 + 0.5 * Math.sin(t * 2);
+    ctx.fillStyle = `rgba(120,255,200,${0.5 + gl * 0.4})`; px(ix + 3, iy - 2, 2, 2, `rgba(120,255,200,${0.5 + gl * 0.4})`);   // glowing eye in the dark
   }
   ctx.restore();
 }
@@ -5444,7 +5518,7 @@ function render() {
   ctx.clearRect(0, 0, W, H);
   switch (screen) {
     case "game":
-      drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawShore(); drawRiseSpot();
+      drawSky(); drawStars(); drawAurora(); drawMoon(); drawMountains(); drawTreeline(); drawLurkingEyes(); drawMoose(); drawParkedTruck(); drawWater(); drawWaterfall(); drawReflections(); drawForestDetails(); drawSummerDetails(); drawCaveDetails(); drawShore(); drawRiseSpot();
       drawLine(); drawBobber(); drawBuffAura(); drawGuy(); drawSmoke(); drawProps(); drawGroundFish(); drawCat(); drawHatSeller(); drawInspector(); drawReedsFront(); drawCoolerMenu(); drawGodsakerPanel(); drawHatPanel(); drawHatShop(); drawRodPanel(); drawBagPanel(); drawRecordsPanel(); drawFunnPanel(); drawTruckMenu(); drawFireflies(); drawSnow();
       drawRevealFish(); drawFog(); drawWeather(); drawBuffHud(); drawEventActor(); drawGameEvent(); drawHoverHighlight(); drawTouchHints(); drawVignette(); drawHangover(); drawKnockout();
       break;
