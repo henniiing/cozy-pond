@@ -1511,10 +1511,10 @@ async function confirmNewGame() {
   const input = $("newGameName");
   const name = cleanName(input ? input.value : "");
   const st = $("newGameStatus");
-  if (!name) { if (st) st.textContent = "Skriv inn et navn først."; if (input) { try { input.focus(); } catch (e) {} } return; }
-  if (st) st.textContent = "Sjekker navnet …";
+  if (!name) { if (st) st.textContent = T("Skriv inn et navn først."); if (input) { try { input.focus(); } catch (e) {} } return; }
+  if (st) st.textContent = T("Sjekker navnet …");
   if (await nameTaken(name)) {                  // best-effort: don't let two fishers share a name
-    if (st) st.textContent = "Navnet er allerede tatt — velg et annet.";
+    if (st) st.textContent = T("Navnet er allerede tatt — velg et annet.");
     if (input) { try { input.focus(); } catch (e) {} }
     return;
   }
@@ -1717,11 +1717,11 @@ function parseDreamlo(txt) {
 function renderScoreList(elId, entries, valFn, filter) {
   const el = $(elId); if (!el) return;
   const me = cleanName(save.playerName).toLowerCase();
-  if (!entries.length) { el.innerHTML = '<li class="score-empty">Ingen poeng ennå — bli den første!</li>'; return; }
+  if (!entries.length) { el.innerHTML = '<li class="score-empty">' + T("Ingen poeng ennå — bli den første!") + '</li>'; return; }
   let rows = entries.map((e, i) => ({ e, rank: i + 1 }));   // rank = position in the full sorted board
   if (filter) rows = rows.filter(({ e }) => (e.name || "").toString().toLowerCase().includes(filter));
   else rows = rows.slice(0, 100);                            // show the top 100; search reaches the rest
-  if (!rows.length) { el.innerHTML = '<li class="score-empty">Ingen treff.</li>'; return; }
+  if (!rows.length) { el.innerHTML = '<li class="score-empty">' + T("Ingen treff.") + '</li>'; return; }
   el.innerHTML = rows.map(({ e, rank }) => {
     const name = (e.name || "").toString();
     const mine = me && name.toLowerCase() === me;
@@ -1749,14 +1749,14 @@ function findRank(entries) {
 function renderMyScore() {
   const my = $("myScore"); if (!my) return;
   const sc = computeScore();
-  if (sc.score <= 0) { my.textContent = "Fang noen fisk først, så havner du på topplista!"; return; }
-  let line = `Din poengsum: ${fmt(sc.score)} p · ${sc.species} arter · ${sc.trophies} troféer`;
-  if (sc.biggestName) line += ` · største ${sc.biggestName} ${sc.biggestKg.toFixed(2)} kg`;
+  if (sc.score <= 0) { my.textContent = T("Fang noen fisk først, så havner du på topplista!"); return; }
+  let line = T("Din poengsum: {p} p · {species} arter · {trophies} troféer", { p: fmt(sc.score), species: sc.species, trophies: sc.trophies });
+  if (sc.biggestName) line += T(" · største {name} {kg} kg", { name: sc.biggestName, kg: sc.biggestKg.toFixed(2) });
   const r1 = findRank(scoreData.mastery), r2 = findRank(scoreData.biggest);
   const ranks = [];
-  if (r1) ranks.push(`#${r1} Storfiskeren`);
-  if (r2) ranks.push(`#${r2} Største fangst`);
-  if (ranks.length) line += ` — du er ${ranks.join(" og ")}`;
+  if (r1) ranks.push(T("#{r} Storfiskeren", { r: r1 }));
+  if (r2) ranks.push(T("#{r} Største fangst", { r: r2 }));
+  if (ranks.length) line += T(" — du er {ranks}", { ranks: ranks.join(T(" og ")) });
   my.textContent = line;
 }
 
@@ -1764,8 +1764,8 @@ function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<"
 
 async function loadScores() {
   const byScore = $("listMastery"), byBig = $("listBiggest");
-  if (byScore) byScore.innerHTML = '<li class="score-empty">Laster …</li>';
-  if (byBig) byBig.innerHTML = '<li class="score-empty">Laster …</li>';
+  if (byScore) byScore.innerHTML = '<li class="score-empty">' + T("Laster …") + '</li>';
+  if (byBig) byBig.innerHTML = '<li class="score-empty">' + T("Laster …") + '</li>';
   try {
     const [a, b] = await Promise.all([
       proxyGet(DREAMLO_BASE + DREAMLO_PUBLIC + "/json/0/500"),
@@ -1776,7 +1776,7 @@ async function loadScores() {
     applyScoreFilter();
     renderMyScore();
   } catch (e) {
-    const msg = '<li class="score-empty">Kunne ikke laste topplista.</li>';
+    const msg = '<li class="score-empty">' + T("Kunne ikke laste topplista.") + '</li>';
     if (byScore) byScore.innerHTML = msg;
     if (byBig) byBig.innerHTML = msg;
   }
@@ -1797,19 +1797,19 @@ async function submitScore() {
   const input = $("playerName");
   const name = cleanName(input ? input.value : save.playerName);
   const st = $("scoreStatus");
-  if (!name) { if (st) st.textContent = "Skriv inn et navn først."; if (input) input.focus(); return; }
+  if (!name) { if (st) st.textContent = T("Skriv inn et navn først."); if (input) input.focus(); return; }
   const sc = computeScore();
-  if (sc.score <= 0) { if (st) st.textContent = "Du må fange minst én fisk før du kan sende inn."; return; }
+  if (sc.score <= 0) { if (st) st.textContent = T("Du må fange minst én fisk før du kan sende inn."); return; }
   save.playerName = name; persist();
   scoresBusy = true;
-  if (st) st.textContent = "Sender inn …";
+  if (st) st.textContent = T("Sender inn …");
   const url = DREAMLO_BASE + DREAMLO_PRIVATE + "/add/" + encodeURIComponent(name) + "/" + sc.score + "/" + sc.biggestG + "/" + encodeURIComponent(sc.text);
   try {
     await proxyGet(url);
-    if (st) st.textContent = "Poengsum sendt inn! 🎣";
+    if (st) st.textContent = T("Poengsum sendt inn! 🎣");
     await loadScores();
   } catch (e) {
-    if (st) st.textContent = "Klarte ikke å sende inn — prøv igjen om litt.";
+    if (st) st.textContent = T("Klarte ikke å sende inn — prøv igjen om litt.");
   } finally {
     scoresBusy = false;
   }
@@ -2023,7 +2023,7 @@ function hookFish() {
   progress = 10; tension = 10; pullTimer = 0.5 + Math.random() * 0.7; pulling = 0; holding = false;
   reelEl.classList.remove("hidden");
   bigFishTired = false;
-  setHint(currentWeight >= 4 ? "Diger fisk! Sveiv jevnt — og SLIPP når den rykker!" : "Hold for å sveive — slipp når den drar!");
+  setHint(currentWeight >= 4 ? T("Diger fisk! Sveiv jevnt — og SLIPP når den rykker!") : T("Hold for å sveive — slipp når den drar!"));
   sfxSplash();
 }
 function finalizeCatch() {
@@ -4296,6 +4296,43 @@ function drawLicenseBooth() {
   ctx.strokeRect(r.x, r.y - 8, r.w, r.h + 8);
   ctx.globalAlpha = 1;
 }
+// a fat burlap money sack with a $ stamped on it — the warden's ill-gotten gains
+function drawMoneySack(sx, sy, sc) {
+  const w = Math.round(16 * sc), h = Math.round(16 * sc);
+  // body
+  px(sx, sy, w, h, "#7a6638"); px(sx, sy, w, 2, "#8e7a44"); px(sx, sy, 2, h, "#5e4e2a");
+  px(sx + w - 2, sy, 2, h, "#5e4e2a"); px(sx, sy + h - 2, w, 2, "#4a3c20");
+  // tied-off neck
+  const nw = Math.round(w * 0.55), nx = sx + Math.round((w - nw) / 2), nh = Math.round(5 * sc);
+  px(nx, sy - nh, nw, nh, "#5e4e2a"); px(nx, sy - 1, nw, 1, "#3a3018");
+  px(nx, sy - nh - Math.round(2 * sc), 2, Math.round(3 * sc), "#6a5a30");
+  px(nx + nw - 2, sy - nh - Math.round(2 * sc), 2, Math.round(3 * sc), "#6a5a30");
+  // dollar sign
+  ctx.fillStyle = "#ffe06a"; ctx.font = "bold " + Math.round(9 * sc) + "px monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("$", sx + w / 2, sy + h / 2 + 1);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+// a second, identical-looking fiskeoppsyn warden — stood in the back counting his cash
+function drawWardenCounting(x, y) {
+  const count = Math.sin(t * 6) * 1.5;             // hands riffling through the wad
+  // legs
+  px(x - 3, y + 18, 3, 8, "#2a3a2a"); px(x + 1, y + 18, 3, 8, "#2a3a2a");
+  // body / uniform (same green livery as the inspector)
+  px(x - 5, y + 4, 11, 15, "#3a5a3a"); px(x - 5, y + 4, 11, 3, "#4a6a4a");
+  px(x - 1, y + 7, 2, 9, "#caa84a");               // brass button strip
+  // arms held in front, clutching a wad of bills
+  px(x - 7, y + 7, 3, 8, "#3a5a3a"); px(x + 5, y + 7, 3, 8, "#3a5a3a");
+  px(x - 4, y + 11 + count, 9, 5, "#bfe6a0"); px(x - 4, y + 11 + count, 9, 1, "#d6f0bc");
+  px(x - 2, y + 13 + count, 5, 1, "#5a8a4a");      // banded wad
+  px(x + 6, y + 5 + count, 3, 2, "#bfe6a0"); px(x - 8, y + 8 - count, 3, 2, "#bfe6a0"); // fluttering bills
+  // head + cap (identical to drawInspector)
+  px(x - 4, y - 5, 9, 9, "#e8c098"); px(x - 4, y + 2, 9, 2, "#d2a07c");
+  px(x - 2, y, 2, 2, "#2a2030"); px(x + 2, y, 2, 2, "#2a2030");   // eyes locked on the money
+  px(x - 3, y + 3, 7, 1, "#6a5a3a");               // moustache
+  px(x - 5, y - 7, 11, 3, "#243a24"); px(x - 6, y - 5, 6, 2, "#243a24"); // peaked cap + brim
+  px(x + 1, y - 6, 3, 2, "#caa23a");               // brass cap badge
+}
 function drawShopLicenseBg() {
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, "#27322a"); g.addColorStop(1, "#161d18"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -4311,25 +4348,21 @@ function drawShopLicenseBg() {
   // pinned permit cards on the wall
   const cols = ["#ffe6a0", "#bfe6ef", "#f0c0d0", "#c8f0c0"];
   for (let i = 0; i < 4; i++) { const cx = 168 + i * 28; px(cx, 44, 18, 12, cols[i]); px(cx, 44, 18, 2, "#fff"); px(cx + 8, 41, 2, 4, "#7a5a38"); }
-  // ——— back-room easter egg: the corrupt inspector hoards his fine money back here ———
+  // ——— back-room easter egg: the corrupt warden hoards his fine money back here ———
   // a dim doorway cut into the far wall
   px(360, 28, 46, 80, "#0b110a"); px(360, 28, 46, 3, "#243a26"); px(360, 28, 3, 80, "#243a26"); px(403, 28, 3, 80, "#243a26");
-  // a fat money sack slouched in the corner
-  px(368, 80, 22, 24, "#6a5a32"); px(368, 80, 22, 3, "#7e6c3e"); px(368, 80, 3, 24, "#5a4c2a");
-  px(372, 73, 14, 9, "#5a4c2a"); px(376, 75, 6, 3, "#3a3018");        // tied-off neck of the sack
-  ctx.fillStyle = "#ffe6a0"; ctx.font = "bold 8px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("kr", 379, 93); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-  // he peeks out for a couple of seconds every so often, then ducks guiltily back in
-  const peekT = t % 9;
-  if (peekT < 2.4) {
-    const lean = Math.sin(peekT / 2.4 * Math.PI);                     // 0 → 1 → 0 ease as he leans out and back
-    const hx = 357 + Math.round(lean * 13), hy = 54;
-    px(hx, hy, 13, 12, "#e7c19a"); px(hx, hy + 10, 13, 2, "#d2a87c");  // head leaning past the door edge
-    px(hx + 3, hy + 4, 2, 2, "#2a2030"); px(hx + 8, hy + 4, 2, 2, "#2a2030");   // shifty eyes
-    px(hx + 3, hy + 7, 7, 1, "#6a5a3a");                              // moustache
-    px(hx - 1, hy - 3, 15, 4, "#2f4a30"); px(hx + 4, hy - 4, 4, 2, "#caa23a");  // peaked cap + brass badge
-    px(hx + 4, hy + 8, 5, 1, "#7a4a4a");                              // guilty little grin
-  }
+  // warm glow off the money pile inside
+  const glow = ctx.createRadialGradient(383, 82, 4, 383, 82, 42);
+  glow.addColorStop(0, "rgba(255,210,90,0.30)"); glow.addColorStop(1, "rgba(255,210,90,0)");
+  ctx.fillStyle = glow; ctx.fillRect(360, 31, 43, 77);
+  // a second warden — dead ringer for the fiskeoppsyn inspector — stands in back counting cash
+  drawWardenCounting(382, 58);
+  // money sacks bulging out of the doorway and spilling onto the floor (drawn back-to-front)
+  const sacks = [[388, 72, 1.0], [364, 78, 1.05], [394, 86, 0.95], [356, 90, 1.15], [378, 92, 1.1], [346, 100, 1.0], [400, 100, 0.9]];
+  for (const s of sacks) drawMoneySack(s[0], s[1], s[2]);
+  // loose gold coins scattered in front of the door
+  const coins = [[352, 110], [364, 114], [374, 110], [386, 115], [396, 112], [407, 108], [358, 106], [380, 118]];
+  for (const c of coins) { px(c[0], c[1], 4, 4, "#ffd24a"); px(c[0], c[1], 4, 1, "#fff0a0"); px(c[0] + 1, c[1] + 1, 1, 1, "#caa23a"); }
   // counter + the warden
   px(60, 175, 360, 55, "#3a4a30"); px(60, 175, 360, 6, "#4a5e3f");
   drawLicenseWarden(150, 150);

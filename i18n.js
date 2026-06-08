@@ -71,6 +71,12 @@ window.EN = {
   "Poengsum sendt inn! 🎣": "Score submitted! 🎣",
   "Klarte ikke å sende inn — prøv igjen om litt.": "Couldn't submit — try again shortly.",
   "Kunne ikke laste topplista.": "Couldn't load the leaderboard.",
+  "Din poengsum: {p} p · {species} arter · {trophies} troféer": "Your score: {p} p · {species} species · {trophies} trophies",
+  " · største {name} {kg} kg": " · biggest {name} {kg} kg",
+  "#{r} Storfiskeren": "#{r} Master Angler",
+  "#{r} Største fangst": "#{r} Biggest Catch",
+  " — du er {ranks}": " — you're {ranks}",
+  " og ": " and ",
 
   /* ---- New game ---- */
   "Nytt spill": "New game",
@@ -274,6 +280,8 @@ window.EN = {
   "Tømmermenn… du våkner på bredden. Klikk for å kaste ut.": "Hungover… you wake up on the bank. Click to cast.",
   "Vent til duppen går under…": "Wait for the bobber to go under…",
   "NÅ! Klikk!": "NOW! Click!",
+  "Diger fisk! Sveiv jevnt — og SLIPP når den rykker!": "Huge fish! Reel steadily — and LET GO when it jerks!",
+  "Hold for å sveive — slipp når den drar!": "Hold to reel — let go when it pulls!",
   "Rett på vaket! Her napper det godt 🎯": "Right on the rise! They're biting here 🎯",
   "Fisken ble skremt — vent litt...": "The fish got spooked — wait a bit...",
   "Oi… nå vingler du skikkelig. Én tår til og du sovner!": "Whoa… you're really wobbling now. One more sip and you'll pass out!",
